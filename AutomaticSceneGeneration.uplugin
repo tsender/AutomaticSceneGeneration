@@ -1,0 +1,34 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "AutomaticSceneGeneration",
+	"Description": "Enables automatic scene generation from user-defined scene descriptions. Scene descriptions are created via an external source and are communicated to this plugin via ROS. This plugin depends on the ROSIntegration plugin.",
+	"Category": "Other",
+	"CreatedBy": "Ted Sender",
+	"CreatedByURL": "",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "AutomaticSceneGeneration",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	],
+	"Plugins": [
+		{
+		"Name": "PhysXVehicles",
+		"Enabled": true
+		},
+		{
+		"Name": "ROSIntegration",
+		"Enabled": true
+		}
+   ]
+}
