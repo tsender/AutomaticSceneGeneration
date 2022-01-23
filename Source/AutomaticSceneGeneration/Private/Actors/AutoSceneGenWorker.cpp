@@ -20,10 +20,10 @@
 #include "ROSIntegration/Public/geometry_msgs/Pose.h"
 
 #include "auto_scene_gen_msgs/WorkerStatus.h"
-#include "auto_scene_gen_msgs/RunScenarioRequest.h"
-#include "auto_scene_gen_msgs/RunScenarioResponse.h"
-#include "auto_scene_gen_msgs/AnalyzeScenarioRequest.h"
-#include "auto_scene_gen_msgs/AnalyzeScenarioResponse.h"
+#include "auto_scene_gen_srvs/RunScenarioRequest.h"
+#include "auto_scene_gen_srvs/RunScenarioResponse.h"
+#include "auto_scene_gen_srvs/AnalyzeScenarioRequest.h"
+#include "auto_scene_gen_srvs/AnalyzeScenarioResponse.h"
 
 DEFINE_LOG_CATEGORY(LogASG);
 
@@ -126,12 +126,12 @@ void AAutoSceneGenWorker::BeginPlay()
 		
 		AnalyzeScenarioClient = NewObject<UService>(UService::StaticClass());
 		FString AnalyzeScenarioClientName = FString("/asg/services/analyze_scenario");
-		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioClientName, TEXT("auto_scene_gen_msgs/AnalyzeScenario"));
+		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioClientName, TEXT("auto_scene_gen_srvs/AnalyzeScenario"));
 		UE_LOG(LogASG, Display, TEXT("Registered ASG worker analyze scenario ROS client to: %s"), *AnalyzeScenarioClientName);
 
 		RunScenarioService = NewObject<UService>(UService::StaticClass());
 		FString RunScenarioServiceName = FString::Printf(TEXT("/asg_worker%i/services/run_scenario"), WorkerID);
-		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_msgs/RunScenario"));
+		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_srvs/RunScenario"));
 		RunScenarioService->Advertise(std::bind(&AAutoSceneGenWorker::RunScenarioServiceCB, this, std::placeholders::_1, std::placeholders::_2), false);
 		UE_LOG(LogASG, Display, TEXT("Registered ASG worker run scenario ROS service: %s"), *RunScenarioServiceName);
 	}
@@ -339,7 +339,7 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 		
 		bWaitingForScenarioRequest = true;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-		TSharedPtr<auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_msgs::FAnalyzeScenarioRequest());
+		TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
 		Req->worker_id = WorkerID;
 		Req->scenario_number = ScenarioNumber;
 		Req->crashed = true;
@@ -373,7 +373,7 @@ bool AAutoSceneGenWorker::CheckTriggerVolume()
 				bWaitingForScenarioRequest = true;
 				WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 
-				TSharedPtr<auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_msgs::FAnalyzeScenarioRequest());
+				TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
 				Req->worker_id = WorkerID;
 				Req->scenario_number = ScenarioNumber;
 				Req->crashed = false;
@@ -478,10 +478,10 @@ void AAutoSceneGenWorker::ASGStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 
 void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastResponse = StaticCastSharedPtr<auto_scene_gen_msgs::FAnalyzeScenarioResponse>(Response);
+	auto CastResponse = StaticCastSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioResponse>(Response);
 	if (!CastResponse)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to auto_scene_gen_msgs/AnalyzeScenario_Response"));
+		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to auto_scene_gen_srvs/AnalyzeScenario_Response"));
 		return;
 	}
 	UE_LOG(LogASG, Display, TEXT("Analyze scenario request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
@@ -489,16 +489,16 @@ void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceRe
 
 void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest> Request, TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastRequest = StaticCastSharedPtr<auto_scene_gen_msgs::FRunScenarioRequest>(Request);
-	auto CastResponse = StaticCastSharedPtr<auto_scene_gen_msgs::FRunScenarioResponse>(Response);
+	auto CastRequest = StaticCastSharedPtr<auto_scene_gen_srvs::FRunScenarioRequest>(Request);
+	auto CastResponse = StaticCastSharedPtr<auto_scene_gen_srvs::FRunScenarioResponse>(Response);
 	if (!CastRequest)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast Request to auto_scene_gen_msgs/RunScenario_Request"));
+		UE_LOG(LogASG, Warning, TEXT("Failed to cast Request to auto_scene_gen_srvs/RunScenario_Request"));
 		return;
 	}
 	if (!CastResponse)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast Response to auto_scene_gen_msgs/RunScenario_Response"));
+		UE_LOG(LogASG, Warning, TEXT("Failed to cast Response to auto_scene_gen_srvs/RunScenario_Response"));
 		return;
 	}
 

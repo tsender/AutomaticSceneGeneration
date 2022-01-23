@@ -92,7 +92,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	class UROSIntegrationGameInstance* ROSInst;
 	
-	// ROS subscriber: Subscribes to the ASG's status
+	// ROS subscriber: Subscribes to the ASG client's status
 	UPROPERTY()
 	class UTopic* ASGStatusSub;
 
@@ -104,7 +104,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	class UTopic* VehicleDestinationPub;
 
-	// ROS service: Processed the RunScenario request from the ASG
+	// ROS service: Processes the RunScenario request from the ASG client
 	UPROPERTY()
 	class UService* RunScenarioService;
 
@@ -113,8 +113,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 	class UService* AnalyzeScenarioClient;
 
 	/**
-	 *  If the duration between consecutive ASG status messages reaches this threshold,
-	 * 	then reset the simulation and wait for the ASG to come back online before restarting the run.
+	 *  If the duration between consecutive ASG client status messages reaches this threshold,
+	 * 	then reset the simulation and wait for the ASG client to come back online before restarting the run.
 	 */
 	UPROPERTY(EditAnywhere)
 	float ASGStatusMessagePeriodThreshold = 5.f;

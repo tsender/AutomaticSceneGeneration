@@ -13,7 +13,7 @@
 #include "ROSIntegration/Classes/RI/Topic.h"
 #include "ROSIntegration/Public/ROSTime.h"
 #include "ROSIntegration/Public/geometry_msgs/Pose.h"
-#include "vehicle_msgs/PhysxControl.h"
+#include "vehicle_msgs/PhysXControl.h"
 
 // Sets default values for this component's properties
 UPIDDriveByWireComponent::UPIDDriveByWireComponent()
@@ -88,7 +88,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 		UE_LOG(LogTemp, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *BypassTopic);
 
 		FString PhysxTopic = TopicPrefix + FString("physx");
-		PhysxControllerSub->Init(ROSInst->ROSIntegrationCore, PhysxTopic, TEXT("vehicle_msgs/PhysxControl"));
+		PhysxControllerSub->Init(ROSInst->ROSIntegrationCore, PhysxTopic, TEXT("vehicle_msgs/PhysXControl"));
 		PhysxControllerSub->Subscribe(std::bind(&UPIDDriveByWireComponent::PhysxControllerCB, this, std::placeholders::_1));
 		UE_LOG(LogTemp, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *PhysxTopic);
 	}
@@ -201,7 +201,7 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::vehicle_msgs::PhysXControl>(Msg);
 	if (!CastMsg)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Failed to cast msg to vehicle_msgs/PhysxControl."));
+		UE_LOG(LogTemp, Warning, TEXT("Failed to cast msg to vehicle_msgs/PhysXControl."));
 		return;
 	}
 	if (!bEnabled)

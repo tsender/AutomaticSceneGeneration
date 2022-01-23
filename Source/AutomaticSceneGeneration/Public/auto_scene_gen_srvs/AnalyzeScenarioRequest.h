@@ -4,7 +4,7 @@
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "ROSIntegration/Public/nav_msgs/Path.h"
 
-namespace auto_scene_gen_msgs {
+namespace auto_scene_gen_srvs {
 	// The ASG worker gathers relevant data about the scenario it just ran and then submits an analyze scenario request to the ASG for analysis
 	class AUTOMATICSCENEGENERATION_API FAnalyzeScenarioRequest : public FROSBaseServiceRequest {
 

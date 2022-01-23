@@ -4,7 +4,7 @@
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "ROSIntegration/Public/std_msgs/Float32MultiArray.h"
 
-namespace auto_scene_gen_msgs {
+namespace auto_scene_gen_srvs {
 	// The ASG submits a run scenario request describing the scenario that the ASG worker should run
 	class AUTOMATICSCENEGENERATION_API FRunScenarioRequest : public FROSBaseServiceRequest {
 
