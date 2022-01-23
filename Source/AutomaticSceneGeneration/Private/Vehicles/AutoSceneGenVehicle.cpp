@@ -1,14 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Vehicles/ASGVehicle.h"
+#include "Vehicles/AutoSceneGenVehicle.h"
 #include "Components/PIDDriveByWireComponent.h"
 #include "Components/AnnotationComponent.h"
-// #include "Components/VehicleEvaluationComponent.h"
 #include "Components/AudioComponent.h"
 #include "WheeledVehicleMovementComponent.h"
 #include "Actors/StructuralSceneActor.h"
-// #include "Actors/ASGWorker.h"
+#include "Actors/AutoSceneGenWorker.h"
 #include "Sound/SoundCue.h"
 #include "Engine/TriggerVolume.h"
 
@@ -21,25 +20,25 @@
 #include "ROSIntegration/Public/std_msgs/Bool.h"
 #include "ROSIntegration/Public/nav_msgs/Path.h"
 
-AASGVehicle::AASGVehicle() 
+AAutoSceneGenVehicle::AAutoSceneGenVehicle() 
 {
     DriveByWireComponent = CreateDefaultSubobject<UPIDDriveByWireComponent>(TEXT("PID Drive By Wire"));
     AnnotationComponent = CreateDefaultSubobject<UAnnotationComponent>(TEXT("Annotation Component"));
     // EvaluationComponent = CreateDefaultSubobject<UVehicleEvaluationComponent>(TEXT("Vehicle Evaluation Component"));
 
     static ConstructorHelpers::FObjectFinder<USoundCue> SoundCue(TEXT("/Game/VehicleAdv/Sound/Engine_Loop_Cue.Engine_Loop_Cue"));
-	EngineSoundComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("EngineSound"));
+	EngineSoundComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("Engine Sound"));
 	EngineSoundComponent->SetSound(SoundCue.Object);
 	EngineSoundComponent->SetupAttachment(GetMesh());
 }
 
-void AASGVehicle::BeginPlay() 
+void AAutoSceneGenVehicle::BeginPlay() 
 {
     Super::BeginPlay();
 
     // Make sure skeletal mesh is set to generate hit events
-    GetMesh()->OnComponentHit.AddDynamic(this, &AASGVehicle::OnHit);
-    // GetMesh()->OnComponentBeginOverlap.AddDynamic(this, &AASGVehicle::OnBeginOverlap);
+    GetMesh()->OnComponentHit.AddDynamic(this, &AAutoSceneGenVehicle::OnHit);
+    // GetMesh()->OnComponentBeginOverlap.AddDynamic(this, &AAutoSceneGenVehicle::OnBeginOverlap);
     AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(0.f, 0.f, 0.f, 1.f));
 
     bEnabled = false;
@@ -49,6 +48,7 @@ void AASGVehicle::BeginPlay()
     NominalVehicleZLocation = 0.f;
     HeaderSequence = 1;
     PathSequence = 0; // Gets incremented when enabled
+    NumSSAHit = 0;
 
     ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
 	if (ROSInst)
@@ -56,17 +56,17 @@ void AASGVehicle::BeginPlay()
 		// Create topic prefix
         FString TopicPrefix = FString::Printf(TEXT("/%s/"), *VehicleName);
 
-        // Find ASG Worker ID, if applicable
-		// TArray<AActor*> TempArray;
-		// UGameplayStatics::GetAllActorsOfClass(GetWorld(), AASGWorker::StaticClass(), TempArray);
-		// if (TempArray.Num() > 0)
-		// {
-		// 	AASGWorker* Worker = Cast<AASGWorker>(TempArray[0]);
-		// 	if (Worker)
-		// 	{
-		// 		TopicPrefix = FString::Printf(TEXT("/asg_worker%i"), Worker->GetWorkerID()) + TopicPrefix;
-		// 	}
-		// } //UNCOMMENT
+        // Find AutoSceneGen Worker ID, if applicable
+		TArray<AActor*> TempArray;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAutoSceneGenWorker::StaticClass(), TempArray);
+		if (TempArray.Num() > 0)
+		{
+			AAutoSceneGenWorker* Worker = Cast<AAutoSceneGenWorker>(TempArray[0]);
+			if (Worker)
+			{
+				TopicPrefix = FString::Printf(TEXT("/asg_worker%i"), Worker->GetWorkerID()) + TopicPrefix;
+			}
+		}
 
         EnableStatusPub =  NewObject<UTopic>(UTopic::StaticClass());
 
@@ -77,7 +77,7 @@ void AASGVehicle::BeginPlay()
 	}
 }
 
-void AASGVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason) 
+void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 {
     Super::EndPlay(EndPlayReason);
     VehiclePath.poses.Empty();
@@ -87,7 +87,7 @@ void AASGVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason)
     }
 }
 
-void AASGVehicle::Tick(float DeltaTime) 
+void AAutoSceneGenVehicle::Tick(float DeltaTime) 
 {
     Super::Tick(DeltaTime);
     TickNumber++;
@@ -122,46 +122,45 @@ void AASGVehicle::Tick(float DeltaTime)
     }
 }
 
-void AASGVehicle::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) 
+void AAutoSceneGenVehicle::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) 
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
 
     if (DriveByWireComponent->IsManualDrive())
     {
-        PlayerInputComponent->BindAxis(TEXT("DriveForward"), this, &AASGVehicle::DriveForward);
-        PlayerInputComponent->BindAxis(TEXT("SteerRight"), this, &AASGVehicle::SteerRight);
-        PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Pressed, this, &AASGVehicle::OnHandbrakePressed);
-        PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Released, this, &AASGVehicle::OnHandbrakeReleased);
+        PlayerInputComponent->BindAxis(TEXT("DriveForward"), this, &AAutoSceneGenVehicle::DriveForward);
+        PlayerInputComponent->BindAxis(TEXT("SteerRight"), this, &AAutoSceneGenVehicle::SteerRight);
+        PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Pressed, this, &AAutoSceneGenVehicle::OnHandbrakePressed);
+        PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Released, this, &AAutoSceneGenVehicle::OnHandbrakeReleased);
     }
 }
 
-FString AASGVehicle::GetVehicleName() const
+FString AAutoSceneGenVehicle::GetVehicleName() const
 {
     return VehicleName;
 }  
 
-void AASGVehicle::SetWorldIsReadyFlag(bool bReady)
+void AAutoSceneGenVehicle::SetWorldIsReadyFlag(bool bReady)
 {
     bWorldIsReady = bReady;
 }
 
-bool AASGVehicle::IsEnabled() const
+bool AAutoSceneGenVehicle::IsEnabled() const
 {
     return bEnabled;
 }
 
-void AASGVehicle::SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation)
+void AAutoSceneGenVehicle::SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation)
 {
     ResetLocation = DefaultLocation;
     ResetRotation = DefaultRotation;
 }
 
-float AASGVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation) 
+void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation) 
 {
     ResetLocation = NewLocation;
     ResetRotation = NewRotation;
     
-    // float Performance = EvaluationComponent->ResetEvaluation();
     GetMesh()->SetAllPhysicsLinearVelocity(FVector(0.f));
     GetMesh()->SetAllPhysicsAngularVelocityInDegrees(FVector(0.f));
     DriveForward(0.f);
@@ -175,46 +174,47 @@ float AASGVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation)
     ResetTime = 0.f;
 
     UE_LOG(LogTemp, Warning, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
-    return 0.f; //Performance;
 }
 
-void AASGVehicle::DriveForward(float AxisValue) 
+void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, ROSMessages::nav_msgs::Path &Path) 
+{
+    Path = VehiclePath;
+    ResetVehicle(NewLocation, NewRotation);
+}
+
+void AAutoSceneGenVehicle::DriveForward(float AxisValue) 
 {
     if (bEnabled && bWorldIsReady)
     {
-        // GetVehicleMovementComponent()->SetThrottleInput(AxisValue);
         DriveByWireComponent->SetDesiredForwardVelocity(AxisValue * DriveByWireComponent->GetMaxManualDriveSpeed());
     }
 }
 
-void AASGVehicle::SteerRight(float AxisValue) 
+void AAutoSceneGenVehicle::SteerRight(float AxisValue) 
 {
     if (bEnabled && bWorldIsReady)
     {
-        // GetVehicleMovementComponent()->SetSteeringInput(AxisValue);
         DriveByWireComponent->SetDesiredSteeringAngle(AxisValue * DriveByWireComponent->GetMaxSteeringAngle());
     }
 }
 
-void AASGVehicle::OnHandbrakePressed() 
+void AAutoSceneGenVehicle::OnHandbrakePressed() 
 {
     if (bEnabled && bWorldIsReady)
     {
-        // GetVehicleMovementComponent()->SetHandbrakeInput(true); // Engage handbrake
-        DriveByWireComponent->SetHandbrakeInput(true);
+        DriveByWireComponent->SetHandbrakeInput(true); // Engage handbrake
     }
 }
 
-void AASGVehicle::OnHandbrakeReleased() 
+void AAutoSceneGenVehicle::OnHandbrakeReleased() 
 {
     if (bEnabled && bWorldIsReady)
     {
-        // GetVehicleMovementComponent()->SetHandbrakeInput(false); // Disengage handbrake
-        DriveByWireComponent->SetHandbrakeInput(false);
+        DriveByWireComponent->SetHandbrakeInput(false); // Disengage handbrake
     }
 }
 
-void AASGVehicle::CheckIfReadyForEnable(float DeltaTime) 
+void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime) 
 {
     // Wait at least a few ticks before checking vehicle velocity
     if (!bEnabled && bWorldIsReady && TickNumber > 5)
@@ -258,8 +258,8 @@ void AASGVehicle::CheckIfReadyForEnable(float DeltaTime)
             bEnabled = true;
             CheckEnableTickNumber = 0;
             DriveByWireComponent->EnableDriveByWire(true);
-            // EvaluationComponent->EnableEvaluation(true);
             
+            // Reset the VehiclePathm msg here
             VehiclePath.poses.Empty();
             VehiclePath.header.frame_id = VehicleName;
             VehiclePath.header.time = FROSTime::Now();
@@ -277,17 +277,22 @@ void AASGVehicle::CheckIfReadyForEnable(float DeltaTime)
     }
 }
 
-float AASGVehicle::GetNominalVehicleZLocation() 
+float AAutoSceneGenVehicle::GetNominalVehicleZLocation() 
 {
     return NominalVehicleZLocation;
 }
 
-void AASGVehicle::GetVehiclePath(class ROSMessages::nav_msgs::Path &Path) 
+void AAutoSceneGenVehicle::GetVehiclePath(class ROSMessages::nav_msgs::Path &Path) 
 {
     Path = VehiclePath;
 }
 
-void AASGVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
+int32 AAutoSceneGenVehicle::GetNumSSAHit() const
+{
+    return NumSSAHit;
+}
+
+void AAutoSceneGenVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, 
 				FVector NormalImpulse, const FHitResult& Hit) 
 {
     if (!bEnabled) return;
@@ -295,12 +300,12 @@ void AASGVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimi
     AStructuralSceneActor* SSAActor = Cast<AStructuralSceneActor>(OtherActor);
     if (SSAActor)
     {
-        // EvaluationComponent->HitStructuralSceneActor();
+        NumSSAHit++;
         UE_LOG(LogTemp, Warning, TEXT("Vehicle hit a structural scene actor."));
     }
 }
 
-// void AASGVehicle::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
+// void AAutoSceneGenVehicle::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
 // 				UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult)
 // {
 //     UE_LOG(LogTemp, Warning, TEXT("Vehicle overlapped something."));

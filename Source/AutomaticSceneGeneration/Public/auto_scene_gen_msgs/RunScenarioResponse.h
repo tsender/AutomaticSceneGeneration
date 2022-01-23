@@ -5,7 +5,7 @@
 
 namespace auto_scene_gen_msgs {
 	// Once the ASG worker receives the run scenario request, it will submit a brief response acknowledging receipt of the request
-	class ADVERSARIALSCENEGEN_API FRunScenarioResponse : public FROSBaseServiceResponse {
+	class AUTOMATICSCENEGENERATION_API FRunScenarioResponse : public FROSBaseServiceResponse {
 
 	public:
 		FRunScenarioResponse() = default;

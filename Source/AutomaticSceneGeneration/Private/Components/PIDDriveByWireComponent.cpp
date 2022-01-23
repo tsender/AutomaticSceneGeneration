@@ -2,8 +2,8 @@
 
 
 #include "Components/PIDDriveByWireComponent.h"
-// #include "Actors/ASGWorker.h"
-#include "Vehicles/ASGVehicle.h"
+#include "Actors/AutoSceneGenWorker.h"
+#include "Vehicles/AutoSceneGenVehicle.h"
 #include "WheeledVehicle.h"
 #include "WheeledVehicleMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -37,10 +37,10 @@ void UPIDDriveByWireComponent::BeginPlay()
 	DesiredVelocity = 0.f; // [m/s]
 	DesiredSteeringAngle = 0.f; // [deg]
 
-	Vehicle = Cast<AASGVehicle>(GetOwner());
+	Vehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
 	if (!Vehicle)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Drive by wire compent owner must be a AASGVehicle."));
+		UE_LOG(LogTemp, Error, TEXT("Drive by wire compent owner must be a AAutoSceneGenVehicle."));
 		return;
 	}
 
@@ -68,16 +68,16 @@ void UPIDDriveByWireComponent::BeginPlay()
 		FString TopicPrefix = FString::Printf(TEXT("/%s/control/"), *Vehicle->GetVehicleName());
 		
 		// Find ASG Worker ID, if applicable
-		// TArray<AActor*> TempArray;
-		// UGameplayStatics::GetAllActorsOfClass(GetWorld(), AASGWorker::StaticClass(), TempArray);
-		// if (TempArray.Num() > 0)
-		// {
-		// 	AASGWorker* Worker = Cast<AASGWorker>(TempArray[0]);
-		// 	if (Worker)
-		// 	{
-		// 		TopicPrefix = FString::Printf(TEXT("/asg_worker%i"), Worker->GetWorkerID()) + TopicPrefix;
-		// 	}
-		// } // UNCOMMENT
+		TArray<AActor*> TempArray;
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAutoSceneGenWorker::StaticClass(), TempArray);
+		if (TempArray.Num() > 0)
+		{
+			AAutoSceneGenWorker* Worker = Cast<AAutoSceneGenWorker>(TempArray[0]);
+			if (Worker)
+			{
+				TopicPrefix = FString::Printf(TEXT("/asg_worker%i"), Worker->GetWorkerID()) + TopicPrefix;
+			}
+		}
 		
 		BypassSub =  NewObject<UTopic>(UTopic::StaticClass());
 		PhysxControllerSub =  NewObject<UTopic>(UTopic::StaticClass());
@@ -85,12 +85,12 @@ void UPIDDriveByWireComponent::BeginPlay()
 		FString BypassTopic = TopicPrefix + FString("bypass");
 		BypassSub->Init(ROSInst->ROSIntegrationCore, BypassTopic, TEXT("geometry_msgs/Pose"));
 		BypassSub->Subscribe(std::bind(&UPIDDriveByWireComponent::BypassControllerCB, this, std::placeholders::_1));
-		UE_LOG(LogTemp, Display, TEXT("Initialized drive-by-wire ROS subscriber: %s"), *BypassTopic);
+		UE_LOG(LogTemp, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *BypassTopic);
 
 		FString PhysxTopic = TopicPrefix + FString("physx");
 		PhysxControllerSub->Init(ROSInst->ROSIntegrationCore, PhysxTopic, TEXT("vehicle_msgs/PhysxControl"));
 		PhysxControllerSub->Subscribe(std::bind(&UPIDDriveByWireComponent::PhysxControllerCB, this, std::placeholders::_1));
-		UE_LOG(LogTemp, Display, TEXT("Initialized drive-by-wire ROS subscriber: %s"), *PhysxTopic);
+		UE_LOG(LogTemp, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *PhysxTopic);
 	}
 }
 
@@ -109,7 +109,7 @@ void UPIDDriveByWireComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-	// If manual drive, then owning actor (the vehicle) will directly pass throttle/steering/handbrake inputs to vehicle movement component
+	// If vehicle is in manual drive, then the vehicle will set the desired forward speed, steering, and handbrake.
 	if (!bEnabled || !VehicleMovementComponent)
 	{
 		return;
@@ -198,7 +198,7 @@ void UPIDDriveByWireComponent::BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 
 void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg) 
 {
-	auto CastMsg = StaticCastSharedPtr<ROSMessages::vehicle_msgs::PhysxControl>(Msg);
+	auto CastMsg = StaticCastSharedPtr<ROSMessages::vehicle_msgs::PhysXControl>(Msg);
 	if (!CastMsg)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Failed to cast msg to vehicle_msgs/PhysxControl."));
@@ -211,7 +211,7 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	}
 	if (bManualDrive)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Vehicle is still in manual drive. Cannot use controller."));
+		UE_LOG(LogTemp, Warning, TEXT("Vehicle is still in manual drive. Cannot use PID drive-by-wire controller."));
 		return;
 	}
 
@@ -228,11 +228,8 @@ void UPIDDriveByWireComponent::SetThrottleInput(float DeltaTime)
 		return;
 	}
 	
-	float Error = DesiredVelocity - VehicleMovementComponent->GetForwardSpeed()/100.f; // [m/s]
+	float Error = DesiredVelocity - VehicleMovementComponent->GetForwardSpeed()/100.f; // Error in [m/s]
 	float ThrottleInput = KpThrottle * Error + KdThrottle * Error / DeltaTime;
-	// UE_LOG(LogTemp, Warning, TEXT("DBW desired velocity: %f"), DesiredVelocity);
-	// UE_LOG(LogTemp, Warning, TEXT("DBW throttle input: %f"), ThrottleInput);
-	// UE_LOG(LogTemp, Warning, TEXT("DBW fwd speed [cm/s]: %f"), VehicleMovementComponent->GetForwardSpeed());
 	VehicleMovementComponent->SetThrottleInput(ThrottleInput);
 }
 
@@ -244,8 +241,6 @@ void UPIDDriveByWireComponent::SetSteeringInput(float DeltaTime)
 	}
 	
 	float SteeringInput = FMath::Clamp<float>(DesiredSteeringAngle / MaxSteeringAngle, -1.f, 1.f);
-	// UE_LOG(LogTemp, Warning, TEXT("DBW estimated physx steering input: %f"), PhysxSteeringInput);
-	// UE_LOG(LogTemp, Warning, TEXT("DBW steering input: %f"), SteeringInput);
 	VehicleMovementComponent->SetSteeringInput(SteeringInput);
 }
 

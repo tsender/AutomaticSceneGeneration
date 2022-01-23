@@ -6,7 +6,7 @@
 
 namespace auto_scene_gen_msgs {
 	// The ASG submits a run scenario request describing the scenario that the ASG worker should run
-	class ADVERSARIALSCENEGEN_API FRunScenarioRequest : public FROSBaseServiceRequest {
+	class AUTOMATICSCENEGENERATION_API FRunScenarioRequest : public FROSBaseServiceRequest {
 
 	public:
 		FRunScenarioRequest() = default;

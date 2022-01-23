@@ -6,17 +6,17 @@
 #include "WheeledVehicle.h"
 #include "ROSIntegration/Public/ROSBaseMsg.h"
 #include "ROSIntegration/Public/nav_msgs/Path.h"
-#include "ASGVehicle.generated.h"
+#include "AutoSceneGenVehicle.generated.h"
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 UCLASS()
-class AUTOMATICSCENEGENERATION_API AASGVehicle : public AWheeledVehicle
+class AUTOMATICSCENEGENERATION_API AAutoSceneGenVehicle : public AWheeledVehicle
 {
 	GENERATED_BODY()
 
 public:
-	AASGVehicle();
+	AAutoSceneGenVehicle();
 
 protected: /****************************** AWheeledVehicle Overrides ******************************/
 	// Called when the game starts or when spawned
@@ -31,7 +31,7 @@ public: /****************************** AWheeledVehicle Overrides **************
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-public: /****************************** AEvaluationVehicle ******************************/
+public: /****************************** AAutoSceneGenVehicle ******************************/
 	// UPROPERTY(EditAnywhere)
 	// class UVehicleEvaluationComponent* EvaluationComponent;
 	
@@ -43,11 +43,15 @@ public: /****************************** AEvaluationVehicle *********************
 
 	void SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation);
 
-	float ResetVehicle(FVector NewLocation, FRotator NewRotation);
+	void ResetVehicle(FVector NewLocation, FRotator NewRotation);
+	
+	void ResetVehicle(FVector NewLocation, FRotator NewRotation, class ROSMessages::nav_msgs::Path &Path);
 
 	float GetNominalVehicleZLocation();
 
 	void GetVehiclePath(class ROSMessages::nav_msgs::Path &Path);
+
+	int32 GetNumSSAHit() const;
 
 private: /****************************** AEvaluationVehicle ******************************/
 	UPROPERTY(EditAnywhere)
@@ -76,6 +80,9 @@ private: /****************************** AEvaluationVehicle ********************
 	float ResetTime = 0.f;
 
 	float NominalVehicleZLocation = 0.f;
+
+	// Number of structural scene actors hit
+	int32 NumSSAHit = 0;
 
 	UPROPERTY(EditAnywhere)
 	FString VehicleName = "vehicle";

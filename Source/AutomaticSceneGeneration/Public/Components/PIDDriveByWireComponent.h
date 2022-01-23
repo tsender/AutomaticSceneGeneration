@@ -9,6 +9,10 @@
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
+/**
+ * NOTE: This controller uses [m/s] instead of [cm/s] when specifying control velocities.
+ * For the time being, this class only implements a PD controller.
+ */
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class AUTOMATICSCENEGENERATION_API UPIDDriveByWireComponent : public UActorComponent
 {
@@ -45,22 +49,22 @@ public: /****************************** UPIDDriveByWireComponent ***************
 
 private: /****************************** UPIDDriveByWireComponent ******************************/
 	UPROPERTY()
-	class AASGVehicle* Vehicle;
+	class AAutoSceneGenVehicle* Vehicle;
 	
 	// Indicates if we will be driving the vehicle via the keyboard
-	UPROPERTY(EditAnywhere, Category = "Drive By Wire")
+	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
 	bool bManualDrive = true;
 
 	// Desired max manual speed [m/s]
-	UPROPERTY(EditAnywhere, Category = "Drive By Wire")
+	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
 	float MaxManualDriveSpeed = 5.;
 	
-	// Kp coefficient for PID throttle control
-	UPROPERTY(EditAnywhere, Category = "Drive By Wire")
+	// Kp coefficient for PID throttle control. Note, control velocity is in [m/s]
+	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
 	float KpThrottle = 1.0;
 
-	// Kd coefficient for PID throttle control
-	UPROPERTY(EditAnywhere, Category = "Drive By Wire")
+	// Kd coefficient for PID throttle control. Note, control velocity is in [m/s]
+	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
 	float KdThrottle = 0.7;
 
 	UPROPERTY()
@@ -88,8 +92,16 @@ private: /****************************** UPIDDriveByWireComponent **************
 	FVector BypassLocation;
 	FQuat BypassQuat;
 
+	/**
+	 * ROS callback for explicitly moving the vehicle to a new pose. Use this if you wish to bypass the actual controller and simply want to update the vehicle's pose manually.
+	 * @param Msg The geometry_msgs/Pose message with the desired pose
+	 */
 	void BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg);
 
+	/**
+	 * ROS callback for sending PhysX control commands to the vehicle
+	 * @param Msg The vehicle_msgs/PhysXControl message with the desired control commands
+	 */
 	void PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg);
 	
 	// Based on velocity
