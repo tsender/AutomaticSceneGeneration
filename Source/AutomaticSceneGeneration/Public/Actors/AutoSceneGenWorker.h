@@ -40,7 +40,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	TArray<float> SSADataArray;
 	
-	// Array of all structural scene actors in the scene
+	// Array of pointers to all structural scene actors in the scene
 	UPROPERTY()
 	TArray<class AStructuralSceneActor*> StructuralSceneActorArray;
 
@@ -68,14 +68,45 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	bool bSSAInit = false;
 
+	// For now, we assume the ground plane is flat
 	float GroundPlaneZHeight = 0.f;
 
-	// Radius [cm] around the start/goal points from which no structural scene actors can be placed
-	UPROPERTY(EditAnywhere)
-	float SafetyRadius = 500.f;
-	
+	// The dimensions of the landscape in [cm]
 	UPROPERTY(EditAnywhere)
 	FVector LandscapeSize = FVector(50000., 50000., 0.);
+
+	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.
+	UPROPERTY(EditAnywhere)
+	float SafetyRadius = 500.f; // [cm]
+
+	/**
+	 * If vehicle is within this distance in [cm] from the goal point, then the vehicle has reached its destination. 
+	 * This distance accounts for the turning radius of the vehicle. Without this, then the vehicle may end up circling the goal point for a really long time, which we don't want.
+	 */
+	UPROPERTY(EditAnywhere)
+	float GoalRadius = 5000.f; // [cm]
+	
+	// The starting point for the vehicle in [cm]
+	UPROPERTY(EditAnywhere)
+	FVector VehicleStartLocation = FVector(10000., -10000., 200.);
+
+	// The starting yaw angle for the vehicle in [deg]
+	UPROPERTY(EditAnywhere)
+	float VehicleStartYaw = -45.f;
+
+	FRotator VehicleStartRotation = FRotator(0.f, 0.f, 0.f);
+
+	// The goal point for the vehicle in [cm]
+	UPROPERTY(EditAnywhere)
+	FVector VehicleGoalLocation = FVector(30000., -30000., 0.);
+
+	// Maximum allowed vehicle roll angle [deg]
+	UPROPERTY(EditAnywhere)
+	float MaxVehicleRoll = 70.f;
+	
+	// Maximum allowed vehicle pitch angle [deg]
+	UPROPERTY(EditAnywhere)
+	float MaxVehiclePitch = 70.f;
 
 	// Evaluation vehicle
 	UPROPERTY()
@@ -94,7 +125,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	
 	// ROS subscriber: Subscribes to the ASG client's status
 	UPROPERTY()
-	class UTopic* ASGStatusSub;
+	class UTopic* ASGClientStatusSub;
 
 	// ROS publisher: Publishes the status of the ASG worker
 	UPROPERTY()

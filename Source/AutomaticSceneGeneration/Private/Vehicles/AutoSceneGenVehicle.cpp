@@ -219,6 +219,8 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
     // Wait at least a few ticks before checking vehicle velocity
     if (!bEnabled && bWorldIsReady && TickNumber > 5)
     {
+        // Make sure vehicle reset within 5 sec
+        // If rendering takes too long, then this might become an issue and will need a workaround
         ResetTime += DeltaTime;
         if (ResetTime >= 5.f)
         {
@@ -228,6 +230,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             return;
         }
 
+        // If vehicle roll/pitch is too large after reset (e.g. from being thrown out of bounds), then reset the vehicle to try again
         if (FMath::Abs(GetActorRotation().Euler().X) > 15.f || FMath::Abs(GetActorRotation().Euler().Y) > 15.f)
         {
             UE_LOG(LogTemp, Warning, TEXT("Vehicle roll or pitch is too large after reset, trying again."));
@@ -236,8 +239,8 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             return;
         }
 
-        float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // [cm/s]
-        float AngVel = GetMesh()->GetPhysicsAngularVelocityInDegrees().Size(); // [deg/s]
+        float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
+        float AngVel = GetMesh()->GetPhysicsAngularVelocityInDegrees().Size(); // Angular speed [deg/s]
         float DistanceMoved = 0.f;
 
         if (CheckEnableTickNumber == 0)
@@ -247,19 +250,20 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             return;
         }
 
-        // Check distance moved after 10 ticks have passed
+        // Check distance traveled over 10 ticks
         if ((TickNumber - CheckEnableTickNumber) % 10 == 0 )
         {
             DistanceMoved = (GetActorLocation() - CheckEnableLocation).Size();
         }
         
+        // If criteria below is met, then we can assume the vehicle was reset properly without issue
         if (DistanceMoved <= 1.f && TransVel <= 10.f && AngVel <= 1.f)
         {
             bEnabled = true;
             CheckEnableTickNumber = 0;
             DriveByWireComponent->EnableDriveByWire(true);
             
-            // Reset the VehiclePathm msg here
+            // Reset the VehiclePath msg here
             VehiclePath.poses.Empty();
             VehiclePath.header.frame_id = VehicleName;
             VehiclePath.header.time = FROSTime::Now();
@@ -301,7 +305,7 @@ void AAutoSceneGenVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActo
     if (SSAActor)
     {
         NumSSAHit++;
-        UE_LOG(LogTemp, Warning, TEXT("Vehicle hit a structural scene actor."));
+        UE_LOG(LogTemp, Warning, TEXT("Vehicle hit structural scene actor %s."), *SSAActor->GetName());
     }
 }
 

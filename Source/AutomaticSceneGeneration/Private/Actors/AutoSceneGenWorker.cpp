@@ -7,7 +7,6 @@
 #include "Engine/StaticMeshActor.h"
 #include "Engine/TriggerVolume.h"
 #include "Vehicles/AutoSceneGenVehicle.h"
-#include "GameFramework/PlayerStart.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
 
@@ -50,18 +49,8 @@ void AAutoSceneGenWorker::BeginPlay()
 	bReadyToTick = false;
 	bDoneTesting = false;
 
-	// Find player start actor
-	TArray<AActor*> TempArray;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), APlayerStart::StaticClass(), TempArray);
-	if (!TempArray.Num())
-	{
-		UE_LOG(LogASG, Error, TEXT("Could not find any Player Start Actors."));
-		return;
-	}
-    PlayerStart = Cast<APlayerStart>(TempArray[0]);
-
 	// Find ground plane actor
-	TempArray.Empty();
+	TArray<AActor*> TempArray;
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AStaticMeshActor::StaticClass(), TempArray);
 	if (!TempArray.Num())
 	{
@@ -81,22 +70,23 @@ void AAutoSceneGenWorker::BeginPlay()
 		}
 	}
 
-	// Find evaluation vehicle
+	// Find ASG vehicle
+	VehicleStartRotation = FRotator(0.f, VehicleStartYaw, 0.f);
 	ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
 	if (!ASGVehicle)
 	{
 		UE_LOG(LogASG, Error, TEXT("Could not get AAutoSceneGenVehicle from first player controller."));
 		return;
 	}
-	ASGVehicle->SetDefaultResetInfo(PlayerStart->GetActorLocation(), PlayerStart->GetActorRotation());
+	ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
 
 	// Get SSA subclasses
 	NumSSASubclasses = StructuralSceneActorSubclasses.Num();
-	if (!NumSSASubclasses)
-	{
-		UE_LOG(LogASG, Error, TEXT("Must provide at least 1 structural scene actor type to ASG game client."));
-		return;
-	}
+	// if (!NumSSASubclasses)
+	// {
+	// 	UE_LOG(LogASG, Error, TEXT("Must provide at least 1 structural scene actor type to ASG."));
+	// 	return;
+	// }
 
 	SSADataArraySize = EStructuralSceneAttribute::Size * NumSSASubclasses * NumSSAInstances;
 	SSADataArray.Reset(SSADataArraySize);
@@ -106,29 +96,34 @@ void AAutoSceneGenWorker::BeginPlay()
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
 	if (ROSInst)
 	{
-		ASGStatusSub = NewObject<UTopic>(UTopic::StaticClass());
+		// ASG client status sub
+		ASGClientStatusSub = NewObject<UTopic>(UTopic::StaticClass());
 		FString ASGStatusTopic = FString("/asg/status");
-		ASGStatusSub->Init(ROSInst->ROSIntegrationCore, ASGStatusTopic, TEXT("std_msgs/Bool"));
-		ASGStatusSub->Subscribe(std::bind(&AAutoSceneGenWorker::ASGStatusCB, this, std::placeholders::_1));
+		ASGClientStatusSub->Init(ROSInst->ROSIntegrationCore, ASGStatusTopic, TEXT("std_msgs/Bool"));
+		ASGClientStatusSub->Subscribe(std::bind(&AAutoSceneGenWorker::ASGStatusCB, this, std::placeholders::_1));
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS subscriber: %s"), *ASGStatusTopic);
 
+		// ASG worker status pub
 		WorkerStatusPub = NewObject<UTopic>(UTopic::StaticClass());
 		FString WorkerStatusTopic = FString::Printf(TEXT("/asg_worker%i/status"), WorkerID);
 		WorkerStatusPub->Init(ROSInst->ROSIntegrationCore, WorkerStatusTopic, TEXT("auto_scene_gen_msgs/WorkerStatus"));
 		WorkerStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS publisher: %s"), *WorkerStatusTopic);
 
+		// Vehicle destination pub
 		VehicleDestinationPub = NewObject<UTopic>(UTopic::StaticClass());
 		FString VehicleDestinationTopic = FString::Printf(TEXT("/asg_worker%i/nav/destination"), WorkerID);
 		VehicleDestinationPub->Init(ROSInst->ROSIntegrationCore, VehicleDestinationTopic, TEXT("geometry_msgs/Pose"));
 		VehicleDestinationPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS publisher: %s"), *VehicleDestinationTopic);
 		
+		// AnalyzeScenario client
 		AnalyzeScenarioClient = NewObject<UService>(UService::StaticClass());
 		FString AnalyzeScenarioClientName = FString("/asg/services/analyze_scenario");
 		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioClientName, TEXT("auto_scene_gen_srvs/AnalyzeScenario"));
 		UE_LOG(LogASG, Display, TEXT("Registered ASG worker analyze scenario ROS client to: %s"), *AnalyzeScenarioClientName);
 
+		// RunScenario service
 		RunScenarioService = NewObject<UService>(UService::StaticClass());
 		FString RunScenarioServiceName = FString::Printf(TEXT("/asg_worker%i/services/run_scenario"), WorkerID);
 		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_srvs/RunScenario"));
@@ -150,7 +145,7 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (ROSInst)
 	{
 		// Publish status as offline 10 times to ensure at least 1 or 2 messages get recceived before the game ends
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus( ROSMessages::auto_scene_gen_msgs::WorkerStatus::OFFLINE));
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus(ROSMessages::auto_scene_gen_msgs::WorkerStatus::OFFLINE));
 		for (int32 I = 0; I < 10; I++)
 		{
 			WorkerStatusPub->Publish(StatusMsg);
@@ -158,7 +153,7 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		}
 		WorkerStatusPub->Unadvertise();
 
-		ASGStatusSub->Unsubscribe();
+		ASGClientStatusSub->Unsubscribe();
 		VehicleDestinationPub->Unadvertise();
 		RunScenarioService->Unadvertise();
 	}
@@ -171,8 +166,8 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 
 	if (bForceVehicleReset)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Forcing vehicle rest"));
-		ASGVehicle->ResetVehicle(PlayerStart->GetActorLocation(), PlayerStart->GetActorRotation());
+		UE_LOG(LogASG, Warning, TEXT("Forcing vehicle reset"));
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 		bForceVehicleReset = false;
 	}
 	
@@ -204,21 +199,21 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		
 		// Publish vehicle destination info
 		TSharedPtr<ROSMessages::geometry_msgs::Pose> DestMsg(new ROSMessages::geometry_msgs::Pose());
-		ROSMessages::geometry_msgs::Point Location(TriggerVolume->GetActorLocation()/100.f); // Put into [m]
+		ROSMessages::geometry_msgs::Point Location(VehicleGoalLocation/100.f); // Put into [m]
 		Location.y *= -1;
 		DestMsg->position = Location;
-		ROSMessages::geometry_msgs::Quaternion Quaternion;
-		Quaternion = TriggerVolume->GetActorQuat();
+		ROSMessages::geometry_msgs::Quaternion Quaternion = ROSMessages::geometry_msgs::Quaternion(0,0,0,1);
 		Quaternion.x *= -1;
 		Quaternion.z *= -1;
 		DestMsg->orientation = Quaternion;
 		VehicleDestinationPub->Publish(DestMsg);
 
-		// Occasionaly, for some unknown reason, calling reset can throw the vehicle out of the bounds of the game and we need a way to recover from this.
-		// Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
+		// Occasionaly, for some unknown reason, resetting the vehicle (via teleportation) can throw the vehicle out of the bounds of the game.
+		// To account for this phenomena, if the vehicle is ever below the ground plane, then we reset the vehicle and try again.
+		// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
 		if (ASGVehicle->GetActorLocation().Z <= GroundPlaneZHeight -100.)
 		{
-			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or off the landscape. Resetting so we can try again."));
+			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
 			bProcessedScenarioRequest = false; // This will reset the run for us
 			WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 			return;
@@ -265,7 +260,7 @@ void AAutoSceneGenWorker::InitStructuralSceneActorArray()
 		SSADataArray.Emplace(0.f); // X
 		SSADataArray.Emplace(0.f); // Y
 		SSADataArray.Emplace(0.f); // Yaw
-		SSADataArray.Emplace(1.f); // Scale, CANNOT be close to 0
+		SSADataArray.Emplace(1.f); // Scale, CANNOT be close to 0, preferably >0.2
 	}
 
 	// Spawn structural scene actors and store pointers
@@ -305,8 +300,8 @@ void AAutoSceneGenWorker::RandomizeStructuralSceneActors()
 									FMath::RandRange(0.f, 1.f) * 360.f,
 									1., //FMath::RandRange(0.5f, 1.f) // Scale cannot be too small, else rendering problems
 									};
-			FVector Loc = FVector(NewData[1], NewData[2], PlayerStart->GetActorLocation().Z);
-			if ((Loc - PlayerStart->GetActorLocation()).Size() <= SafetyRadius)
+			FVector Loc = FVector(NewData[1], NewData[2], VehicleStartLocation.Z);
+			if ((Loc - VehicleStartLocation).Size() <= SafetyRadius)
 			{
 				NewData[0] = 0;
 			}
@@ -315,14 +310,22 @@ void AAutoSceneGenWorker::RandomizeStructuralSceneActors()
 	}
 }
 
+// TODO: If ASGWorker status is ONLINE_AND_RUNNING and vehicle turns over, we should end the run and notify the ASG client.
 bool AAutoSceneGenWorker::CheckIfVehicleTurnedOver()
 {
 	if (!ASGVehicle->IsEnabled()) return false;
 
-	if (FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > 70.f || FMath::Abs(ASGVehicle->GetActorRotation().Euler().Y) > 70.f)
+	if (FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > MaxVehicleRoll)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large. Resetting vehicle."));
-		ASGVehicle->ResetVehicle(PlayerStart->GetActorLocation(), PlayerStart->GetActorRotation());
+		UE_LOG(LogASG, Warning, TEXT("Vehicle roll %i degrees exceeds %i degree maximum. Resetting vehicle."), ASGVehicle->GetActorRotation().Euler().X, MaxVehicleRoll);
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+		ASGVehicle->SetWorldIsReadyFlag(true);
+		return true;
+	}
+	if ( FMath::Abs(ASGVehicle->GetActorRotation().Euler().Y) > MaxVehiclePitch)
+	{
+		UE_LOG(LogASG, Warning, TEXT("Vehicle pitch %i degrees exceeds %i degree maximum. Resetting vehicle."), ASGVehicle->GetActorRotation().Euler().Y, MaxVehiclePitch);
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 		ASGVehicle->SetWorldIsReadyFlag(true);
 		return true;
 	}
@@ -333,7 +336,7 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 {
 	if (ROSInst && ASGVehicle->GetNumSSAHit() > 0)
 	{
-		ASGVehicle->ResetVehicle(PlayerStart->GetActorLocation(), PlayerStart->GetActorRotation());
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 		ROSMessages::nav_msgs::Path VehiclePath;
 		ASGVehicle->GetVehiclePath(VehiclePath);
 		
@@ -361,12 +364,13 @@ bool AAutoSceneGenWorker::CheckTriggerVolume()
 
 	for (AActor* Actor: OverlappingActors)
 	{
-		AAutoSceneGenVehicle* Veh = Cast<AAutoSceneGenVehicle>(Actor);
-		if (Veh)
+		AAutoSceneGenVehicle* Vehicle = Cast<AAutoSceneGenVehicle>(Actor);
+		if (Vehicle)
 		{
-			Veh->ResetVehicle(PlayerStart->GetActorLocation(), PlayerStart->GetActorRotation());
+			Vehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+			ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 			ROSMessages::nav_msgs::Path VehiclePath;
-			Veh->GetVehiclePath(VehiclePath);
+			Vehicle->GetVehiclePath(VehiclePath);
 
 			if (ROSInst && bASGOnline && !bWaitingForScenarioRequest)
 			{
@@ -398,7 +402,7 @@ void AAutoSceneGenWorker::ProcessScenarioRequest()
 {
 	if (!ROSInst || !bASGOnline || bProcessedScenarioRequest) return;
 
-	ASGVehicle->ResetVehicle(PlayerStart->GetActorLocation(), PlayerStart->GetActorRotation());
+	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 	
 	for (int32 i = 0; i < NumSSASubclasses; i++)
 	{
