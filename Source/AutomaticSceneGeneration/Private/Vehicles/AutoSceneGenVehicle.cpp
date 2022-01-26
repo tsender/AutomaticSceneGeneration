@@ -9,16 +9,16 @@
 #include "Actors/StructuralSceneActor.h"
 #include "Actors/AutoSceneGenWorker.h"
 #include "Sound/SoundCue.h"
-#include "Engine/TriggerVolume.h"
-
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "auto_scene_gen_logging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
 #include "ROSIntegration/Public/ROSTime.h"
 #include "ROSIntegration/Public/std_msgs/Bool.h"
 #include "ROSIntegration/Public/nav_msgs/Path.h"
+
 
 AAutoSceneGenVehicle::AAutoSceneGenVehicle() 
 {
@@ -73,7 +73,7 @@ void AAutoSceneGenVehicle::BeginPlay()
         FString StatusTopic = TopicPrefix + FString("enable_status");
 		EnableStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("std_msgs/Bool"));
 
-		UE_LOG(LogTemp, Display, TEXT("Initialized evaluation vehicle ROS topic: %s"), *StatusTopic);
+		UE_LOG(LogASG, Display, TEXT("Initialized evaluation vehicle ROS topic: %s"), *StatusTopic);
 	}
 }
 
@@ -173,7 +173,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     TickNumber = 0;
     ResetTime = 0.f;
 
-    UE_LOG(LogTemp, Warning, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
+    UE_LOG(LogASG, Warning, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
 }
 
 void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, ROSMessages::nav_msgs::Path &Path) 
@@ -224,7 +224,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
         ResetTime += DeltaTime;
         if (ResetTime >= 5.f)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Vehicle did not reset in 5 sec, trying again."));
+            UE_LOG(LogASG, Warning, TEXT("Vehicle did not reset in 5 sec, trying again."));
             ResetVehicle(ResetLocation, ResetRotation);
             bWorldIsReady = true;
             return;
@@ -233,7 +233,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
         // If vehicle roll/pitch is too large after reset (e.g. from being thrown out of bounds), then reset the vehicle to try again
         if (FMath::Abs(GetActorRotation().Euler().X) > 15.f || FMath::Abs(GetActorRotation().Euler().Y) > 15.f)
         {
-            UE_LOG(LogTemp, Warning, TEXT("Vehicle roll or pitch is too large after reset, trying again."));
+            UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large after reset, trying again."));
             ResetVehicle(ResetLocation, ResetRotation);
             bWorldIsReady = true;
             return;
@@ -271,7 +271,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             HeaderSequence = 1;
 
             NominalVehicleZLocation = GetActorLocation().Z;
-            UE_LOG(LogTemp, Warning, TEXT("Vehicle is enabled."));
+            UE_LOG(LogASG, Warning, TEXT("Vehicle is enabled."));
         }
         else
         {
@@ -305,12 +305,12 @@ void AAutoSceneGenVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActo
     if (SSAActor)
     {
         NumSSAHit++;
-        UE_LOG(LogTemp, Warning, TEXT("Vehicle hit structural scene actor %s."), *SSAActor->GetName());
+        UE_LOG(LogASG, Warning, TEXT("Vehicle hit structural scene actor %s."), *SSAActor->GetName());
     }
 }
 
 // void AAutoSceneGenVehicle::OnBeginOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, 
 // 				UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult)
 // {
-//     UE_LOG(LogTemp, Warning, TEXT("Vehicle overlapped something."));
+//     UE_LOG(LogASG, Warning, TEXT("Vehicle overlapped something."));
 // }

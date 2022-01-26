@@ -5,10 +5,10 @@
 #include "Actors/StructuralSceneActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMeshActor.h"
-#include "Engine/TriggerVolume.h"
 #include "Vehicles/AutoSceneGenVehicle.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "auto_scene_gen_logging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
@@ -17,14 +17,13 @@
 #include "ROSIntegration/Public/std_msgs/Bool.h"
 #include "ROSIntegration/Public/std_msgs/Float32MultiArray.h"
 #include "ROSIntegration/Public/geometry_msgs/Pose.h"
+#include "Conversion/Messages/BaseMessageConverter.h"
 
 #include "auto_scene_gen_msgs/WorkerStatus.h"
 #include "auto_scene_gen_srvs/RunScenarioRequest.h"
 #include "auto_scene_gen_srvs/RunScenarioResponse.h"
 #include "auto_scene_gen_srvs/AnalyzeScenarioRequest.h"
 #include "auto_scene_gen_srvs/AnalyzeScenarioResponse.h"
-
-DEFINE_LOG_CATEGORY(LogASG);
 
 // Sets default values
 AAutoSceneGenWorker::AAutoSceneGenWorker()
@@ -39,10 +38,34 @@ void AAutoSceneGenWorker::BeginPlay()
 	Super::BeginPlay();
 	// UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GlobalTimeDilation);
 
+	// FString Hero3Name =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C");
+	// UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3Name, nullptr, LOAD_None, nullptr);
+
+	// if (CastBP)
+	// {
+	// 	UE_LOG(LogASG, Warning, TEXT("Casted to UBlueprintGeneratedClass"));
+	// 	if (CastBP->IsChildOf(AStructuralSceneActor::StaticClass()))
+	// 	{
+	// 		UE_LOG(LogASG, Warning, TEXT("IsChildOf AStructuralSceneActor"));
+	// 		StructuralSceneActorSubclasses.Add(CastBP);
+	// 	}
+	// 	else
+	// 		UE_LOG(LogASG, Warning, TEXT("Failed to add cast to AStructuralSceneActor"));
+	// }
+	// else
+	// 	UE_LOG(LogASG, Warning, TEXT("Failed cast to UBlueprintGeneratedClass"));
+
+
+	// UE_LOG(LogASG, Warning, TEXT("Num subclasses = %i"), StructuralSceneActorSubclasses.Num());
+	// for (int32 i=0; i < StructuralSceneActorSubclasses.Num(); i++)
+	// {
+	// 	UE_LOG(LogASG, Warning, TEXT("SSA subclass: %s"), *(StructuralSceneActorSubclasses[i]->GetFullName()));
+	// }
+
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 	ScenarioNumber = 0;
-	bASGOnline = false;
-	bASGStatusClockInit = false;
+	bASGClientOnline = false;
+	// bASGStatusClockInit = false;
 	bForceVehicleReset = false;
 	bWaitingForScenarioRequest = false;
 	bProcessedScenarioRequest = true;
@@ -72,13 +95,13 @@ void AAutoSceneGenWorker::BeginPlay()
 
 	// Find ASG vehicle
 	VehicleStartRotation = FRotator(0.f, VehicleStartYaw, 0.f);
-	ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
-	if (!ASGVehicle)
-	{
-		UE_LOG(LogASG, Error, TEXT("Could not get AAutoSceneGenVehicle from first player controller."));
-		return;
-	}
-	ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
+	// ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
+	// if (!ASGVehicle)
+	// {
+	// 	UE_LOG(LogASG, Error, TEXT("Could not get AAutoSceneGenVehicle from first player controller."));
+	// 	return;
+	// }
+	// ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
 
 	// Get SSA subclasses
 	NumSSASubclasses = StructuralSceneActorSubclasses.Num();
@@ -98,10 +121,9 @@ void AAutoSceneGenWorker::BeginPlay()
 	{
 		// ASG client status sub
 		ASGClientStatusSub = NewObject<UTopic>(UTopic::StaticClass());
-		FString ASGStatusTopic = FString("/asg/status");
-		ASGClientStatusSub->Init(ROSInst->ROSIntegrationCore, ASGStatusTopic, TEXT("std_msgs/Bool"));
-		ASGClientStatusSub->Subscribe(std::bind(&AAutoSceneGenWorker::ASGStatusCB, this, std::placeholders::_1));
-		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS subscriber: %s"), *ASGStatusTopic);
+		ASGClientStatusSub->Init(ROSInst->ROSIntegrationCore, ASGClientStatusTopic, TEXT("std_msgs/Bool"));
+		ASGClientStatusSub->Subscribe(std::bind(&AAutoSceneGenWorker::ASGClientStatusCB, this, std::placeholders::_1));
+		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS subscriber: %s"), *ASGClientStatusTopic);
 
 		// ASG worker status pub
 		WorkerStatusPub = NewObject<UTopic>(UTopic::StaticClass());
@@ -142,6 +164,7 @@ void AAutoSceneGenWorker::BeginPlay()
 void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 {
 	Super::EndPlay(EndPlayReason);
+	StructuralSceneActorArray.Empty();
 	if (ROSInst)
 	{
 		// Publish status as offline 10 times to ensure at least 1 or 2 messages get recceived before the game ends
@@ -164,68 +187,68 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bForceVehicleReset)
-	{
-		UE_LOG(LogASG, Warning, TEXT("Forcing vehicle reset"));
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
-		bForceVehicleReset = false;
-	}
+	// if (bForceVehicleReset)
+	// {
+	// 	UE_LOG(LogASG, Warning, TEXT("Forcing vehicle reset"));
+	// 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+	// 	bForceVehicleReset = false;
+	// }
 	
-	if (!bProcessedScenarioRequest)
-	{
-		ProcessScenarioRequest();
-	}
+	// if (!bProcessedScenarioRequest)
+	// {
+	// 	ProcessScenarioRequest();
+	// }
 	
-	// This forces the worker to wait one tick for the frame to render before publishing its status
-	if (!bReadyToTick)
-	{
-		bReadyToTick = true;
-		ASGVehicle->SetWorldIsReadyFlag(true);
-		return;
-	}
+	// // This forces the worker to wait one tick for the frame to render before publishing its status
+	// if (!bReadyToTick)
+	// {
+	// 	bReadyToTick = true;
+	// 	ASGVehicle->SetWorldIsReadyFlag(true);
+	// 	return;
+	// }
 
-	if (bProcessedScenarioRequest && !bWaitingForScenarioRequest)
-	{
-		CheckIfVehicleCrashed();
-		CheckIfVehicleTurnedOver();
-		CheckTriggerVolume();
-	}
+	// if (bProcessedScenarioRequest && !bWaitingForScenarioRequest)
+	// {
+	// 	CheckIfVehicleCrashed();
+	// 	CheckIfVehicleFlipped();
+	// 	CheckGoalLocation();
+	// }
 
-	if (ROSInst)
-	{
-		// Publish ASG worker status
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus(WorkerStatus));
-		WorkerStatusPub->Publish(StatusMsg);
+	// if (ROSInst)
+	// {
+	// 	// Publish ASG worker status
+	// 	TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus(WorkerStatus));
+	// 	WorkerStatusPub->Publish(StatusMsg);
 		
-		// Publish vehicle destination info
-		TSharedPtr<ROSMessages::geometry_msgs::Pose> DestMsg(new ROSMessages::geometry_msgs::Pose());
-		ROSMessages::geometry_msgs::Point Location(VehicleGoalLocation/100.f); // Put into [m]
-		Location.y *= -1;
-		DestMsg->position = Location;
-		ROSMessages::geometry_msgs::Quaternion Quaternion = ROSMessages::geometry_msgs::Quaternion(0,0,0,1);
-		Quaternion.x *= -1;
-		Quaternion.z *= -1;
-		DestMsg->orientation = Quaternion;
-		VehicleDestinationPub->Publish(DestMsg);
+	// 	// Publish vehicle destination info
+	// 	TSharedPtr<ROSMessages::geometry_msgs::Pose> DestMsg(new ROSMessages::geometry_msgs::Pose());
+	// 	ROSMessages::geometry_msgs::Point Location(VehicleGoalLocation/100.f); // Put into [m]
+	// 	Location.y *= -1;
+	// 	DestMsg->position = Location;
+	// 	ROSMessages::geometry_msgs::Quaternion Quaternion = ROSMessages::geometry_msgs::Quaternion(0,0,0,1);
+	// 	Quaternion.x *= -1;
+	// 	Quaternion.z *= -1;
+	// 	DestMsg->orientation = Quaternion;
+	// 	VehicleDestinationPub->Publish(DestMsg);
 
-		// Occasionaly, for some unknown reason, resetting the vehicle (via teleportation) can throw the vehicle out of the bounds of the game.
-		// To account for this phenomena, if the vehicle is ever below the ground plane, then we reset the vehicle and try again.
-		// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
-		if (ASGVehicle->GetActorLocation().Z <= GroundPlaneZHeight -100.)
-		{
-			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
-			bProcessedScenarioRequest = false; // This will reset the run for us
-			WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-			return;
-		}
-	}
+	// 	// Occasionaly, for some unknown reason, resetting the vehicle (via teleportation) can throw the vehicle out of the bounds of the game.
+	// 	// To account for this phenomena, if the vehicle is ever below the ground plane, then we reset the vehicle and try again.
+	// 	// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
+	// 	if (ASGVehicle->GetActorLocation().Z <= GroundPlaneZHeight -100.)
+	// 	{
+	// 		UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
+	// 		bProcessedScenarioRequest = false; // This will reset the run for us
+	// 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+	// 		return;
+	// 	}
+	// }
 
-	if (bDoneTesting)
-	{
-		UE_LOG(LogASG, Display, TEXT("All done testing. Ending the game."));
-		UGameplayStatics::GetPlayerController(GetWorld(), 0)->ConsoleCommand("quit");
-		return;
-	}
+	// if (bDoneTesting)
+	// {
+	// 	UE_LOG(LogASG, Display, TEXT("All done testing. Ending the game."));
+	// 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->ConsoleCommand("quit");
+	// 	return;
+	// }
 }
 
 uint8 AAutoSceneGenWorker::GetWorkerID() const
@@ -263,6 +286,7 @@ void AAutoSceneGenWorker::InitStructuralSceneActorArray()
 		SSADataArray.Emplace(1.f); // Scale, CANNOT be close to 0, preferably >0.2
 	}
 
+	UE_LOG(LogASG, Warning, TEXT("Spawning SSA actors"));
 	// Spawn structural scene actors and store pointers
 	for (int32 i = 0; i < NumSSASubclasses; i++)
 	{
@@ -311,7 +335,7 @@ void AAutoSceneGenWorker::RandomizeStructuralSceneActors()
 }
 
 // TODO: If ASGWorker status is ONLINE_AND_RUNNING and vehicle turns over, we should end the run and notify the ASG client.
-bool AAutoSceneGenWorker::CheckIfVehicleTurnedOver()
+bool AAutoSceneGenWorker::CheckIfVehicleFlipped()
 {
 	if (!ASGVehicle->IsEnabled()) return false;
 
@@ -336,18 +360,18 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 {
 	if (ROSInst && ASGVehicle->GetNumSSAHit() > 0)
 	{
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
-		ROSMessages::nav_msgs::Path VehiclePath;
-		ASGVehicle->GetVehiclePath(VehiclePath);
+		TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
+		// ROSMessages::nav_msgs::Path VehiclePath;
+		// ASGVehicle->GetVehiclePath(VehiclePath);
 		
 		bWaitingForScenarioRequest = true;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-		TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
 		Req->worker_id = WorkerID;
 		Req->scenario_number = ScenarioNumber;
 		Req->crashed = true;
 		Req->succeeded = false;
-		Req->vehicle_path = VehiclePath;
+		// Req->vehicle_path = VehiclePath;
 
 		UE_LOG(LogASG, Warning, TEXT("Submitting analyze scenario request %i"), ScenarioNumber);
 		AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
@@ -356,51 +380,44 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 	return false;
 }
 
-bool AAutoSceneGenWorker::CheckTriggerVolume() 
+bool AAutoSceneGenWorker::CheckGoalLocation() 
 {
-	TArray<AActor*> OverlappingActors;
-    if (!TriggerVolume) return false;
-    TriggerVolume->GetOverlappingActors(OverlappingActors);
-
-	for (AActor* Actor: OverlappingActors)
+	FVector DistanceToGoal = ASGVehicle->GetActorLocation() - VehicleGoalLocation;
+	DistanceToGoal.Z = 0;
+	if (DistanceToGoal.Size() <= GoalRadius)
 	{
-		AAutoSceneGenVehicle* Vehicle = Cast<AAutoSceneGenVehicle>(Actor);
-		if (Vehicle)
+		TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
+		// ROSMessages::nav_msgs::Path VehiclePath;
+		// ASGVehicle->GetVehiclePath(VehiclePath);
+
+		if (ROSInst && !bWaitingForScenarioRequest /*&& bASGClientOnline*/)
 		{
-			Vehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
-			ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
-			ROSMessages::nav_msgs::Path VehiclePath;
-			Vehicle->GetVehiclePath(VehiclePath);
+			bWaitingForScenarioRequest = true;
+			WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 
-			if (ROSInst && bASGOnline && !bWaitingForScenarioRequest)
-			{
-				bWaitingForScenarioRequest = true;
-				WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+			Req->worker_id = WorkerID;
+			Req->scenario_number = ScenarioNumber;
+			Req->crashed = false;
+			Req->succeeded = true;
+			// Req->vehicle_path = VehiclePath;
 
-				TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
-				Req->worker_id = WorkerID;
-				Req->scenario_number = ScenarioNumber;
-				Req->crashed = false;
-				Req->succeeded = true;
-				Req->vehicle_path = VehiclePath;
-
-				UE_LOG(LogASG, Display, TEXT("Submitting analyze scenario request %i"), ScenarioNumber);
-				AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
-				return true;
-			}
-			if (!ROSInst)
-			{
-				RandomizeStructuralSceneActors();
-				UE_LOG(LogASG, Display, TEXT("ASG offline. Generating new random scene."));
-			}
+			UE_LOG(LogASG, Display, TEXT("Submitting analyze scenario request %i"), ScenarioNumber);
+			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
+			return true;
 		}
-	}
+		if (!ROSInst)
+		{
+			RandomizeStructuralSceneActors();
+			UE_LOG(LogASG, Display, TEXT("ASG offline. Generating new random scene."));
+		}
+}
 	return false;
 }
 
 void AAutoSceneGenWorker::ProcessScenarioRequest() 
 {
-	if (!ROSInst || !bASGOnline || bProcessedScenarioRequest) return;
+	if (!ROSInst || !bASGClientOnline || bProcessedScenarioRequest) return;
 
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 	
@@ -419,7 +436,7 @@ void AAutoSceneGenWorker::ProcessScenarioRequest()
 	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i"), ScenarioNumber);
 }
 
-void AAutoSceneGenWorker::ASGStatusCB(TSharedPtr<FROSBaseMsg> Msg) 
+void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg) 
 {
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::std_msgs::Bool>(Msg);
 	if (!CastMsg)
@@ -428,12 +445,12 @@ void AAutoSceneGenWorker::ASGStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 		return;
 	}
 
-	if (!bASGOnline && CastMsg->_Data)
+	if (!bASGClientOnline && CastMsg->_Data)
 	{
 		UE_LOG(LogASG, Warning, TEXT("ASG back online"));
 	}
 
-	if (bASGOnline && !CastMsg->_Data)
+	if (bASGClientOnline && !CastMsg->_Data)
 	{
 		bForceVehicleReset = true; // This will reset the run for us
 		// bProcessedScenarioRequest = false;
@@ -441,7 +458,7 @@ void AAutoSceneGenWorker::ASGStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 		UE_LOG(LogASG, Warning, TEXT("ASG went offline"));
 	}
 	
-	bASGOnline = CastMsg->_Data;
+	bASGClientOnline = CastMsg->_Data;
 
 	// auto Now = std::chrono::steady_clock::now();
 	// double MessagePeriod = 0.;
@@ -460,11 +477,11 @@ void AAutoSceneGenWorker::ASGStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 	// }
 	// if (MessagePeriod > 0. && MessagePeriod <= ASGStatusMessagePeriodThreshold)
 	// {
-	// 	if (!bASGOnline)
+	// 	if (!bASGClientOnline)
 	// 	{
 	// 		UE_LOG(LogASG, Display, TEXT("ASG back online"));
 	// 	}
-	// 	bASGOnline = true;
+	// 	bASGClientOnline = true;
 	// }
 	// else if (MessagePeriod > ASGStatusMessagePeriodThreshold && bWaitingForScenarioRequest)
 	// {
@@ -472,7 +489,7 @@ void AAutoSceneGenWorker::ASGStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 	// }
 	// else
 	// {
-	// 	bASGOnline = false;
+	// 	bASGClientOnline = false;
 	// 	bASGStatusClockInit = false;
 	// 	bProcessedScenarioRequest = false; // This will reset the run for us
 	// 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;

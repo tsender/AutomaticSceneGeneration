@@ -54,8 +54,13 @@ private: /****************************** AStructuralSceneActor *****************
 	UPROPERTY()
 	class UAnnotationComponent* AnnotationComponent;
 
+	// If the height in [cm] of the structural scene actor is below this threshold, then consider it traversable
 	UPROPERTY(EditAnywhere)
 	float TraversableHeightThreshold = 20; // [cm]
+
+	// If a structural scene actor is always traversable (e.g. grass), then set this to true. This parameter takes priority over the TraversableHeightThreshold.
+	UPROPERTY(EditAnywhere)
+	bool bAlwaysTraversable = false;
 
 	TArray<float> Attributes;
 

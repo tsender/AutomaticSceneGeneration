@@ -8,6 +8,7 @@
 #include "WheeledVehicleMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "auto_scene_gen_logging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
@@ -40,14 +41,14 @@ void UPIDDriveByWireComponent::BeginPlay()
 	Vehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
 	if (!Vehicle)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Drive by wire compent owner must be a AAutoSceneGenVehicle."));
+		UE_LOG(LogASG, Error, TEXT("Drive by wire compent owner must be a AAutoSceneGenVehicle."));
 		return;
 	}
 
 	VehicleMovementComponent = Vehicle->GetVehicleMovementComponent();
 	if (!VehicleMovementComponent)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Could not get vehicle movement component."));
+		UE_LOG(LogASG, Error, TEXT("Could not get vehicle movement component."));
 		return;
 	}
 
@@ -58,7 +59,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	
 	if (MaxSteeringAngle == 0.f)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Max steering angle is 0 degrees."));
+		UE_LOG(LogASG, Warning, TEXT("Max steering angle is 0 degrees."));
 	}
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetOwner()->GetGameInstance());
@@ -85,12 +86,12 @@ void UPIDDriveByWireComponent::BeginPlay()
 		FString BypassTopic = TopicPrefix + FString("bypass");
 		BypassSub->Init(ROSInst->ROSIntegrationCore, BypassTopic, TEXT("geometry_msgs/Pose"));
 		BypassSub->Subscribe(std::bind(&UPIDDriveByWireComponent::BypassControllerCB, this, std::placeholders::_1));
-		UE_LOG(LogTemp, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *BypassTopic);
+		UE_LOG(LogASG, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *BypassTopic);
 
 		FString PhysxTopic = TopicPrefix + FString("physx");
 		PhysxControllerSub->Init(ROSInst->ROSIntegrationCore, PhysxTopic, TEXT("vehicle_msgs/PhysXControl"));
 		PhysxControllerSub->Subscribe(std::bind(&UPIDDriveByWireComponent::PhysxControllerCB, this, std::placeholders::_1));
-		UE_LOG(LogTemp, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *PhysxTopic);
+		UE_LOG(LogASG, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *PhysxTopic);
 	}
 }
 
@@ -170,19 +171,19 @@ void UPIDDriveByWireComponent::BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::geometry_msgs::Pose>(Msg);
 	if (!CastMsg)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Failed to cast msg to geometry_msgs/Pose."));
+		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to geometry_msgs/Pose."));
 		bBypassController = false;
 		return;
 	}
 	if (!bEnabled)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Vehicle is not enabled. Ignoring bypass controller request."));
+		UE_LOG(LogASG, Warning, TEXT("Vehicle is not enabled. Ignoring bypass controller request."));
 		bBypassController = false;
 		return;
 	}
 	if (bManualDrive)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Vehicle is still in manual drive. Cannot use bypass controller."));
+		UE_LOG(LogASG, Warning, TEXT("Vehicle is still in manual drive. Cannot use bypass controller."));
 		bBypassController = false;
 		return;
 	}
@@ -201,17 +202,17 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::vehicle_msgs::PhysXControl>(Msg);
 	if (!CastMsg)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Failed to cast msg to vehicle_msgs/PhysXControl."));
+		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to vehicle_msgs/PhysXControl."));
 		return;
 	}
 	if (!bEnabled)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Vehicle is not enabled. Ignoring PhysxControl message."));
+		UE_LOG(LogASG, Warning, TEXT("Vehicle is not enabled. Ignoring PhysxControl message."));
 		return;
 	}
 	if (bManualDrive)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Vehicle is still in manual drive. Cannot use PID drive-by-wire controller."));
+		UE_LOG(LogASG, Warning, TEXT("Vehicle is still in manual drive. Cannot use PID drive-by-wire controller."));
 		return;
 	}
 

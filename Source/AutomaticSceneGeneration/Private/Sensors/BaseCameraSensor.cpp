@@ -5,10 +5,11 @@
 #include "Components/AnnotationComponent.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "RHICommandList.h"
-#include "Kismet/GameplayStatics.h"
 #include "ImageWrapper/Public/IImageWrapperModule.h"
 #include "ImageWrapper/Public/IImageWrapper.h"
 #include "Modules/ModuleManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "auto_scene_gen_logging.h"
 
 UBaseCameraSensor::UBaseCameraSensor() 
 {
@@ -20,7 +21,7 @@ UBaseCameraSensor::UBaseCameraSensor()
     ImageWrapper = ImageWrapperModule.CreateImageWrapper(EImageFormat::PNG); //EImageFormat::PNG //EImageFormat::JPEG
     if (!ImageWrapper)
     {
-        UE_LOG(LogTemp, Warning, TEXT("ImageWrapper could not be initialized"));
+        UE_LOG(LogASG, Warning, TEXT("ImageWrapper could not be initialized"));
         return;
     }
 }
@@ -56,7 +57,7 @@ void UBaseCameraSensor::InitTextureTarget(int32 Width, int32 Height)
 {
     if (ImageWidth <= 0 || ImageHeight <= 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Both frame width and height must be positive integers."));
+		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers."));
 		return;
 	}
     
@@ -102,24 +103,24 @@ void UBaseCameraSensor::CaptureColor(TArray<FColor> &ImageData, bool bUseAnnotat
 {
     if (!bInitTextureTarget)
     {
-        UE_LOG(LogTemp, Error, TEXT("TextureTarget is not initialized."));
+        UE_LOG(LogASG, Error, TEXT("TextureTarget is not initialized."));
         return;
     }
 
     FTextureRenderTargetResource* RenderTargetResource = TextureTarget->GameThread_GetRenderTargetResource();
     if (!RenderTargetResource)
     {
-        UE_LOG(LogTemp, Error, TEXT("RenderTargetResource returned nullptr."));
+        UE_LOG(LogASG, Error, TEXT("RenderTargetResource returned nullptr."));
         return;
     }
 
-    // UE_LOG(LogTemp, Error, TEXT("Looping over annotation comp."));
+    // UE_LOG(LogASG, Error, TEXT("Looping over annotation comp."));
     // Set annotation material if the object is within or just outside of the camera's FOV. A few outlier cases may arise, but for now this seems to be fine.
     FVector CamLocation = GetComponentLocation();
     float CamYaw = GetComponentRotation().Yaw * PI / 180.f;
     for (UAnnotationComponent* Comp : WorldAnnotationComponents)
     {
-        // UE_LOG(LogTemp, Error, TEXT("Found annotation comp."));
+        // UE_LOG(LogASG, Error, TEXT("Found annotation comp."));
         if (Comp->GetOwner()->ActorHasTag("sky") || Comp->GetOwner()->ActorHasTag("ground_plane"))
         {
             Comp->SetActiveMaterial(bUseAnnotationMaterial, AnnotationMaterialID);
@@ -158,7 +159,7 @@ void UBaseCameraSensor::CaptureFloat16Color(TArray<FFloat16Color> &ImageData)
 {
     if (!bInitTextureTarget)
     {
-        UE_LOG(LogTemp, Error, TEXT("TextureTarget is not initialized."));
+        UE_LOG(LogASG, Error, TEXT("TextureTarget is not initialized."));
         return;
     }
 
@@ -166,7 +167,7 @@ void UBaseCameraSensor::CaptureFloat16Color(TArray<FFloat16Color> &ImageData)
     FTextureRenderTargetResource* RenderTargetResource = TextureTarget->GameThread_GetRenderTargetResource();
     if (!RenderTargetResource)
     {
-        UE_LOG(LogTemp, Error, TEXT("RenderTargetResource returned nullptr."));
+        UE_LOG(LogASG, Error, TEXT("RenderTargetResource returned nullptr."));
         return;
     }
     RenderTargetResource->ReadFloat16Pixels(ImageData);

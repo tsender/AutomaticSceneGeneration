@@ -5,6 +5,7 @@
 #include "Vehicles/AutoSceneGenVehicle.h"
 #include "Actors/AutoSceneGenWorker.h"
 #include "Kismet/GameplayStatics.h"
+#include "auto_scene_gen_logging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
@@ -58,7 +59,7 @@ void ULocalizationSensor::BeginPlay()
 		FString LocTopic = TopicPrefix;
 		SensorPub->Init(ROSInst->ROSIntegrationCore, LocTopic, TEXT("geometry_msgs/PoseStamped"));
 		SensorPub->Advertise();
-		UE_LOG(LogTemp, Display, TEXT("Initialized localization sensor ROS topic: %s"), *LocTopic);
+		UE_LOG(LogASG, Display, TEXT("Initialized localization sensor ROS topic: %s"), *LocTopic);
 	}
 
 	if (bUseCustomFrameRate)

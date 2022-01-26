@@ -6,6 +6,7 @@
 #include "Components/AnnotationComponent.h"
 #include "Engine/StaticMeshActor.h"
 #include "Kismet/GameplayStatics.h"
+#include "auto_scene_gen_logging.h"
 
 AStructuralSceneActor::AStructuralSceneActor()
 {
@@ -33,10 +34,17 @@ void AStructuralSceneActor::BeginPlay()
 	bActive = true;
 
 	// Update traversability status and annotation color
-	FVector Origin;
-	FVector BoxExtent;
-	GetActorBounds(true, Origin, BoxExtent);
-	bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
+	if (bAlwaysTraversable)
+	{
+		bTraversable = true;
+	}
+	else
+	{
+		FVector Origin;
+		FVector BoxExtent;
+		GetActorBounds(true, Origin, BoxExtent);
+		bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
+	}
 	UpdateTraversabilitySettings();
 }
 
@@ -59,7 +67,7 @@ void AStructuralSceneActor::SetStructuralAttributes(TArray<float> NewAttributes)
 {
 	if (NewAttributes.Num() != EStructuralSceneAttribute::Size)
 	{
-		UE_LOG(LogTemp, Error, TEXT("New attribute array does not have length %i"), EStructuralSceneAttribute::Size);
+		UE_LOG(LogASG, Error, TEXT("New attribute array does not have length %i"), EStructuralSceneAttribute::Size);
 		return;
 	}
 	Attributes = NewAttributes;
@@ -87,10 +95,17 @@ void AStructuralSceneActor::SetStructuralAttributes(TArray<float> NewAttributes)
 	SetActorScale3D(FVector(NewScale, NewScale, NewScale));
 
 	// Update traversability status and annotation color
-	FVector Origin;
-	FVector BoxExtent;
-	GetActorBounds(true, Origin, BoxExtent);
-	bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
+	if (bAlwaysTraversable)
+	{
+		bTraversable = true;
+	}
+	else
+	{
+		FVector Origin;
+		FVector BoxExtent;
+		GetActorBounds(true, Origin, BoxExtent);
+		bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
+	}
 	UpdateTraversabilitySettings();
 }
 
@@ -128,7 +143,7 @@ void AStructuralSceneActor::UpdateTraversabilitySettings()
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Ignore);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Ignore);
-		// UE_LOG(LogTemp, Error, TEXT("SSA %s collision: none"), *GetName());
+		// UE_LOG(LogASG, Error, TEXT("SSA %s collision: none"), *GetName());
 	}
 	else
 	{
@@ -140,6 +155,6 @@ void AStructuralSceneActor::UpdateTraversabilitySettings()
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Block);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Block);
-		// UE_LOG(LogTemp, Error, TEXT("SSA %s collision: query and physics"), *GetName());
+		// UE_LOG(LogASG, Error, TEXT("SSA %s collision: query and physics"), *GetName());
 	}
 }

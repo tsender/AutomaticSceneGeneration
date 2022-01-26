@@ -3,6 +3,7 @@
 
 #include "Components/AnnotationComponent.h"
 #include "Components/MeshComponent.h"
+#include "auto_scene_gen_logging.h"
 
 // Sets default values for this component's properties
 UAnnotationComponent::UAnnotationComponent()
@@ -25,14 +26,14 @@ void UAnnotationComponent::InitializeComponent()
 	AnnotationMaterialBase = LoadObject<UMaterialInterface>(nullptr, *AnnotationMaterialPath, nullptr, LOAD_None, nullptr);
 	if (!AnnotationMaterialBase)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Cannot find material %s."), *AnnotationMaterialPath);
+		UE_LOG(LogASG, Error, TEXT("Cannot find material %s."), *AnnotationMaterialPath);
 		return;
 	}
 
 	DefaultEngineMaterial = LoadObject<UMaterialInterface>(nullptr, *DefaultMaterialPath, nullptr, LOAD_None, nullptr);
 	if (!DefaultEngineMaterial)
 	{
-		UE_LOG(LogTemp, Error, TEXT("Cannot find material %s."), *DefaultMaterialPath);
+		UE_LOG(LogASG, Error, TEXT("Cannot find material %s."), *DefaultMaterialPath);
 		return;
 	}
 
@@ -40,7 +41,7 @@ void UAnnotationComponent::InitializeComponent()
 	AnnotationMID = UMaterialInstanceDynamic::Create(AnnotationMaterialBase, this);
 	if (!AnnotationMID)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s Annotation material instance dynamic could not be initialized."), *this->GetOwner()->GetName());
+		UE_LOG(LogASG, Warning, TEXT("%s Annotation material instance dynamic could not be initialized."), *this->GetOwner()->GetName());
 		return;
 	}
 	
@@ -48,7 +49,7 @@ void UAnnotationComponent::InitializeComponent()
 	MeshComponent = Cast<UMeshComponent>(this->GetOwner()->GetComponentByClass(UMeshComponent::StaticClass()));
 	if (!MeshComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Actor %s does not have a mesh component."), *this->GetOwner()->GetName());
+		UE_LOG(LogASG, Warning, TEXT("Actor %s does not have a mesh component."), *this->GetOwner()->GetName());
 		return;
 	}
 	DefaultMeshMaterials = MeshComponent->GetMaterials();
@@ -62,13 +63,13 @@ void UAnnotationComponent::BeginPlay()
 	if (GetOwner()->ActorHasTag(TEXT("sky")))
 	{
 		AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(0.f, 0.f, 1.f, 1.f));
-		UE_LOG(LogTemp, Warning, TEXT("Found actor with tag 'sky'"));
+		UE_LOG(LogASG, Warning, TEXT("Found actor with tag 'sky'"));
 	}
 
 	if (GetOwner()->ActorHasTag(TEXT("ground_plane")))
 	{
 		AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(1.f, 1.f, 1.f, 1.f));
-		UE_LOG(LogTemp, Warning, TEXT("Found actor with tag 'ground_plane'"));
+		UE_LOG(LogASG, Warning, TEXT("Found actor with tag 'ground_plane'"));
 	}
 }
 
@@ -87,13 +88,13 @@ void UAnnotationComponent::SetActiveMaterial(bool bAnnotation, uint8 ColorID)
 {
 	if (!MeshComponent)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Mesh component is nullptr."));
+		UE_LOG(LogASG, Warning, TEXT("Mesh component is nullptr."));
 		return;
 	}
 
 	if (!AnnotationMID)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Annotation material instance dynamic is nullptr."));
+		UE_LOG(LogASG, Warning, TEXT("Annotation material instance dynamic is nullptr."));
 		return;
 	}
 	

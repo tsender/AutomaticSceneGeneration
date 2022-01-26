@@ -10,7 +10,45 @@
 #include <chrono>
 #include "AutoSceneGenWorker.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogASG, Log, All);
+USTRUCT()
+struct FStructuralSceneActorPtrs
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	TArray<class AStructuralSceneActor*> Ptrs;
+
+	FString SSASubclass;
+
+	FStructuralSceneActorPtrs() {}
+
+	FStructuralSceneActorPtrs(FString InSSASubclass)
+	{
+		SSASubclass = InSSASubclass;
+	}
+	
+	~FStructuralSceneActorPtrs() 
+	{
+		Ptrs.Empty();
+	}
+};
+
+struct FStructuralSceneActorAttrs
+{
+	TArray<float> Attrs;
+	int32 NumSSAs;
+
+	FStructuralSceneActorAttrs(TArray<float> InAttrs, int32 InNumSSAs)
+	{
+		Attrs = InAttrs;
+		NumSSAs = InNumSSAs;
+	}
+
+	~FStructuralSceneActorAttrs() 
+	{
+		Attrs.Empty();
+	}
+};
 
 UCLASS()
 class AUTOMATICSCENEGENERATION_API AAutoSceneGenWorker : public AActor
@@ -47,6 +85,11 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// Structural scene actor subclasses that will be placed in the scene
 	UPROPERTY(EditAnywhere)
 	TArray<TSubclassOf<class AStructuralSceneActor>> StructuralSceneActorSubclasses;
+
+	UPROPERTY()
+	TMap<FString, FStructuralSceneActorPtrs> SSAPtrMap;
+
+	TMap<FString, FStructuralSceneActorAttrs> SSAAttrrMap;
 
 	UPROPERTY()
 	class AStaticMeshActor* GroundPlaneActor;
@@ -112,17 +155,14 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	class AAutoSceneGenVehicle* ASGVehicle;
 
-	// The trigger volume is used to determine the end of an experiment (i.e. when the vehicle overlaps it)
-	UPROPERTY(EditAnywhere)
-	class ATriggerVolume* TriggerVolume;
-
-	UPROPERTY()
-	class APlayerStart* PlayerStart;
-
 	// ROSIntegration game instance
 	UPROPERTY()
 	class UROSIntegrationGameInstance* ROSInst;
 	
+	// ROS topic name for ASG client's status
+	UPROPERTY(Editanywhere)
+	FString ASGClientStatusTopic = FString("/asg_client/status");
+
 	// ROS subscriber: Subscribes to the ASG client's status
 	UPROPERTY()
 	class UTopic* ASGClientStatusSub;
@@ -147,14 +187,14 @@ private: /****************************** AAutoSceneGenWorker *******************
 	 *  If the duration between consecutive ASG client status messages reaches this threshold,
 	 * 	then reset the simulation and wait for the ASG client to come back online before restarting the run.
 	 */
-	UPROPERTY(EditAnywhere)
-	float ASGStatusMessagePeriodThreshold = 5.f;
+	// UPROPERTY(EditAnywhere)
+	// float ASGStatusMessagePeriodThreshold = 5.f;
 
-	bool bASGOnline = false;
+	bool bASGClientOnline = false;
 
-	bool bASGStatusClockInit = false;
+	// bool bASGStatusClockInit = false;
 
-	std::chrono::steady_clock::time_point LastASGStatusClockTime;
+	// std::chrono::steady_clock::time_point LastASGStatusClockTime;
 
 	uint8 WorkerStatus = 0;
 
@@ -176,13 +216,13 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	bool CheckIfVehicleCrashed();
 
-	bool CheckIfVehicleTurnedOver();
+	bool CheckIfVehicleFlipped();
 
-	bool CheckTriggerVolume();
+	bool CheckGoalLocation();
 
 	void ProcessScenarioRequest();
 
-	void ASGStatusCB(TSharedPtr<FROSBaseMsg> Msg);
+	void ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg);
 
 	/**
 	 * ROS callback for receiving the ASG client's response for the most recent scenario analysis

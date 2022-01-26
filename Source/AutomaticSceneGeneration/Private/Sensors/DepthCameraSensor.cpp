@@ -5,6 +5,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "RHICommandList.h"
 #include "Kismet/GameplayStatics.h"
+#include "auto_scene_gen_logging.h"
 
 UDepthCameraSensor::UDepthCameraSensor() 
 {
@@ -15,7 +16,7 @@ void UDepthCameraSensor::InitTextureTarget(int32 Width, int32 Height)
 {
     if (ImageWidth <= 0 || ImageHeight <= 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Both frame width and height must be positive integers."));
+		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers."));
 		return;
 	}
     
@@ -42,7 +43,7 @@ void UDepthCameraSensor::InitTextureTarget(int32 Width, int32 Height)
 // {
 //     if (!bInitTextureTarget)
 //     {
-//         UE_LOG(LogTemp, Error, TEXT("TextureTarget is not initialized."));
+//         UE_LOG(LogASG, Error, TEXT("TextureTarget is not initialized."));
 //         return;
 //     }
 
@@ -50,7 +51,7 @@ void UDepthCameraSensor::InitTextureTarget(int32 Width, int32 Height)
 //     FTextureRenderTargetResource* RenderTargetResource = TextureTarget->GameThread_GetRenderTargetResource();
 //     if (!RenderTargetResource)
 //     {
-//         UE_LOG(LogTemp, Error, TEXT("RenderTargetResource returned nullptr."));
+//         UE_LOG(LogASG, Error, TEXT("RenderTargetResource returned nullptr."));
 //         return;
 //     }
 //     RenderTargetResource->ReadFloat16Pixels(ImageData);

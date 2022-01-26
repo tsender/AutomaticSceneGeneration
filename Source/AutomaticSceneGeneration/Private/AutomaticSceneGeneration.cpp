@@ -17,4 +17,6 @@ void FAutomaticSceneGenerationModule::ShutdownModule()
 
 #undef LOCTEXT_NAMESPACE
 	
-IMPLEMENT_MODULE(FAutomaticSceneGenerationModule, AutomaticSceneGeneration)
+// Apparently using IMPLEMENT_PRIMARY_GAME_MODULE allows for hot-reload to work. Switch back to IMPLEMENT_MODULE when done coding or if issues arise.
+// IMPLEMENT_MODULE(FAutomaticSceneGenerationModule, AutomaticSceneGeneration)
+IMPLEMENT_PRIMARY_GAME_MODULE( FDefaultGameModuleImpl, AutomaticSceneGeneration, "AutomaticSceneGeneration" )

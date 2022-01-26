@@ -9,6 +9,7 @@
 #include "Actors/AutoSceneGenWorker.h"
 #include "Vehicles/AutoSceneGenVehicle.h"
 #include "Kismet/GameplayStatics.h"
+#include "auto_scene_gen_logging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
@@ -117,14 +118,14 @@ void UCompleteCameraSensor::BeginPlay()
 		FString ColorTopic = TopicPrefix + FString("/color_image");
 		ColorCamPub->Init(ROSInst->ROSIntegrationCore, ColorTopic, TEXT("sensor_msgs/Image"));
 		ColorCamPub->Advertise();
-		UE_LOG(LogTemp, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *ColorTopic);
+		UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *ColorTopic);
 
 		if (bEnableDepthCam)
 		{
 			FString DepthTopic = TopicPrefix + FString("/depth_image");
 			DepthCamPub->Init(ROSInst->ROSIntegrationCore, DepthTopic, TEXT("sensor_msgs/Image"));
 			DepthCamPub->Advertise();
-			UE_LOG(LogTemp, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *DepthTopic);
+			UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *DepthTopic);
 		}
 		
 		if (bEnableTravCam)
@@ -132,7 +133,7 @@ void UCompleteCameraSensor::BeginPlay()
 			FString TravTopic = TopicPrefix + FString("/trav_image");
 			TravCamPub->Init(ROSInst->ROSIntegrationCore, TravTopic, TEXT("sensor_msgs/Image"));
 			TravCamPub->Advertise();
-			UE_LOG(LogTemp, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *TravTopic);
+			UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *TravTopic);
 		}
 
 		if (bEnableSegCam)
@@ -140,7 +141,7 @@ void UCompleteCameraSensor::BeginPlay()
 			FString SegTopic = TopicPrefix + FString("/seg_image");
 			SegCamPub->Init(ROSInst->ROSIntegrationCore, SegTopic, TEXT("sensor_msgs/Image"));
 			SegCamPub->Advertise();
-			UE_LOG(LogTemp, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *SegTopic);
+			UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *SegTopic);
 		}
 	}
 
