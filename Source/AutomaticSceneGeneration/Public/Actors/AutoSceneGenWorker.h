@@ -4,49 +4,134 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Actors/StructuralSceneActor.h"
 #include "ROSIntegration/Public/ROSBaseMsg.h"
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "ROSIntegration/Public/ROSBaseServiceResponse.h"
 #include <chrono>
 #include "AutoSceneGenWorker.generated.h"
 
-USTRUCT()
-struct FStructuralSceneActorPtrs
+// This struct is used to temporarily store the new attributes for the SSAs of a given subclass
+struct FStructuralSceneActorAttr
 {
-	GENERATED_BODY()
+	// Stores the incoming attribute array from the RunScenario request
+	TArray<float> AttrArray;
 	
-	UPROPERTY()
-	TArray<class AStructuralSceneActor*> Ptrs;
+	TArray<bool> Visibilities;
+	TArray<FVector> Locations;
+	TArray<FRotator> Rotations;
+	TArray<float> Scales;
+	
+	// The path name of the SSA subclass that this struct maintains
+	FString SSAPathName;
 
-	FString SSASubclass;
+	int32 NumSSAs;
 
-	FStructuralSceneActorPtrs() {}
-
-	FStructuralSceneActorPtrs(FString InSSASubclass)
+	FStructuralSceneActorAttr(/*FString InSSAPathName*/)
 	{
-		SSASubclass = InSSASubclass;
+		// SSAPathName = InSSAPathName;
 	}
-	
-	~FStructuralSceneActorPtrs() 
+
+	~FStructuralSceneActorAttr() 
 	{
-		Ptrs.Empty();
+		AttrArray.Empty();
+		Visibilities.Empty();
+		Locations.Empty();
+		Rotations.Empty();
+		Scales.Empty();
+	}
+
+	void StoreNewAttributes(TArray<float> &NewAttrArray)
+	{
+		AttrArray = NewAttrArray;
+	}
+
+	void StoreNewTArrays(TArray<bool> &NewVisibilities, TArray<FVector> &NewLocations, TArray<FRotator> &NewRotations, TArray<float> &NewScales)
+	{
+		Visibilities = NewVisibilities;
+		Locations = NewLocations;
+		Rotations = NewRotations;
+		Scales = NewScales;
 	}
 };
 
-struct FStructuralSceneActorAttrs
+/**
+ * This struct maintains all SSAs of a given subclass. It can add actors with specified parameters and also remove actors.
+ * All calculations for the actor parameters should be done before passing them to this struct.
+ */
+USTRUCT()
+struct AUTOMATICSCENEGENERATION_API FStructuralSceneActorMaintainer
 {
-	TArray<float> Attrs;
-	int32 NumSSAs;
+	GENERATED_BODY()
+	
+	// Array of pointers to all maintained SSAs
+	UPROPERTY()
+	TArray<class AStructuralSceneActor*> Ptrs;
 
-	FStructuralSceneActorAttrs(TArray<float> InAttrs, int32 InNumSSAs)
+	// The path name of the SSA subclass that this struct maintains
+	FString SSAPathName;
+
+	TSubclassOf<class AStructuralSceneActor> SSASubclass;
+
+	UWorld* World;
+
+	FStructuralSceneActorMaintainer() {}
+
+	FStructuralSceneActorMaintainer(UWorld* InWorld, TSubclassOf<class AStructuralSceneActor> InSSASubclass)
 	{
-		Attrs = InAttrs;
-		NumSSAs = InNumSSAs;
+		World = InWorld;
+		// SSAPathName = InSSAPathName;
+		SSASubclass = InSSASubclass;
+	}
+	
+	~FStructuralSceneActorMaintainer() 
+	{
+		for (AStructuralSceneActor* Actor : Ptrs)
+		{
+			Actor->Destroy();
+		}
+		Ptrs.Empty();
 	}
 
-	~FStructuralSceneActorAttrs() 
+	/**
+	 * Update the maintained SSA instances based on the provided new TArray attributes.
+	 * @param NewAttr The array of new attributes for all maintained SSA instances. If empty, then destroy and remove all instances.
+	 */
+	void UpdateAttributes(TArray<bool> &NewVisibilities, TArray<FVector> &NewLocations, TArray<FRotator> &NewRotations, TArray<float> &NewScales)
 	{
-		Attrs.Empty();
+		int32 NumRequestedInstances = NewVisibilities.Num();
+		if (NumRequestedInstances == 0)
+		{
+			for (AStructuralSceneActor* Actor : Ptrs)
+			{
+				Actor->Destroy();
+			}
+			Ptrs.Empty();
+		}
+		else
+		{
+			// Update number of SSA instances in the world
+			while (Ptrs.Num() != NumRequestedInstances)
+			{
+				if (NumRequestedInstances < Ptrs.Num())
+				{
+					Ptrs[Ptrs.Num()-1]->Destroy();
+					Ptrs.RemoveAt(Ptrs.Num()-1);
+				}
+				else if (NumRequestedInstances > Ptrs.Num())
+				{
+					// Spawn at arbitrary location and rotation, will be updated later
+					AStructuralSceneActor* Actor = World->SpawnActor<AStructuralSceneActor>(SSASubclass, FVector(0,0,0), FRotator(0,0,0));
+					Ptrs.Emplace(Actor);
+				}
+			}
+
+			// Update SSA parameters
+			for (int32 i = 0; i < Ptrs.Num(); i++)
+			{
+				Ptrs[i]->SetStructuralAttributes(NewVisibilities[i], NewLocations[i], NewRotations[i], NewScales[i]);
+			}
+		}
 	}
 };
 
@@ -70,10 +155,9 @@ public:	/****************************** AActor Overrides ***********************
 public: /****************************** AAutoSceneGenWorker ******************************/
 	uint8 GetWorkerID() const;
 	
-	TArray<float> GetSSAAttributes(uint16 Subclass, uint16 index) const;
+	// TArray<float> GetSSAAttributes(uint16 Subclass, uint16 index) const;
 
 private: /****************************** AAutoSceneGenWorker ******************************/
-	// ODD variables/functions //////////////////////////////////////////////////////////////////////////////
 	// Structural scene actor data array
 	UPROPERTY()
 	TArray<float> SSADataArray;
@@ -82,21 +166,26 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	TArray<class AStructuralSceneActor*> StructuralSceneActorArray;
 
-	// Structural scene actor subclasses that will be placed in the scene
+	/**
+	 * Structural scene actor subclasses that will be placed in the scene for debugging purposes. 
+	 * They will get overwritten upon processing the new RunScenario request.
+	 */
 	UPROPERTY(EditAnywhere)
-	TArray<TSubclassOf<class AStructuralSceneActor>> StructuralSceneActorSubclasses;
+	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
 
+	// Stores the attribute array for a given SSA subclass path name
+	TMap<FString, FStructuralSceneActorAttr> SSAAttrMap;
+
+	// Stores the SSA maintainers for a given SSA subclass path name
 	UPROPERTY()
-	TMap<FString, FStructuralSceneActorPtrs> SSAPtrMap;
-
-	TMap<FString, FStructuralSceneActorAttrs> SSAAttrrMap;
+	TMap<FString, FStructuralSceneActorMaintainer> SSAMaintainerMap;
 
 	UPROPERTY()
 	class AStaticMeshActor* GroundPlaneActor;
 
 	// Number of structural scene actor instances allowed per type
 	UPROPERTY(EditAnywhere)
-	uint16 NumSSAInstances = 1000;
+	uint16 DebugNumSSAInstances = 100;
 
 	// ASG Worker ID number
 	UPROPERTY(EditAnywhere)
@@ -210,9 +299,9 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	bool bDoneTesting = false;
 
-	void InitStructuralSceneActorArray();
+	void InitDebugStructuralSceneActors();
 
-	void RandomizeStructuralSceneActors();
+	void RandomizeDebugStructuralSceneActors();
 
 	bool CheckIfVehicleCrashed();
 

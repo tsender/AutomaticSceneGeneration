@@ -6,12 +6,15 @@
 #include "Components/ActorComponent.h"
 #include "AnnotationComponent.generated.h"
 
+// Supported types of annotation colors
 enum EAnnotationColor
 {
 	Traversable,
-	SemanticSegmentation
+	SemanticSegmentation,
+	InstanceSegmentation
 };
 
+// This component can be used to change the color of the owning actor's static mesh at runtime
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class AUTOMATICSCENEGENERATION_API UAnnotationComponent : public UActorComponent
 {
@@ -31,7 +34,7 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-	void AddAnnotationColor(uint8 ColorID, FLinearColor Color);
+	void AddAnnotationColor(uint8 ColorID, FColor Color);
 	void SetActiveMaterial(bool bAnnotation, uint8 ColorID);
 
 private:	

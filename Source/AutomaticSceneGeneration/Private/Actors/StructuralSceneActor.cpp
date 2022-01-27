@@ -63,31 +63,60 @@ uint16 AStructuralSceneActor::GetIDNumber() const
 	return IDNumber;
 }
 
-void AStructuralSceneActor::SetStructuralAttributes(TArray<float> NewAttributes) 
+// void AStructuralSceneActor::SetStructuralAttributes(TArray<float> NewAttributes) 
+// {
+// 	if (NewAttributes.Num() != EStructuralSceneAttribute::Size)
+// 	{
+// 		UE_LOG(LogASG, Error, TEXT("New attribute array does not have length %i"), EStructuralSceneAttribute::Size);
+// 		return;
+// 	}
+// 	Attributes = NewAttributes;
+
+// 	// Update visibility
+// 	bool Visibility = (bool)FMath::RoundToInt(Attributes[EStructuralSceneAttribute::Visibility]);
+// 	SetActive(Visibility);
+
+// 	// Set new location
+// 	float NewX = Attributes[EStructuralSceneAttribute::X]; // [cm]
+// 	float NewY = Attributes[EStructuralSceneAttribute::Y]; // [cm]
+// 	float NewZ = GetActorLocation().Z;
+// 	SetActorLocation(FVector(NewX, NewY, NewZ));
+
+// 	// Set new rotation
+// 	float NewYaw = Attributes[EStructuralSceneAttribute::Yaw]; // [deg]
+// 	SetActorRotation(FRotator(0.f, NewYaw, 0.f));
+
+// 	// Set new scale
+// 	float NewScale = Attributes[EStructuralSceneAttribute::Scale];
+// 	if (NewScale < 0.1f)
+// 	{
+// 		NewScale = 0.1f;
+// 	}
+// 	SetActorScale3D(FVector(NewScale, NewScale, NewScale));
+
+// 	// Update traversability status and annotation color
+// 	if (bAlwaysTraversable)
+// 	{
+// 		bTraversable = true;
+// 	}
+// 	else
+// 	{
+// 		FVector Origin;
+// 		FVector BoxExtent;
+// 		GetActorBounds(true, Origin, BoxExtent);
+// 		bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
+// 	}
+// 	UpdateTraversabilitySettings();
+// }
+
+void AStructuralSceneActor::SetStructuralAttributes(bool bVisibile, FVector NewLocation, FRotator NewRotation, float NewScale) 
 {
-	if (NewAttributes.Num() != EStructuralSceneAttribute::Size)
-	{
-		UE_LOG(LogASG, Error, TEXT("New attribute array does not have length %i"), EStructuralSceneAttribute::Size);
-		return;
-	}
-	Attributes = NewAttributes;
+	SetActive(bVisibile);
+	SetActorLocation(NewLocation);
+	SetActorRotation(NewRotation);
 
-	// Update visibility
-	bool Visibility = (bool)FMath::RoundToInt(Attributes[EStructuralSceneAttribute::Visibility]);
-	SetActive(Visibility);
-
-	// Set new location
-	float NewX = Attributes[EStructuralSceneAttribute::X]; // [cm]
-	float NewY = Attributes[EStructuralSceneAttribute::Y]; // [cm]
-	float NewZ = GetActorLocation().Z;
-	SetActorLocation(FVector(NewX, NewY, NewZ));
-
-	// Set new rotation
-	float NewYaw = Attributes[EStructuralSceneAttribute::Yaw]; // [deg]
-	SetActorRotation(FRotator(0.f, NewYaw, 0.f));
-
-	// Set new scale
-	float NewScale = Attributes[EStructuralSceneAttribute::Scale];
+	// Due to a bug with the engine, if an actor's scale is too small, then the engine gets "confused" and cannot accurately compute the actor bounds.
+	// We require that scale >= 0.1
 	if (NewScale < 0.1f)
 	{
 		NewScale = 0.1f;
@@ -137,7 +166,7 @@ void AStructuralSceneActor::UpdateTraversabilitySettings()
 	// Must manually set the traversable annotation material
 	if (bTraversable)
 	{
-		AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(1.f, 1.f, 1.f, 1.f));
+		AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(255, 255, 255, 255));
 		StaticMeshComponent->SetNotifyRigidBodyCollision(false);
 		StaticMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
@@ -147,7 +176,7 @@ void AStructuralSceneActor::UpdateTraversabilitySettings()
 	}
 	else
 	{
-		AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(0.f, 0.f, 0.f, 1.f));
+		AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(0, 0, 0, 255));
 		StaticMeshComponent->SetNotifyRigidBodyCollision(true);
 		StaticMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		StaticMeshComponent->SetCollisionObjectType(ECollisionChannel::ECC_WorldStatic);

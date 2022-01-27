@@ -35,11 +35,15 @@ public:	/****************************** AActor Overrides ***********************
 	virtual void Tick(float DeltaTime) override;
 
 public: /****************************** AStructuralSceneActor ******************************/
+	UPROPERTY()
+	class UAnnotationComponent* AnnotationComponent;
+
 	void SetIDNumber(uint16 NewID);
 
 	uint16 GetIDNumber() const;
 
-	void SetStructuralAttributes(TArray<float> NewAttributes);
+	// void SetStructuralAttributes(TArray<float> NewAttributes);
+	void SetStructuralAttributes(bool bVisibile, FVector NewLocation, FRotator NewRotation, float NewScale);
 
 	void SetActive(bool bNewActive);
 
@@ -50,9 +54,6 @@ public: /****************************** AStructuralSceneActor ******************
 private: /****************************** AStructuralSceneActor ******************************/
 	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* StaticMeshComponent;
-
-	UPROPERTY()
-	class UAnnotationComponent* AnnotationComponent;
 
 	// If the height in [cm] of the structural scene actor is below this threshold, then consider it traversable
 	UPROPERTY(EditAnywhere)

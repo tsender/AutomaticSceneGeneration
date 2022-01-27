@@ -60,15 +60,19 @@ void UAnnotationComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
+	// TODO: Change these from being hard-coded values to something that we can read from a JSON file
 	if (GetOwner()->ActorHasTag(TEXT("sky")))
 	{
-		AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(0.f, 0.f, 1.f, 1.f));
+		// We intentionally color the sky blue for the traversable color so the image looks more meaningful to a human
+		AddAnnotationColor(EAnnotationColor::Traversable, FColor(0, 0, 255, 255)); // Blue
+		AddAnnotationColor(EAnnotationColor::SemanticSegmentation, FColor(0, 0, 255, 255)); // Blue
 		UE_LOG(LogASG, Warning, TEXT("Found actor with tag 'sky'"));
 	}
 
 	if (GetOwner()->ActorHasTag(TEXT("ground_plane")))
 	{
-		AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(1.f, 1.f, 1.f, 1.f));
+		AddAnnotationColor(EAnnotationColor::Traversable, FColor(255, 255, 255, 255)); // White
+		AddAnnotationColor(EAnnotationColor::SemanticSegmentation, FColor(0, 255, 0, 255)); // Green
 		UE_LOG(LogASG, Warning, TEXT("Found actor with tag 'ground_plane'"));
 	}
 }
@@ -79,9 +83,9 @@ void UAnnotationComponent::TickComponent(float DeltaTime, ELevelTick TickType, F
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 }
 
-void UAnnotationComponent::AddAnnotationColor(uint8 ColorID, FLinearColor Color)
+void UAnnotationComponent::AddAnnotationColor(uint8 ColorID, FColor Color)
 {
-	LinearColorMap.Emplace(ColorID, Color);
+	LinearColorMap.Emplace(ColorID, Color.ReinterpretAsLinear());
 }
 
 void UAnnotationComponent::SetActiveMaterial(bool bAnnotation, uint8 ColorID)

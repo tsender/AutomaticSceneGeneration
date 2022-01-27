@@ -39,7 +39,7 @@ void AAutoSceneGenVehicle::BeginPlay()
     // Make sure skeletal mesh is set to generate hit events
     GetMesh()->OnComponentHit.AddDynamic(this, &AAutoSceneGenVehicle::OnHit);
     // GetMesh()->OnComponentBeginOverlap.AddDynamic(this, &AAutoSceneGenVehicle::OnBeginOverlap);
-    AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FLinearColor(0.f, 0.f, 0.f, 1.f));
+    AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(0, 0, 0, 255));
 
     bEnabled = false;
     bWorldIsReady = false;
@@ -291,7 +291,7 @@ void AAutoSceneGenVehicle::GetVehiclePath(class ROSMessages::nav_msgs::Path &Pat
     Path = VehiclePath;
 }
 
-int32 AAutoSceneGenVehicle::GetNumSSAHit() const
+int32 AAutoSceneGenVehicle::GetNumStructuralSceneActorsHit() const
 {
     return NumSSAHit;
 }

@@ -34,6 +34,9 @@ public: /****************************** AWheeledVehicle Overrides **************
 public: /****************************** AAutoSceneGenVehicle ******************************/
 	// UPROPERTY(EditAnywhere)
 	// class UVehicleEvaluationComponent* EvaluationComponent;
+
+	UPROPERTY(EditAnywhere)
+	class UAnnotationComponent* AnnotationComponent;
 	
 	FString GetVehicleName() const;
 
@@ -51,14 +54,11 @@ public: /****************************** AAutoSceneGenVehicle *******************
 
 	void GetVehiclePath(class ROSMessages::nav_msgs::Path &Path);
 
-	int32 GetNumSSAHit() const;
+	int32 GetNumStructuralSceneActorsHit() const;
 
 private: /****************************** AEvaluationVehicle ******************************/
 	UPROPERTY(EditAnywhere)
 	class UPIDDriveByWireComponent* DriveByWireComponent;
-
-	UPROPERTY(EditAnywhere)
-	class UAnnotationComponent* AnnotationComponent;
 
 	UPROPERTY(Category = Display, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UAudioComponent* EngineSoundComponent;

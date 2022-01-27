@@ -38,29 +38,27 @@ void AAutoSceneGenWorker::BeginPlay()
 	Super::BeginPlay();
 	// UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GlobalTimeDilation);
 
-	// FString Hero3Name =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C");
-	// UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3Name, nullptr, LOAD_None, nullptr);
+	FString Hero3Name =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C"); // Path name
+	UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3Name, nullptr, LOAD_None, nullptr);
 
-	// if (CastBP)
-	// {
-	// 	UE_LOG(LogASG, Warning, TEXT("Casted to UBlueprintGeneratedClass"));
-	// 	if (CastBP->IsChildOf(AStructuralSceneActor::StaticClass()))
-	// 	{
-	// 		UE_LOG(LogASG, Warning, TEXT("IsChildOf AStructuralSceneActor"));
-	// 		StructuralSceneActorSubclasses.Add(CastBP);
-	// 	}
-	// 	else
-	// 		UE_LOG(LogASG, Warning, TEXT("Failed to add cast to AStructuralSceneActor"));
-	// }
-	// else
-	// 	UE_LOG(LogASG, Warning, TEXT("Failed cast to UBlueprintGeneratedClass"));
+	if (CastBP)
+	{
+		if (CastBP->IsChildOf(AStructuralSceneActor::StaticClass()))
+		{
+			UE_LOG(LogASG, Warning, TEXT("IsChildOf AStructuralSceneActor"));
+			DebugSSASubclasses.Add(CastBP);
+		}
+	}
+	else
+		UE_LOG(LogASG, Warning, TEXT("Failed cast to UBlueprintGeneratedClass"));
 
 
-	// UE_LOG(LogASG, Warning, TEXT("Num subclasses = %i"), StructuralSceneActorSubclasses.Num());
-	// for (int32 i=0; i < StructuralSceneActorSubclasses.Num(); i++)
-	// {
-	// 	UE_LOG(LogASG, Warning, TEXT("SSA subclass: %s"), *(StructuralSceneActorSubclasses[i]->GetFullName()));
-	// }
+	UE_LOG(LogASG, Warning, TEXT("Num subclasses = %i"), DebugSSASubclasses.Num());
+	for (int32 i=0; i < DebugSSASubclasses.Num(); i++)
+	{
+		UE_LOG(LogASG, Warning, TEXT("SSA subclass name: %s"), *(DebugSSASubclasses[i]->GetName()));
+		UE_LOG(LogASG, Warning, TEXT("SSA subclass path name: %s"), *(DebugSSASubclasses[i]->GetPathName())); // This is what we want
+	}
 
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 	ScenarioNumber = 0;
@@ -77,7 +75,7 @@ void AAutoSceneGenWorker::BeginPlay()
 	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AStaticMeshActor::StaticClass(), TempArray);
 	if (!TempArray.Num())
 	{
-		UE_LOG(LogASG, Error, TEXT("Could not find any Static Mesh Actors."));
+		UE_LOG(LogASG, Error, TEXT("The ground plane must be a StaticMeshActors with tag 'ground_plane', but could not find any StaticMeshActors in the scene."));
 		return;
 	}
 	for (AActor* Actor: TempArray)
@@ -103,18 +101,18 @@ void AAutoSceneGenWorker::BeginPlay()
 	// }
 	// ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
 
-	// Get SSA subclasses
-	NumSSASubclasses = StructuralSceneActorSubclasses.Num();
-	// if (!NumSSASubclasses)
-	// {
-	// 	UE_LOG(LogASG, Error, TEXT("Must provide at least 1 structural scene actor type to ASG."));
-	// 	return;
-	// }
+	// Initialize debug structural scene actors
+	NumSSASubclasses = DebugSSASubclasses.Num();
+	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
+	{
+		SSAMaintainerMap.Add(Subclass->GetPathName(), FStructuralSceneActorMaintainer(GetWorld(), Subclass));
+		SSAAttrMap.Add(Subclass->GetPathName(), FStructuralSceneActorAttr());
+	}
 
-	SSADataArraySize = EStructuralSceneAttribute::Size * NumSSASubclasses * NumSSAInstances;
+	SSADataArraySize = EStructuralSceneAttribute::Size * NumSSASubclasses * DebugNumSSAInstances;
 	SSADataArray.Reset(SSADataArraySize);
 
-	InitStructuralSceneActorArray();
+	InitDebugStructuralSceneActors();
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
 	if (ROSInst)
@@ -158,7 +156,7 @@ void AAutoSceneGenWorker::BeginPlay()
 	}
 
 	// Calling this here forces the engine to render everything before the tick function
-	RandomizeStructuralSceneActors();
+	RandomizeDebugStructuralSceneActors();
 }
 
 void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason) 
@@ -256,88 +254,92 @@ uint8 AAutoSceneGenWorker::GetWorkerID() const
 	return WorkerID;
 }
 
-TArray<float> AAutoSceneGenWorker::GetSSAAttributes(uint16 Subclass, uint16 Index) const
+// TArray<float> AAutoSceneGenWorker::GetSSAAttributes(uint16 Subclass, uint16 Index) const
+// {
+// 	TArray<float> Data;
+
+// 	if (Subclass >= NumSSASubclasses)
+// 	{
+// 		UE_LOG(LogASG, Error, TEXT("Subclass index %i is out of bounds"), Subclass);
+// 		return Data;
+// 	}
+
+// 	int32 StartIndex = EStructuralSceneAttribute::Size * DebugNumSSAInstances * Subclass + EStructuralSceneAttribute::Size  * Index;
+// 	for (int32 i = 0; i < EStructuralSceneAttribute::Size; i++)
+// 	{
+// 		Data.Emplace(SSADataArray[StartIndex + i]);
+// 	}
+// 	return Data;
+// }
+
+void AAutoSceneGenWorker::InitDebugStructuralSceneActors() 
 {
-	TArray<float> Data;
+	TArray<bool> Visibilities;
+	TArray<FVector> Locations;
+	TArray<FRotator> Rotations;
+	TArray<float> Scales;
 
-	if (Subclass >= NumSSASubclasses)
+	// For the debug SSAs, we use the same number of instances of each subclass
+	for (int32 i = 0; i < DebugNumSSAInstances; i++)
 	{
-		UE_LOG(LogASG, Error, TEXT("Subclass index %i is out of bounds"), Subclass);
-		return Data;
+		Visibilities.Emplace(true);
+		Locations.Emplace(FVector(0,0,GroundPlaneZHeight));
+		Rotations.Emplace(FRotator(0,0,0));
+		Scales.Emplace(1.f);
 	}
 
-	int32 StartIndex = EStructuralSceneAttribute::Size * NumSSAInstances * Subclass + EStructuralSceneAttribute::Size  * Index;
-	for (int32 i = 0; i < EStructuralSceneAttribute::Size; i++)
+	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
-		Data.Emplace(SSADataArray[StartIndex + i]);
+		SSAMaintainerMap[Subclass->GetPathName()].UpdateAttributes(Visibilities, Locations, Rotations, Scales);
 	}
-	return Data;
-}
-
-void AAutoSceneGenWorker::InitStructuralSceneActorArray() 
-{
-	// Populate SSADataArray
-	for (int32 i = 0; i < NumSSASubclasses * NumSSAInstances; i++)
-	{
-		SSADataArray.Emplace(1.f); // Visibility
-		SSADataArray.Emplace(0.f); // X
-		SSADataArray.Emplace(0.f); // Y
-		SSADataArray.Emplace(0.f); // Yaw
-		SSADataArray.Emplace(1.f); // Scale, CANNOT be close to 0, preferably >0.2
-	}
-
-	UE_LOG(LogASG, Warning, TEXT("Spawning SSA actors"));
-	// Spawn structural scene actors and store pointers
-	for (int32 i = 0; i < NumSSASubclasses; i++)
-	{
-		for (int32 j = 0; j < NumSSAInstances; j++)
-		{
-			FVector Location(0.f, 0.f, GroundPlaneZHeight);
-			FRotator Rotation(0.f, 0.f, 0.f);
-			FActorSpawnParameters SpawnParams;
-			AStructuralSceneActor* Actor = GetWorld()->SpawnActor<AStructuralSceneActor>(StructuralSceneActorSubclasses[i], Location, Rotation);
-
-			Actor->SetStructuralAttributes(GetSSAAttributes(i,j));
-			Actor->SetOwner(this);
-			StructuralSceneActorArray.Emplace(Actor);
-		}
-	}
+	
 	bSSAInit = true;
 }
 
 // For debugging purposes 
-void AAutoSceneGenWorker::RandomizeStructuralSceneActors()
+void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 {
 	if (!bSSAInit)
 	{
 		return;
 	}
 
-	for (int32 i = 0; i < NumSSASubclasses; i++)
+	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
-		for (int32 j = 0; j < NumSSAInstances; j++)
+		TArray<bool> Visibilities;
+		TArray<FVector> Locations;
+		TArray<FRotator> Rotations;
+		TArray<float> Scales;
+
+		// For the debug SSAs, we use the same number of instances of each subclass
+		for (int32 i = 0; i < DebugNumSSAInstances; i++)
 		{
-			int32 Index = NumSSAInstances*i + j;
-			TArray<float> NewData = {1.f, //FMath::RandRange(0.f, 1.f), 
-									FMath::RandRange(0.f, 1.f) * LandscapeSize.X, 
-									-FMath::RandRange(0.f, 1.f) * LandscapeSize.Y,
-									FMath::RandRange(0.f, 1.f) * 360.f,
-									1., //FMath::RandRange(0.5f, 1.f) // Scale cannot be too small, else rendering problems
-									};
-			FVector Loc = FVector(NewData[1], NewData[2], VehicleStartLocation.Z);
-			if ((Loc - VehicleStartLocation).Size() <= SafetyRadius)
+			FVector Location = FVector(FMath::RandRange(0.f, 1.f) * LandscapeSize.X, -FMath::RandRange(0.f, 1.f) * LandscapeSize.Y, GroundPlaneZHeight);
+			Locations.Emplace(Location);
+			Rotations.Emplace(FRotator(0, FMath::RandRange(0.f, 1.f) * 360.f, 0));
+			Scales.Emplace(1.f);
+
+			// Determine visibility based on SSA placement
+			FVector Loc = Location;
+			Loc.Z = VehicleStartLocation.Z;
+			if ((Loc - VehicleStartLocation).Size() <= SafetyRadius || (Loc - VehicleGoalLocation).Size() <= SafetyRadius)
 			{
-				NewData[0] = 0;
+				Visibilities.Emplace(false);
 			}
-			StructuralSceneActorArray[Index]->SetStructuralAttributes(NewData);
+			else
+			{
+				Visibilities.Emplace(true);
+			}
 		}
+		
+		SSAMaintainerMap[Subclass->GetPathName()].UpdateAttributes(Visibilities, Locations, Rotations, Scales);
 	}
 }
 
 // TODO: If ASGWorker status is ONLINE_AND_RUNNING and vehicle turns over, we should end the run and notify the ASG client.
 bool AAutoSceneGenWorker::CheckIfVehicleFlipped()
 {
-	if (!ASGVehicle->IsEnabled()) return false;
+	if (!ASGVehicle || !ASGVehicle->IsEnabled()) return false;
 
 	if (FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > MaxVehicleRoll)
 	{
@@ -358,7 +360,7 @@ bool AAutoSceneGenWorker::CheckIfVehicleFlipped()
 
 bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 {
-	if (ROSInst && ASGVehicle->GetNumSSAHit() > 0)
+	if (ROSInst && ASGVehicle && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
 		TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
@@ -382,6 +384,8 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 
 bool AAutoSceneGenWorker::CheckGoalLocation() 
 {
+	if (!ASGVehicle) return false;
+
 	FVector DistanceToGoal = ASGVehicle->GetActorLocation() - VehicleGoalLocation;
 	DistanceToGoal.Z = 0;
 	if (DistanceToGoal.Size() <= GoalRadius)
@@ -408,7 +412,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 		}
 		if (!ROSInst)
 		{
-			RandomizeStructuralSceneActors();
+			RandomizeDebugStructuralSceneActors();
 			UE_LOG(LogASG, Display, TEXT("ASG offline. Generating new random scene."));
 		}
 }
@@ -417,18 +421,18 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 
 void AAutoSceneGenWorker::ProcessScenarioRequest() 
 {
-	if (!ROSInst || !bASGClientOnline || bProcessedScenarioRequest) return;
+	if (!ROSInst || !ASGVehicle || !bASGClientOnline || bProcessedScenarioRequest) return;
 
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 	
-	for (int32 i = 0; i < NumSSASubclasses; i++)
-	{
-		for (int32 j = 0; j < NumSSAInstances; j++)
-		{
-			int32 Index = NumSSAInstances*i + j;
-			StructuralSceneActorArray[Index]->SetStructuralAttributes(GetSSAAttributes(i,j));
-		}
-	}
+	// for (int32 i = 0; i < NumSSASubclasses; i++)
+	// {
+	// 	for (int32 j = 0; j < DebugNumSSAInstances; j++)
+	// 	{
+	// 		int32 Index = DebugNumSSAInstances*i + j;
+	// 		// StructuralSceneActorArray[Index]->SetStructuralAttributes(GetSSAAttributes(i,j)); // TODO
+	// 	}
+	// }
 	
 	bReadyToTick = false;
 	bProcessedScenarioRequest = true;

@@ -29,10 +29,10 @@ public:
 
 	static void _bson_append_child_msg(bson_t *b, const char *key, const ROSMessages::auto_scene_gen_msgs::WorkerStatus *msg)
 	{
-		bson_t vec;
-		BSON_APPEND_DOCUMENT_BEGIN(b, key, &vec);
-		_bson_append_msg(&vec, msg);
-		bson_append_document_end(b, &vec);
+		bson_t child;
+		BSON_APPEND_DOCUMENT_BEGIN(b, key, &child);
+		_bson_append_msg(&child, msg);
+		bson_append_document_end(b, &child);
 	}
 
 	static void _bson_append_msg(bson_t *b, const ROSMessages::auto_scene_gen_msgs::WorkerStatus *msg)
