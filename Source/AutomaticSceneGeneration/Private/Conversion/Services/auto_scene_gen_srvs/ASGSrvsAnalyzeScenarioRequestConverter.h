@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Conversion/Services/BaseRequestConverter.h"
-#include "Conversion/Messages/BaseMessageConverter.h"
+// #include "Conversion/Messages/BaseMessageConverter.h"
 #include "Conversion/Messages/nav_msgs/NavMsgsPathConverter.h"
 #include "auto_scene_gen_srvs/AnalyzeScenarioRequest.h"
 #include "ASGSrvsAnalyzeScenarioRequestConverter.generated.h"
@@ -23,7 +23,7 @@ public:
 
 	virtual TSharedPtr<FROSBaseServiceRequest> AllocateConcreteRequest() override;
 
-	static bool _bson_extract_child_request(bson_t *b, FString key, auto_scene_gen_srvs::FAnalyzeScenarioRequest *request, bool LogOnErrors = true)
+	static bool _bson_extract_child_request(bson_t *b, FString key, ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest *request, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
 
@@ -35,7 +35,7 @@ public:
 		return bSuccess;
 	}
 
-	static void _bson_append_request(bson_t *b, const auto_scene_gen_srvs::FAnalyzeScenarioRequest *request)
+	static void _bson_append_request(bson_t *b, const ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest *request)
 	{
 		BSON_APPEND_INT32(b, "worker_id", request->worker_id);
 		BSON_APPEND_INT32(b, "scenario_number", request->scenario_number);

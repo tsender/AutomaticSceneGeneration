@@ -4,136 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Actors/StructuralSceneActor.h"
 #include "ROSIntegration/Public/ROSBaseMsg.h"
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "ROSIntegration/Public/ROSBaseServiceResponse.h"
 #include <chrono>
 #include "AutoSceneGenWorker.generated.h"
-
-// This struct is used to temporarily store the new attributes for the SSAs of a given subclass
-struct FStructuralSceneActorAttr
-{
-	// Stores the incoming attribute array from the RunScenario request
-	TArray<float> AttrArray;
-	
-	TArray<bool> Visibilities;
-	TArray<FVector> Locations;
-	TArray<FRotator> Rotations;
-	TArray<float> Scales;
-	
-	// The path name of the SSA subclass that this struct maintains
-	FString SSAPathName;
-
-	int32 NumSSAs;
-
-	FStructuralSceneActorAttr(/*FString InSSAPathName*/)
-	{
-		// SSAPathName = InSSAPathName;
-	}
-
-	~FStructuralSceneActorAttr() 
-	{
-		AttrArray.Empty();
-		Visibilities.Empty();
-		Locations.Empty();
-		Rotations.Empty();
-		Scales.Empty();
-	}
-
-	void StoreNewAttributes(TArray<float> &NewAttrArray)
-	{
-		AttrArray = NewAttrArray;
-	}
-
-	void StoreNewTArrays(TArray<bool> &NewVisibilities, TArray<FVector> &NewLocations, TArray<FRotator> &NewRotations, TArray<float> &NewScales)
-	{
-		Visibilities = NewVisibilities;
-		Locations = NewLocations;
-		Rotations = NewRotations;
-		Scales = NewScales;
-	}
-};
-
-/**
- * This struct maintains all SSAs of a given subclass. It can add actors with specified parameters and also remove actors.
- * All calculations for the actor parameters should be done before passing them to this struct.
- */
-USTRUCT()
-struct AUTOMATICSCENEGENERATION_API FStructuralSceneActorMaintainer
-{
-	GENERATED_BODY()
-	
-	// Array of pointers to all maintained SSAs
-	UPROPERTY()
-	TArray<class AStructuralSceneActor*> Ptrs;
-
-	// The path name of the SSA subclass that this struct maintains
-	FString SSAPathName;
-
-	TSubclassOf<class AStructuralSceneActor> SSASubclass;
-
-	UWorld* World;
-
-	FStructuralSceneActorMaintainer() {}
-
-	FStructuralSceneActorMaintainer(UWorld* InWorld, TSubclassOf<class AStructuralSceneActor> InSSASubclass)
-	{
-		World = InWorld;
-		// SSAPathName = InSSAPathName;
-		SSASubclass = InSSASubclass;
-	}
-	
-	~FStructuralSceneActorMaintainer() 
-	{
-		for (AStructuralSceneActor* Actor : Ptrs)
-		{
-			Actor->Destroy();
-		}
-		Ptrs.Empty();
-	}
-
-	/**
-	 * Update the maintained SSA instances based on the provided new TArray attributes.
-	 * @param NewAttr The array of new attributes for all maintained SSA instances. If empty, then destroy and remove all instances.
-	 */
-	void UpdateAttributes(TArray<bool> &NewVisibilities, TArray<FVector> &NewLocations, TArray<FRotator> &NewRotations, TArray<float> &NewScales)
-	{
-		int32 NumRequestedInstances = NewVisibilities.Num();
-		if (NumRequestedInstances == 0)
-		{
-			for (AStructuralSceneActor* Actor : Ptrs)
-			{
-				Actor->Destroy();
-			}
-			Ptrs.Empty();
-		}
-		else
-		{
-			// Update number of SSA instances in the world
-			while (Ptrs.Num() != NumRequestedInstances)
-			{
-				if (NumRequestedInstances < Ptrs.Num())
-				{
-					Ptrs[Ptrs.Num()-1]->Destroy();
-					Ptrs.RemoveAt(Ptrs.Num()-1);
-				}
-				else if (NumRequestedInstances > Ptrs.Num())
-				{
-					// Spawn at arbitrary location and rotation, will be updated later
-					AStructuralSceneActor* Actor = World->SpawnActor<AStructuralSceneActor>(SSASubclass, FVector(0,0,0), FRotator(0,0,0));
-					Ptrs.Emplace(Actor);
-				}
-			}
-
-			// Update SSA parameters
-			for (int32 i = 0; i < Ptrs.Num(); i++)
-			{
-				Ptrs[i]->SetStructuralAttributes(NewVisibilities[i], NewLocations[i], NewRotations[i], NewScales[i]);
-			}
-		}
-	}
-};
 
 UCLASS()
 class AUTOMATICSCENEGENERATION_API AAutoSceneGenWorker : public AActor
@@ -154,17 +29,11 @@ public:	/****************************** AActor Overrides ***********************
 
 public: /****************************** AAutoSceneGenWorker ******************************/
 	uint8 GetWorkerID() const;
-	
-	// TArray<float> GetSSAAttributes(uint16 Subclass, uint16 index) const;
 
 private: /****************************** AAutoSceneGenWorker ******************************/
 	// Structural scene actor data array
 	UPROPERTY()
 	TArray<float> SSADataArray;
-	
-	// Array of pointers to all structural scene actors in the scene
-	UPROPERTY()
-	TArray<class AStructuralSceneActor*> StructuralSceneActorArray;
 
 	/**
 	 * Structural scene actor subclasses that will be placed in the scene for debugging purposes. 
@@ -173,12 +42,12 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY(EditAnywhere)
 	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
 
-	// Stores the attribute array for a given SSA subclass path name
-	TMap<FString, FStructuralSceneActorAttr> SSAAttrMap;
+	// Keeps track of the incoming concatenated attribute array for the SSAs from the RunScenario request
+	TMap<FString, struct FStructuralSceneActorAttr*> SSAAttrMap;
 
-	// Stores the SSA maintainers for a given SSA subclass path name
+	// Keeps track of the SSA maintainers
 	UPROPERTY()
-	TMap<FString, FStructuralSceneActorMaintainer> SSAMaintainerMap;
+	TMap<FString, class UStructuralSceneActorMaintainer*> SSAMaintainerMap;
 
 	UPROPERTY()
 	class AStaticMeshActor* GroundPlaneActor;

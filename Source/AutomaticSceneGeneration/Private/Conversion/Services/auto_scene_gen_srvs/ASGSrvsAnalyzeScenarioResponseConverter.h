@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Conversion/Services/BaseResponseConverter.h"
-#include "Conversion/Messages/BaseMessageConverter.h"
+// #include "Conversion/Messages/BaseMessageConverter.h"
 #include "auto_scene_gen_srvs/AnalyzeScenarioResponse.h"
 #include "ASGSrvsAnalyzeScenarioResponseConverter.generated.h"
 
@@ -22,7 +22,7 @@ public:
 
 	virtual TSharedPtr<FROSBaseServiceResponse> AllocateConcreteResponse() override;
 
-	static bool _bson_extract_child_response(bson_t *b, FString key, auto_scene_gen_srvs::FAnalyzeScenarioResponse *response, bool LogOnErrors = true)
+	static bool _bson_extract_child_response(bson_t *b, FString key, ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioResponse *response, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
 
@@ -30,7 +30,7 @@ public:
 		return true;
 	}
 
-	static void _bson_append_response(bson_t *b, const auto_scene_gen_srvs::FAnalyzeScenarioResponse *response)
+	static void _bson_append_response(bson_t *b, const ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioResponse *response)
 	{
 		BSON_APPEND_BOOL(b, "received", response->received);
 	}

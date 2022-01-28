@@ -2,6 +2,7 @@
 
 
 #include "Actors/AutoSceneGenWorker.h"
+#include "Objects/StructuralSceneActorMaintainer.h"
 #include "Actors/StructuralSceneActor.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMeshActor.h"
@@ -15,9 +16,7 @@
 #include "ROSIntegration/Classes/RI/Service.h"
 #include "ROSIntegration/Public/ROSTime.h"
 #include "ROSIntegration/Public/std_msgs/Bool.h"
-#include "ROSIntegration/Public/std_msgs/Float32MultiArray.h"
 #include "ROSIntegration/Public/geometry_msgs/Pose.h"
-#include "Conversion/Messages/BaseMessageConverter.h"
 
 #include "auto_scene_gen_msgs/WorkerStatus.h"
 #include "auto_scene_gen_srvs/RunScenarioRequest.h"
@@ -38,8 +37,8 @@ void AAutoSceneGenWorker::BeginPlay()
 	Super::BeginPlay();
 	// UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GlobalTimeDilation);
 
-	FString Hero3Name =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C"); // Path name
-	UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3Name, nullptr, LOAD_None, nullptr);
+	FString Hero3FileName =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C"); // Path name
+	UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3FileName, nullptr, LOAD_None, nullptr);
 
 	if (CastBP)
 	{
@@ -105,8 +104,9 @@ void AAutoSceneGenWorker::BeginPlay()
 	NumSSASubclasses = DebugSSASubclasses.Num();
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
-		SSAMaintainerMap.Add(Subclass->GetPathName(), FStructuralSceneActorMaintainer(GetWorld(), Subclass));
-		SSAAttrMap.Add(Subclass->GetPathName(), FStructuralSceneActorAttr());
+		SSAMaintainerMap.Add(Subclass->GetPathName(), NewObject<UStructuralSceneActorMaintainer>(UStructuralSceneActorMaintainer::StaticClass()));
+		SSAMaintainerMap[Subclass->GetPathName()]->Init(GetWorld(), Subclass);
+		SSAAttrMap.Add(Subclass->GetPathName(), new FStructuralSceneActorAttr());
 	}
 
 	SSADataArraySize = EStructuralSceneAttribute::Size * NumSSASubclasses * DebugNumSSAInstances;
@@ -162,7 +162,19 @@ void AAutoSceneGenWorker::BeginPlay()
 void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 {
 	Super::EndPlay(EndPlayReason);
-	StructuralSceneActorArray.Empty();
+	UE_LOG(LogASG, Warning, TEXT("ASGWorker EndPlay"));
+
+	SSADataArray.Empty();
+
+	for (auto Elem : SSAAttrMap)
+	{
+		UE_LOG(LogASG, Warning, TEXT("EndPlay deleting FStructuralSceneActorAttr"));
+		delete Elem.Value;
+	}
+	SSAAttrMap.Empty();
+	SSAMaintainerMap.Empty();
+	DebugSSASubclasses.Empty();
+
 	if (ROSInst)
 	{
 		// Publish status as offline 10 times to ensure at least 1 or 2 messages get recceived before the game ends
@@ -254,24 +266,6 @@ uint8 AAutoSceneGenWorker::GetWorkerID() const
 	return WorkerID;
 }
 
-// TArray<float> AAutoSceneGenWorker::GetSSAAttributes(uint16 Subclass, uint16 Index) const
-// {
-// 	TArray<float> Data;
-
-// 	if (Subclass >= NumSSASubclasses)
-// 	{
-// 		UE_LOG(LogASG, Error, TEXT("Subclass index %i is out of bounds"), Subclass);
-// 		return Data;
-// 	}
-
-// 	int32 StartIndex = EStructuralSceneAttribute::Size * DebugNumSSAInstances * Subclass + EStructuralSceneAttribute::Size  * Index;
-// 	for (int32 i = 0; i < EStructuralSceneAttribute::Size; i++)
-// 	{
-// 		Data.Emplace(SSADataArray[StartIndex + i]);
-// 	}
-// 	return Data;
-// }
-
 void AAutoSceneGenWorker::InitDebugStructuralSceneActors() 
 {
 	TArray<bool> Visibilities;
@@ -290,7 +284,9 @@ void AAutoSceneGenWorker::InitDebugStructuralSceneActors()
 
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
-		SSAMaintainerMap[Subclass->GetPathName()].UpdateAttributes(Visibilities, Locations, Rotations, Scales);
+		UE_LOG(LogASG, Warning, TEXT("init %s"), *Subclass->GetName());
+		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, Locations, Rotations, Scales);
+		SSAAttrMap[Subclass->GetPathName()]->StoreTArrays(Visibilities, Locations, Rotations, Scales);
 	}
 	
 	bSSAInit = true;
@@ -332,7 +328,7 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 			}
 		}
 		
-		SSAMaintainerMap[Subclass->GetPathName()].UpdateAttributes(Visibilities, Locations, Rotations, Scales);
+		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, Locations, Rotations, Scales);
 	}
 }
 
@@ -362,7 +358,7 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 {
 	if (ROSInst && ASGVehicle && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
-		TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
+		TSharedPtr<ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
 		// ROSMessages::nav_msgs::Path VehiclePath;
 		// ASGVehicle->GetVehiclePath(VehiclePath);
@@ -390,7 +386,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	DistanceToGoal.Z = 0;
 	if (DistanceToGoal.Size() <= GoalRadius)
 	{
-		TSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new auto_scene_gen_srvs::FAnalyzeScenarioRequest());
+		TSharedPtr<ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
 		// ROSMessages::nav_msgs::Path VehiclePath;
 		// ASGVehicle->GetVehiclePath(VehiclePath);
@@ -415,7 +411,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 			RandomizeDebugStructuralSceneActors();
 			UE_LOG(LogASG, Display, TEXT("ASG offline. Generating new random scene."));
 		}
-}
+	}
 	return false;
 }
 
@@ -425,14 +421,7 @@ void AAutoSceneGenWorker::ProcessScenarioRequest()
 
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 	
-	// for (int32 i = 0; i < NumSSASubclasses; i++)
-	// {
-	// 	for (int32 j = 0; j < DebugNumSSAInstances; j++)
-	// 	{
-	// 		int32 Index = DebugNumSSAInstances*i + j;
-	// 		// StructuralSceneActorArray[Index]->SetStructuralAttributes(GetSSAAttributes(i,j)); // TODO
-	// 	}
-	// }
+	// TODO
 	
 	bReadyToTick = false;
 	bProcessedScenarioRequest = true;
@@ -451,7 +440,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 
 	if (!bASGClientOnline && CastMsg->_Data)
 	{
-		UE_LOG(LogASG, Warning, TEXT("ASG back online"));
+		UE_LOG(LogASG, Warning, TEXT("ASG client back online"));
 	}
 
 	if (bASGClientOnline && !CastMsg->_Data)
@@ -459,7 +448,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 		bForceVehicleReset = true; // This will reset the run for us
 		// bProcessedScenarioRequest = false;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-		UE_LOG(LogASG, Warning, TEXT("ASG went offline"));
+		UE_LOG(LogASG, Warning, TEXT("ASG client went offline"));
 	}
 	
 	bASGClientOnline = CastMsg->_Data;
@@ -503,7 +492,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 
 void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastResponse = StaticCastSharedPtr<auto_scene_gen_srvs::FAnalyzeScenarioResponse>(Response);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioResponse>(Response);
 	if (!CastResponse)
 	{
 		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to auto_scene_gen_srvs/AnalyzeScenario_Response"));
@@ -514,48 +503,70 @@ void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceRe
 
 void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest> Request, TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastRequest = StaticCastSharedPtr<auto_scene_gen_srvs::FRunScenarioRequest>(Request);
-	auto CastResponse = StaticCastSharedPtr<auto_scene_gen_srvs::FRunScenarioResponse>(Response);
+	auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_srvs::FRunScenarioRequest>(Request);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_srvs::FRunScenarioResponse>(Response);
 	if (!CastRequest)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast Request to auto_scene_gen_srvs/RunScenario_Request"));
+		UE_LOG(LogASG, Warning, TEXT("Failed to cast Request to auto_scene_gen_srvs/RunScenarioRequest"));
 		return;
 	}
 	if (!CastResponse)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast Response to auto_scene_gen_srvs/RunScenario_Response"));
+		UE_LOG(LogASG, Warning, TEXT("Failed to cast Response to auto_scene_gen_srvs/RunScenarioResponse"));
 		return;
 	}
 
 	UE_LOG(LogASG, Display, TEXT("Received run scenario request %i"), CastRequest->scenario_number);
 
-	if (!CastRequest->done_testing)
+	bDoneTesting = CastRequest->done_testing;
+	if (!bDoneTesting)
 	{
-		if (CastRequest->ssa_array.layout.dim.Num() == 0)
+		// Clear SSAAttrMap
+		for (auto Elem : SSAAttrMap)
 		{
-			UE_LOG(LogASG, Warning, TEXT("No elements found in Float32MultiArray layout field"));
-			return;
+			delete Elem.Value;
 		}
-		if (CastRequest->ssa_array.data.Num() == 0)
-		{
-			UE_LOG(LogASG, Warning, TEXT("No elements found in Float32MultiArray data field"));
-			return;
-		}
-		if (CastRequest->ssa_array.layout.dim[0].stride != SSADataArraySize)
-		{
-			UE_LOG(LogASG, Warning, TEXT("Not enough elements in Float32MultiArray layout.dim[0].stride field. Expected %i but received %i."), SSADataArraySize, CastRequest->ssa_array.layout.dim[0].stride);
-			return;
-		}
+		SSAAttrMap.Empty();
 
-		SSADataArray = CastRequest->ssa_array.data;
+		// Retrieve SSA info from ssa_info_array field
+		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray Array : CastRequest->ssa_array)
+		{
+			// int32 NumExpectedAttrs = SSAInfo.num_actors * EStructuralSceneAttribute::Size;
+			// int32 NumExpectedActors = SSAInfo.concat_attr_array.layout.dim[1].size;
+			// if (SSAInfo.concat_attr_array.layout.dim.Num() == 0)
+			// {
+			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.layout.dim field is empty"));
+			// 	return;
+			// }
+			// if (SSAInfo.concat_attr_array.layout.dim[0].stride != NumExpectedAttrs)
+			// {
+			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.layout.dim[0].stride is %i but expected %i."), CastRequest->ssa_array.layout.dim[0].stride, NumExpectedAttrs);
+			// 	return;
+			// }
+			// if (SSAInfo.concat_attr_array.layout.dim[0].size != SSAInfo.num_actors)
+			// {
+			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.layout.dim[0].stride is %i but expected %i."), CastRequest->ssa_array.layout.dim[0].stride, NumExpectedAttrs);
+			// 	return;
+			// }
+			// if (SSAInfo.concat_attr_array.data.Num() != NumExpectedAttrs)
+			// {
+			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.data field has %i elements but %i were expected"), SSAInfo.concat_attr_array.data.Num(), NumExpectedAttrs);
+			// 	return;
+			// }
+
+		}
+		
+
+		VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
+		VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);
+		VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);
+
 		ScenarioNumber = CastRequest->scenario_number;
 		bWaitingForScenarioRequest = false;
 		bProcessedScenarioRequest = false;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 		UE_LOG(LogASG, Display, TEXT("Saved scenario description %i"), ScenarioNumber);
 	}
-
-	bDoneTesting = CastRequest->done_testing;
 
 	// Fill in response
 	CastResponse->received = true;

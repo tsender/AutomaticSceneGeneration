@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "StructuralSceneActor.generated.h"
 
-// ODD Static structural attributes
+// tructural scene attributes
 enum EStructuralSceneAttribute
 {
 	Visibility,
