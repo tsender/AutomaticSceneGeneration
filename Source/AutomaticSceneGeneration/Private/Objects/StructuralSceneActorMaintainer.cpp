@@ -15,7 +15,7 @@ void UStructuralSceneActorMaintainer::BeginDestroy()
     DestroyActors();
 }
 
-void UStructuralSceneActorMaintainer::Init(class UWorld* InWorld, TSubclassOf<AStructuralSceneActor> InSSASubclass)
+void UStructuralSceneActorMaintainer::Init(UWorld* InWorld, TSubclassOf<AStructuralSceneActor> InSSASubclass)
 {
     World = InWorld;
     SSASubclass = InSSASubclass;

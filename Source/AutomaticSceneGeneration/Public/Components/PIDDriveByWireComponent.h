@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "ROSIntegration/Public/ROSBaseMsg.h"
 #include "PIDDriveByWireComponent.generated.h"
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
@@ -96,13 +95,13 @@ private: /****************************** UPIDDriveByWireComponent **************
 	 * ROS callback for explicitly moving the vehicle to a new pose. Use this if you wish to bypass the actual controller and simply want to update the vehicle's pose manually.
 	 * @param Msg The geometry_msgs/Pose message with the desired pose
 	 */
-	void BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg);
+	void BypassControllerCB(TSharedPtr<class FROSBaseMsg> Msg);
 
 	/**
 	 * ROS callback for sending PhysX control commands to the vehicle
 	 * @param Msg The vehicle_msgs/PhysXControl message with the desired control commands
 	 */
-	void PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg);
+	void PhysxControllerCB(TSharedPtr<class FROSBaseMsg> Msg);
 	
 	// Based on velocity
 	void SetThrottleInput(float DeltaTime);

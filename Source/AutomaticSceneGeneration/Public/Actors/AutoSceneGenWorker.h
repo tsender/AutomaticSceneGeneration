@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "ROSIntegration/Public/ROSBaseMsg.h"
-#include "ROSIntegration/Public/ROSBaseServiceRequest.h"
-#include "ROSIntegration/Public/ROSBaseServiceResponse.h"
+#include "auto_scene_gen_msgs/StructuralSceneActorArray.h"
 #include <chrono>
 #include "AutoSceneGenWorker.generated.h"
+
+// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings
 
 UCLASS()
 class AUTOMATICSCENEGENERATION_API AAutoSceneGenWorker : public AActor
@@ -31,10 +31,6 @@ public: /****************************** AAutoSceneGenWorker ********************
 	uint8 GetWorkerID() const;
 
 private: /****************************** AAutoSceneGenWorker ******************************/
-	// Structural scene actor data array
-	UPROPERTY()
-	TArray<float> SSADataArray;
-
 	/**
 	 * Structural scene actor subclasses that will be placed in the scene for debugging purposes. 
 	 * They will get overwritten upon processing the new RunScenario request.
@@ -42,8 +38,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY(EditAnywhere)
 	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
 
-	// Keeps track of the incoming concatenated attribute array for the SSAs from the RunScenario request
-	TMap<FString, struct FStructuralSceneActorAttr*> SSAAttrMap;
+	// Keeps track of the incoming requested SSA array
+	TArray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray> RequestedSSAArray;
 
 	// Keeps track of the SSA maintainers
 	UPROPERTY()
@@ -63,10 +59,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// UPROPERTY(EditAnywhere)
 	// float GlobalTimeDilation = 1.f;
 
-	uint16 NumSSASubclasses;
-
-	uint16 SSADataArraySize;
-
 	bool bSSAInit = false;
 
 	// For now, we assume the ground plane is flat
@@ -78,7 +70,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.
 	UPROPERTY(EditAnywhere)
-	float SafetyRadius = 500.f; // [cm]
+	float DebugSafetyRadius = 5000.f; // [cm]
 
 	/**
 	 * If vehicle is within this distance in [cm] from the goal point, then the vehicle has reached its destination. 
@@ -117,9 +109,13 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	class UROSIntegrationGameInstance* ROSInst;
 	
-	// ROS topic name for ASG client's status
+	// ROS topic name for ASG client's status message
 	UPROPERTY(Editanywhere)
 	FString ASGClientStatusTopic = FString("/asg_client/status");
+
+	// ROS service name for ASG client's AnalyzeScenario service
+	UPROPERTY(Editanywhere)
+	FString AnalyzeScenarioServiceName = FString("/asg_client/services/analyze_scenario");
 
 	// ROS subscriber: Subscribes to the ASG client's status
 	UPROPERTY()
@@ -141,18 +137,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	class UService* AnalyzeScenarioClient;
 
-	/**
-	 *  If the duration between consecutive ASG client status messages reaches this threshold,
-	 * 	then reset the simulation and wait for the ASG client to come back online before restarting the run.
-	 */
-	// UPROPERTY(EditAnywhere)
-	// float ASGStatusMessagePeriodThreshold = 5.f;
-
 	bool bASGClientOnline = false;
-
-	// bool bASGStatusClockInit = false;
-
-	// std::chrono::steady_clock::time_point LastASGStatusClockTime;
 
 	uint8 WorkerStatus = 0;
 
@@ -172,26 +157,30 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	void RandomizeDebugStructuralSceneActors();
 
+	void ProcessRunScenarioRequest();
+
 	bool CheckIfVehicleCrashed();
 
 	bool CheckIfVehicleFlipped();
 
 	bool CheckGoalLocation();
 
-	void ProcessScenarioRequest();
-
-	void ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg);
+	/**
+	 * ROS callback for receiving the ASG client's status
+	 * @param Msg The status message from the ASG client
+	 */
+	void ASGClientStatusCB(TSharedPtr<class FROSBaseMsg> Msg);
 
 	/**
 	 * ROS callback for receiving the ASG client's response for the most recent scenario analysis
 	 * @param Response The response message from the ASG client
 	 */
-	void AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceResponse> Response);
+	void AnalyzeScenarioResponseCB(TSharedPtr<class FROSBaseServiceResponse> Response);
 
 	/**
 	 * ROS callback for receiving the new scenario description from the ASG client
 	 * @param Request The request message from the ASG client containing the scenario description
 	 * @param Response The response message to be sent to the ASG client (indicates receipt of request)
 	 */
-	void RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest> Request, TSharedPtr<FROSBaseServiceResponse> Response);
+	void RunScenarioServiceCB(TSharedPtr<class FROSBaseServiceRequest> Request, TSharedPtr<class FROSBaseServiceResponse> Response);
 };

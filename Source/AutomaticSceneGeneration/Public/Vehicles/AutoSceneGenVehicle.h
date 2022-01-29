@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "WheeledVehicle.h"
-#include "ROSIntegration/Public/ROSBaseMsg.h"
 #include "ROSIntegration/Public/nav_msgs/Path.h"
 #include "AutoSceneGenVehicle.generated.h"
 
@@ -32,9 +31,6 @@ public: /****************************** AWheeledVehicle Overrides **************
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 public: /****************************** AAutoSceneGenVehicle ******************************/
-	// UPROPERTY(EditAnywhere)
-	// class UVehicleEvaluationComponent* EvaluationComponent;
-
 	UPROPERTY(EditAnywhere)
 	class UAnnotationComponent* AnnotationComponent;
 	

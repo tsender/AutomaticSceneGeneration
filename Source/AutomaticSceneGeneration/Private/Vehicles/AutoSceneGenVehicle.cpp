@@ -24,7 +24,6 @@ AAutoSceneGenVehicle::AAutoSceneGenVehicle()
 {
     DriveByWireComponent = CreateDefaultSubobject<UPIDDriveByWireComponent>(TEXT("PID Drive By Wire"));
     AnnotationComponent = CreateDefaultSubobject<UAnnotationComponent>(TEXT("Annotation Component"));
-    // EvaluationComponent = CreateDefaultSubobject<UVehicleEvaluationComponent>(TEXT("Vehicle Evaluation Component"));
 
     static ConstructorHelpers::FObjectFinder<USoundCue> SoundCue(TEXT("/Game/VehicleAdv/Sound/Engine_Loop_Cue.Engine_Loop_Cue"));
 	EngineSoundComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("Engine Sound"));
@@ -263,7 +262,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             CheckEnableTickNumber = 0;
             DriveByWireComponent->EnableDriveByWire(true);
             
-            // Reset the VehiclePath msg here
+            // Reset the internal VehiclePath message here
             VehiclePath.poses.Empty();
             VehiclePath.header.frame_id = VehicleName;
             VehiclePath.header.time = FROSTime::Now();

@@ -17,6 +17,8 @@
 #include "ROSIntegration/Public/ROSTime.h"
 #include "ROSIntegration/Public/std_msgs/Bool.h"
 #include "ROSIntegration/Public/geometry_msgs/Pose.h"
+#include "ROSIntegration/Public/geometry_msgs/Quaternion.h"
+#include "ROSIntegration/Public/nav_msgs/Path.h"
 
 #include "auto_scene_gen_msgs/WorkerStatus.h"
 #include "auto_scene_gen_srvs/RunScenarioRequest.h"
@@ -37,32 +39,31 @@ void AAutoSceneGenWorker::BeginPlay()
 	Super::BeginPlay();
 	// UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GlobalTimeDilation);
 
-	FString Hero3FileName =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C"); // Path name
-	UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3FileName, nullptr, LOAD_None, nullptr);
+	// FString Hero3FileName =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C"); // Path name
+	// UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3FileName, nullptr, LOAD_None, nullptr);
 
-	if (CastBP)
-	{
-		if (CastBP->IsChildOf(AStructuralSceneActor::StaticClass()))
-		{
-			UE_LOG(LogASG, Warning, TEXT("IsChildOf AStructuralSceneActor"));
-			DebugSSASubclasses.Add(CastBP);
-		}
-	}
-	else
-		UE_LOG(LogASG, Warning, TEXT("Failed cast to UBlueprintGeneratedClass"));
+	// if (CastBP)
+	// {
+	// 	if (CastBP->IsChildOf(AStructuralSceneActor::StaticClass()))
+	// 	{
+	// 		UE_LOG(LogASG, Warning, TEXT("IsChildOf AStructuralSceneActor"));
+	// 		DebugSSASubclasses.Add(CastBP);
+	// 	}
+	// }
+	// else
+	// 	UE_LOG(LogASG, Warning, TEXT("Failed cast to UBlueprintGeneratedClass"));
 
 
-	UE_LOG(LogASG, Warning, TEXT("Num subclasses = %i"), DebugSSASubclasses.Num());
-	for (int32 i=0; i < DebugSSASubclasses.Num(); i++)
-	{
-		UE_LOG(LogASG, Warning, TEXT("SSA subclass name: %s"), *(DebugSSASubclasses[i]->GetName()));
-		UE_LOG(LogASG, Warning, TEXT("SSA subclass path name: %s"), *(DebugSSASubclasses[i]->GetPathName())); // This is what we want
-	}
+	// UE_LOG(LogASG, Warning, TEXT("Num subclasses = %i"), DebugSSASubclasses.Num());
+	// for (int32 i=0; i < DebugSSASubclasses.Num(); i++)
+	// {
+	// 	UE_LOG(LogASG, Warning, TEXT("SSA subclass name: %s"), *(DebugSSASubclasses[i]->GetName()));
+	// 	UE_LOG(LogASG, Warning, TEXT("SSA subclass path name: %s"), *(DebugSSASubclasses[i]->GetPathName())); // This is what we want
+	// }
 
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 	ScenarioNumber = 0;
 	bASGClientOnline = false;
-	// bASGStatusClockInit = false;
 	bForceVehicleReset = false;
 	bWaitingForScenarioRequest = false;
 	bProcessedScenarioRequest = true;
@@ -92,27 +93,22 @@ void AAutoSceneGenWorker::BeginPlay()
 
 	// Find ASG vehicle
 	VehicleStartRotation = FRotator(0.f, VehicleStartYaw, 0.f);
-	// ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
-	// if (!ASGVehicle)
-	// {
-	// 	UE_LOG(LogASG, Error, TEXT("Could not get AAutoSceneGenVehicle from first player controller."));
-	// 	return;
-	// }
-	// ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
+	ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
+	if (!ASGVehicle)
+	{
+		UE_LOG(LogASG, Error, TEXT("Could not get AAutoSceneGenVehicle from first player controller."));
+	}
+	else
+	{
+		ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
+	}
 
-	// Initialize debug structural scene actors
-	NumSSASubclasses = DebugSSASubclasses.Num();
+	// Add debug structural scene actors to SSA maintainer map
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
 		SSAMaintainerMap.Add(Subclass->GetPathName(), NewObject<UStructuralSceneActorMaintainer>(UStructuralSceneActorMaintainer::StaticClass()));
 		SSAMaintainerMap[Subclass->GetPathName()]->Init(GetWorld(), Subclass);
-		SSAAttrMap.Add(Subclass->GetPathName(), new FStructuralSceneActorAttr());
 	}
-
-	SSADataArraySize = EStructuralSceneAttribute::Size * NumSSASubclasses * DebugNumSSAInstances;
-	SSADataArray.Reset(SSADataArraySize);
-
-	InitDebugStructuralSceneActors();
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
 	if (ROSInst)
@@ -139,9 +135,8 @@ void AAutoSceneGenWorker::BeginPlay()
 		
 		// AnalyzeScenario client
 		AnalyzeScenarioClient = NewObject<UService>(UService::StaticClass());
-		FString AnalyzeScenarioClientName = FString("/asg/services/analyze_scenario");
-		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioClientName, TEXT("auto_scene_gen_srvs/AnalyzeScenario"));
-		UE_LOG(LogASG, Display, TEXT("Registered ASG worker analyze scenario ROS client to: %s"), *AnalyzeScenarioClientName);
+		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioServiceName, TEXT("auto_scene_gen_srvs/AnalyzeScenario"));
+		UE_LOG(LogASG, Display, TEXT("Registered ASG worker analyze scenario ROS client to: %s"), *AnalyzeScenarioServiceName);
 
 		// RunScenario service
 		RunScenarioService = NewObject<UService>(UService::StaticClass());
@@ -155,25 +150,17 @@ void AAutoSceneGenWorker::BeginPlay()
 		UE_LOG(LogASG, Display, TEXT("ASG worker will create scenes randomly (for debugging purposes)."));
 	}
 
-	// Calling this here forces the engine to render everything before the tick function
+	// Calling this here forces the engine to render the debug SSAs before the tick function
 	RandomizeDebugStructuralSceneActors();
 }
 
 void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 {
 	Super::EndPlay(EndPlayReason);
-	UE_LOG(LogASG, Warning, TEXT("ASGWorker EndPlay"));
 
-	SSADataArray.Empty();
-
-	for (auto Elem : SSAAttrMap)
-	{
-		UE_LOG(LogASG, Warning, TEXT("EndPlay deleting FStructuralSceneActorAttr"));
-		delete Elem.Value;
-	}
-	SSAAttrMap.Empty();
-	SSAMaintainerMap.Empty();
 	DebugSSASubclasses.Empty();
+	SSAMaintainerMap.Empty();
+	RequestedSSAArray.Empty();
 
 	if (ROSInst)
 	{
@@ -182,7 +169,7 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		for (int32 I = 0; I < 10; I++)
 		{
 			WorkerStatusPub->Publish(StatusMsg);
-			FPlatformProcess::Sleep(0.1f);
+			FPlatformProcess::Sleep(0.1f); // Brief pause helps ensure the messages are received
 		}
 		WorkerStatusPub->Unadvertise();
 
@@ -197,68 +184,68 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// if (bForceVehicleReset)
-	// {
-	// 	UE_LOG(LogASG, Warning, TEXT("Forcing vehicle reset"));
-	// 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
-	// 	bForceVehicleReset = false;
-	// }
+	if (ASGVehicle && bForceVehicleReset)
+	{
+		UE_LOG(LogASG, Warning, TEXT("Forcing vehicle reset"));
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+		bForceVehicleReset = false;
+	}
 	
-	// if (!bProcessedScenarioRequest)
-	// {
-	// 	ProcessScenarioRequest();
-	// }
+	if (!bProcessedScenarioRequest)
+	{
+		ProcessRunScenarioRequest();
+	}
 	
-	// // This forces the worker to wait one tick for the frame to render before publishing its status
-	// if (!bReadyToTick)
-	// {
-	// 	bReadyToTick = true;
-	// 	ASGVehicle->SetWorldIsReadyFlag(true);
-	// 	return;
-	// }
+	// This forces the worker to wait one tick for the frame to render before publishing its status
+	if (ASGVehicle && !bReadyToTick)
+	{
+		bReadyToTick = true;
+		ASGVehicle->SetWorldIsReadyFlag(true);
+		return;
+	}
 
-	// if (bProcessedScenarioRequest && !bWaitingForScenarioRequest)
-	// {
-	// 	CheckIfVehicleCrashed();
-	// 	CheckIfVehicleFlipped();
-	// 	CheckGoalLocation();
-	// }
+	if (bProcessedScenarioRequest && !bWaitingForScenarioRequest)
+	{
+		CheckIfVehicleCrashed();
+		CheckIfVehicleFlipped();
+		CheckGoalLocation();
+	}
 
-	// if (ROSInst)
-	// {
-	// 	// Publish ASG worker status
-	// 	TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus(WorkerStatus));
-	// 	WorkerStatusPub->Publish(StatusMsg);
+	if (ROSInst)
+	{
+		// Publish ASG worker status
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus(WorkerStatus));
+		WorkerStatusPub->Publish(StatusMsg);
 		
-	// 	// Publish vehicle destination info
-	// 	TSharedPtr<ROSMessages::geometry_msgs::Pose> DestMsg(new ROSMessages::geometry_msgs::Pose());
-	// 	ROSMessages::geometry_msgs::Point Location(VehicleGoalLocation/100.f); // Put into [m]
-	// 	Location.y *= -1;
-	// 	DestMsg->position = Location;
-	// 	ROSMessages::geometry_msgs::Quaternion Quaternion = ROSMessages::geometry_msgs::Quaternion(0,0,0,1);
-	// 	Quaternion.x *= -1;
-	// 	Quaternion.z *= -1;
-	// 	DestMsg->orientation = Quaternion;
-	// 	VehicleDestinationPub->Publish(DestMsg);
+		// Publish vehicle destination info
+		TSharedPtr<ROSMessages::geometry_msgs::Pose> DestMsg(new ROSMessages::geometry_msgs::Pose());
+		ROSMessages::geometry_msgs::Point Location(VehicleGoalLocation/100.f); // Put into [m]
+		Location.y *= -1;
+		DestMsg->position = Location;
+		ROSMessages::geometry_msgs::Quaternion Quaternion = ROSMessages::geometry_msgs::Quaternion(0,0,0,1);
+		Quaternion.x *= -1;
+		Quaternion.z *= -1;
+		DestMsg->orientation = Quaternion;
+		VehicleDestinationPub->Publish(DestMsg);
 
-	// 	// Occasionaly, for some unknown reason, resetting the vehicle (via teleportation) can throw the vehicle out of the bounds of the game.
-	// 	// To account for this phenomena, if the vehicle is ever below the ground plane, then we reset the vehicle and try again.
-	// 	// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
-	// 	if (ASGVehicle->GetActorLocation().Z <= GroundPlaneZHeight -100.)
-	// 	{
-	// 		UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
-	// 		bProcessedScenarioRequest = false; // This will reset the run for us
-	// 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-	// 		return;
-	// 	}
-	// }
+		// Occasionaly, for some unknown reason, resetting the vehicle (via teleportation) can throw the vehicle out of the bounds of the game.
+		// To account for this phenomena, if the vehicle is ever below the ground plane, then we reset the vehicle and try again.
+		// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
+		if (ASGVehicle && ASGVehicle->GetActorLocation().Z <= GroundPlaneZHeight -100.)
+		{
+			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
+			bProcessedScenarioRequest = false; // This will reset the run for us
+			WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+			return;
+		}
+	}
 
-	// if (bDoneTesting)
-	// {
-	// 	UE_LOG(LogASG, Display, TEXT("All done testing. Ending the game."));
-	// 	UGameplayStatics::GetPlayerController(GetWorld(), 0)->ConsoleCommand("quit");
-	// 	return;
-	// }
+	if (bDoneTesting)
+	{
+		UE_LOG(LogASG, Display, TEXT("All done testing. Ending the game."));
+		UGameplayStatics::GetPlayerController(GetWorld(), 0)->ConsoleCommand("quit");
+		return;
+	}
 }
 
 uint8 AAutoSceneGenWorker::GetWorkerID() const
@@ -266,7 +253,7 @@ uint8 AAutoSceneGenWorker::GetWorkerID() const
 	return WorkerID;
 }
 
-void AAutoSceneGenWorker::InitDebugStructuralSceneActors() 
+void AAutoSceneGenWorker::InitDebugStructuralSceneActors()  // Remove?
 {
 	TArray<bool> Visibilities;
 	TArray<FVector> Locations;
@@ -284,22 +271,14 @@ void AAutoSceneGenWorker::InitDebugStructuralSceneActors()
 
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
-		UE_LOG(LogASG, Warning, TEXT("init %s"), *Subclass->GetName());
 		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, Locations, Rotations, Scales);
-		SSAAttrMap[Subclass->GetPathName()]->StoreTArrays(Visibilities, Locations, Rotations, Scales);
 	}
 	
 	bSSAInit = true;
 }
 
-// For debugging purposes 
 void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 {
-	if (!bSSAInit)
-	{
-		return;
-	}
-
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
 		TArray<bool> Visibilities;
@@ -318,7 +297,7 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 			// Determine visibility based on SSA placement
 			FVector Loc = Location;
 			Loc.Z = VehicleStartLocation.Z;
-			if ((Loc - VehicleStartLocation).Size() <= SafetyRadius || (Loc - VehicleGoalLocation).Size() <= SafetyRadius)
+			if ((Loc - VehicleStartLocation).Size() <= DebugSafetyRadius || (Loc - VehicleGoalLocation).Size() <= DebugSafetyRadius)
 			{
 				Visibilities.Emplace(false);
 			}
@@ -332,7 +311,80 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 	}
 }
 
-// TODO: If ASGWorker status is ONLINE_AND_RUNNING and vehicle turns over, we should end the run and notify the ASG client.
+void AAutoSceneGenWorker::ProcessRunScenarioRequest() 
+{
+	if (!ROSInst || !ASGVehicle || !bASGClientOnline || bProcessedScenarioRequest) return;
+
+	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+
+	// Store requested SSA subclasses in array of TSubclassOf<AStructuralSceneActor> so we can access them later
+	TArray<TSubclassOf<AStructuralSceneActor>> RequestedSSASubclasses;
+
+	// Verify path_names to SSA subclasses
+	for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray SSAArray : RequestedSSAArray)
+	{
+		UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *SSAArray.path_name, nullptr, LOAD_None, nullptr);
+
+		if (CastBP)
+		{
+			if (CastBP->IsChildOf(AStructuralSceneActor::StaticClass()))
+			{
+				RequestedSSASubclasses.Add(CastBP);
+			}
+			else
+			{
+				UE_LOG(LogASG, Warning, TEXT("Failed to process RunScenarioRequest: UObject with path_name %s is not a child of AStructuralSceneActor"), *SSAArray.path_name);
+				return;
+			}
+		}
+		else
+		{
+			UE_LOG(LogASG, Warning, TEXT("Failed to process RunScenarioRequest: Could not cast UObject with path_name %s to UBlueprintGeneratedClass"), *SSAArray.path_name);
+			return;
+		}
+	}
+
+	// Add SSA subclasses to maintainer map and update attributes
+	for (TSubclassOf<AStructuralSceneActor> Subclass : RequestedSSASubclasses)
+	{
+		// It is more efficient to only add a new subclass to the TMap if the key does not already exist.
+		// Further, if we were to always use .Add(), then I do not know if the SSA maintainer associated with the old existing key will get destroyed properly.
+		if (!SSAMaintainerMap.Contains(Subclass->GetPathName()))
+		{
+			SSAMaintainerMap.Add(Subclass->GetPathName(), NewObject<UStructuralSceneActorMaintainer>(UStructuralSceneActorMaintainer::StaticClass()));
+			SSAMaintainerMap[Subclass->GetPathName()]->Init(GetWorld(), Subclass);
+		}
+
+		// Find corresponding element in SSA array
+		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray SSAArray : RequestedSSAArray)
+		{
+			if (Subclass->GetPathName().Equals(SSAArray.path_name))
+			{
+				TArray<bool> Visibilities;
+				TArray<FVector> Locations;
+				TArray<FRotator> Rotations;
+				TArray<float> Scales;
+
+				for (ROSMessages::auto_scene_gen_msgs::StructuralSceneAttributes Attr : SSAArray.attr_array)
+				{
+					Visibilities.Emplace(Attr.visible);
+					Locations.Emplace(FVector(Attr.x, Attr.y, GroundPlaneZHeight));
+					Rotations.Emplace(FRotator(0, Attr.yaw, 0));
+					Scales.Emplace(Attr.scale);
+				}
+				
+				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, Locations, Rotations, Scales);
+				break;
+			}
+		}
+	}
+	
+	bReadyToTick = false;
+	bProcessedScenarioRequest = true;
+	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_RUNNING;
+	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i"), ScenarioNumber);
+}
+
 bool AAutoSceneGenWorker::CheckIfVehicleFlipped()
 {
 	if (!ASGVehicle || !ASGVehicle->IsEnabled()) return false;
@@ -415,20 +467,6 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	return false;
 }
 
-void AAutoSceneGenWorker::ProcessScenarioRequest() 
-{
-	if (!ROSInst || !ASGVehicle || !bASGClientOnline || bProcessedScenarioRequest) return;
-
-	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
-	
-	// TODO
-	
-	bReadyToTick = false;
-	bProcessedScenarioRequest = true;
-	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_RUNNING;
-	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i"), ScenarioNumber);
-}
-
 void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg) 
 {
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::std_msgs::Bool>(Msg);
@@ -443,51 +481,15 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 		UE_LOG(LogASG, Warning, TEXT("ASG client back online"));
 	}
 
+	// We assume the ASG client is configured to send an offline signal whenver it gets shutdown
 	if (bASGClientOnline && !CastMsg->_Data)
 	{
 		bForceVehicleReset = true; // This will reset the run for us
-		// bProcessedScenarioRequest = false;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
 		UE_LOG(LogASG, Warning, TEXT("ASG client went offline"));
 	}
 	
 	bASGClientOnline = CastMsg->_Data;
-
-	// auto Now = std::chrono::steady_clock::now();
-	// double MessagePeriod = 0.;
-
-	// if (bASGStatusClockInit)
-	// {
-	// 	MessagePeriod = std::chrono::duration_cast<std::chrono::duration<double> >(Now - LastASGStatusClockTime).count();
-	// }
-	// LastASGStatusClockTime = Now;
-	// bASGStatusClockInit = true;
-
-	// // Make sure the ASG is functioning properly so we can communicate with it
-	// if (MessagePeriod == 0.)
-	// {
-	// 	return;
-	// }
-	// if (MessagePeriod > 0. && MessagePeriod <= ASGStatusMessagePeriodThreshold)
-	// {
-	// 	if (!bASGClientOnline)
-	// 	{
-	// 		UE_LOG(LogASG, Display, TEXT("ASG back online"));
-	// 	}
-	// 	bASGClientOnline = true;
-	// }
-	// else if (MessagePeriod > ASGStatusMessagePeriodThreshold && bWaitingForScenarioRequest)
-	// {
-	// 	return; // Ignore the long wait from the scenario analysis
-	// }
-	// else
-	// {
-	// 	bASGClientOnline = false;
-	// 	bASGStatusClockInit = false;
-	// 	bProcessedScenarioRequest = false; // This will reset the run for us
-	// 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-	// 	UE_LOG(LogASG, Warning, TEXT("ASG is offline"));
-	// }
 }
 
 void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
@@ -516,46 +518,17 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 		return;
 	}
 
-	UE_LOG(LogASG, Display, TEXT("Received run scenario request %i"), CastRequest->scenario_number);
+	UE_LOG(LogASG, Display, TEXT("Received RunScenario request %i"), CastRequest->scenario_number);
 
 	bDoneTesting = CastRequest->done_testing;
 	if (!bDoneTesting)
 	{
-		// Clear SSAAttrMap
-		for (auto Elem : SSAAttrMap)
+		RequestedSSAArray.Empty();
+		RequestedSSAArray = CastRequest->ssa_array;
+		if (RequestedSSAArray.Num() == 0)
 		{
-			delete Elem.Value;
+			UE_LOG(LogASG, Warning, TEXT("RunScenario request field 'ssa_array' is empty"));
 		}
-		SSAAttrMap.Empty();
-
-		// Retrieve SSA info from ssa_info_array field
-		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray Array : CastRequest->ssa_array)
-		{
-			// int32 NumExpectedAttrs = SSAInfo.num_actors * EStructuralSceneAttribute::Size;
-			// int32 NumExpectedActors = SSAInfo.concat_attr_array.layout.dim[1].size;
-			// if (SSAInfo.concat_attr_array.layout.dim.Num() == 0)
-			// {
-			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.layout.dim field is empty"));
-			// 	return;
-			// }
-			// if (SSAInfo.concat_attr_array.layout.dim[0].stride != NumExpectedAttrs)
-			// {
-			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.layout.dim[0].stride is %i but expected %i."), CastRequest->ssa_array.layout.dim[0].stride, NumExpectedAttrs);
-			// 	return;
-			// }
-			// if (SSAInfo.concat_attr_array.layout.dim[0].size != SSAInfo.num_actors)
-			// {
-			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.layout.dim[0].stride is %i but expected %i."), CastRequest->ssa_array.layout.dim[0].stride, NumExpectedAttrs);
-			// 	return;
-			// }
-			// if (SSAInfo.concat_attr_array.data.Num() != NumExpectedAttrs)
-			// {
-			// 	UE_LOG(LogASG, Warning, TEXT("RunScenarioRequest.ssa_info_array[i].concat_attr_array.data field has %i elements but %i were expected"), SSAInfo.concat_attr_array.data.Num(), NumExpectedAttrs);
-			// 	return;
-			// }
-
-		}
-		
 
 		VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
 		VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);

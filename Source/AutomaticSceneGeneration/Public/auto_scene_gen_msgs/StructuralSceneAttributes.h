@@ -5,7 +5,7 @@
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
 		// This message defines the supported structural scene actor attributes
-		class AUTOMATICSCENEGENERATION_API StructuralSceneAttributes: public FROSBaseMsg {
+		class StructuralSceneAttributes: public FROSBaseMsg {
 		public:
 			StructuralSceneAttributes()
             {

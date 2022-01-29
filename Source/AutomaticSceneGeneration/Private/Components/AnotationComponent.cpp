@@ -20,7 +20,7 @@ void UAnnotationComponent::InitializeComponent()
 	Super::InitializeComponent();
 
 	// Load materials
-	FString AnnotationMaterialPath("/Game/Materials/M_AnnotationMaterial.M_AnnotationMaterial");
+	FString AnnotationMaterialPath("/AutomaticSceneGeneration/Materials/M_AnnotationMaterial.M_AnnotationMaterial");
 	FString DefaultMaterialPath("/Engine/EngineMaterials/DefaultMaterial.DefaultMaterial");
 
 	AnnotationMaterialBase = LoadObject<UMaterialInterface>(nullptr, *AnnotationMaterialPath, nullptr, LOAD_None, nullptr);

@@ -5,7 +5,7 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
-		class AUTOMATICSCENEGENERATION_API StructuralSceneActorArray: public FROSBaseMsg {
+		class StructuralSceneActorArray: public FROSBaseMsg {
 		public:
 			StructuralSceneActorArray()
             {
