@@ -66,14 +66,14 @@ void UAnnotationComponent::BeginPlay()
 		// We intentionally color the sky blue for the traversable color so the image looks more meaningful to a human
 		AddAnnotationColor(EAnnotationColor::Traversable, FColor(0, 0, 255, 255)); // Blue
 		AddAnnotationColor(EAnnotationColor::SemanticSegmentation, FColor(0, 0, 255, 255)); // Blue
-		UE_LOG(LogASG, Warning, TEXT("Found actor with tag 'sky'"));
+		UE_LOG(LogASG, Display, TEXT("Found actor with tag 'sky'"));
 	}
 
 	if (GetOwner()->ActorHasTag(TEXT("ground_plane")))
 	{
 		AddAnnotationColor(EAnnotationColor::Traversable, FColor(255, 255, 255, 255)); // White
 		AddAnnotationColor(EAnnotationColor::SemanticSegmentation, FColor(0, 255, 0, 255)); // Green
-		UE_LOG(LogASG, Warning, TEXT("Found actor with tag 'ground_plane'"));
+		UE_LOG(LogASG, Display, TEXT("Found actor with tag 'ground_plane'"));
 	}
 }
 

@@ -59,7 +59,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	
 	if (MaxSteeringAngle == 0.f)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Max steering angle is 0 degrees."));
+		UE_LOG(LogASG, Warning, TEXT("Max steering angle is 0 degrees. Check your wheel setups in the movement component."));
 	}
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetOwner()->GetGameInstance());
