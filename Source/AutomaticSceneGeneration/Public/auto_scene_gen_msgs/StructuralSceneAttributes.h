@@ -4,7 +4,7 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
-		// This message defines the supported structural scene actor attributes
+		// This message defines the supported attributes that can be modified on structural scene actors (SSAs)
 		class StructuralSceneAttributes: public FROSBaseMsg {
 		public:
 			StructuralSceneAttributes()

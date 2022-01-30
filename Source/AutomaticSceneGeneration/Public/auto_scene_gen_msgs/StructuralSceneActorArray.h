@@ -5,6 +5,7 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
+		// This message specifies all of the attributes for the actors of a specific SSA subclass that we wish to place in a UE4 scene
 		class StructuralSceneActorArray: public FROSBaseMsg {
 		public:
 			StructuralSceneActorArray()

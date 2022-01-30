@@ -12,6 +12,7 @@ namespace ROSMessages{
 			FAnalyzeScenarioResponse() = default;
 			~FAnalyzeScenarioResponse() = default;
 
+			// Indicates the ASG client received the AnalyzeScenario request
 			bool received;
 		};
 	}
