@@ -29,8 +29,6 @@ void AStructuralSceneActor::BeginPlay()
 	FVector Euler = GetActorRotation().Euler();
 	FVector Location = GetActorLocation();
 	FVector Scale = GetActorScale3D();
-
-	Attributes = {1.f, Location.X, Location.Y, Euler.Z, Scale.X};
 	bActive = true;
 
 	// Update traversability status and annotation color
@@ -63,52 +61,6 @@ uint16 AStructuralSceneActor::GetIDNumber() const
 	return IDNumber;
 }
 
-// void AStructuralSceneActor::SetStructuralAttributes(TArray<float> NewAttributes) 
-// {
-// 	if (NewAttributes.Num() != EStructuralSceneAttribute::Size)
-// 	{
-// 		UE_LOG(LogASG, Error, TEXT("New attribute array does not have length %i"), EStructuralSceneAttribute::Size);
-// 		return;
-// 	}
-// 	Attributes = NewAttributes;
-
-// 	// Update visibility
-// 	bool Visibility = (bool)FMath::RoundToInt(Attributes[EStructuralSceneAttribute::Visibility]);
-// 	SetActive(Visibility);
-
-// 	// Set new location
-// 	float NewX = Attributes[EStructuralSceneAttribute::X]; // [cm]
-// 	float NewY = Attributes[EStructuralSceneAttribute::Y]; // [cm]
-// 	float NewZ = GetActorLocation().Z;
-// 	SetActorLocation(FVector(NewX, NewY, NewZ));
-
-// 	// Set new rotation
-// 	float NewYaw = Attributes[EStructuralSceneAttribute::Yaw]; // [deg]
-// 	SetActorRotation(FRotator(0.f, NewYaw, 0.f));
-
-// 	// Set new scale
-// 	float NewScale = Attributes[EStructuralSceneAttribute::Scale];
-// 	if (NewScale < 0.1f)
-// 	{
-// 		NewScale = 0.1f;
-// 	}
-// 	SetActorScale3D(FVector(NewScale, NewScale, NewScale));
-
-// 	// Update traversability status and annotation color
-// 	if (bAlwaysTraversable)
-// 	{
-// 		bTraversable = true;
-// 	}
-// 	else
-// 	{
-// 		FVector Origin;
-// 		FVector BoxExtent;
-// 		GetActorBounds(true, Origin, BoxExtent);
-// 		bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
-// 	}
-// 	UpdateTraversabilitySettings();
-// }
-
 void AStructuralSceneActor::SetStructuralAttributes(bool bVisibile, FVector NewLocation, FRotator NewRotation, float NewScale) 
 {
 	SetActive(bVisibile);
@@ -138,7 +90,7 @@ void AStructuralSceneActor::SetStructuralAttributes(bool bVisibile, FVector NewL
 	UpdateTraversabilitySettings();
 }
 
-void AStructuralSceneActor::SetActive(bool bNewActive) 
+void AStructuralSceneActor::SetActive(bool bNewActive)
 {
 	if (bActive == bNewActive)
 	{

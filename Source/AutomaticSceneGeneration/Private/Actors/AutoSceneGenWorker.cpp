@@ -20,11 +20,11 @@
 #include "ROSIntegration/Public/geometry_msgs/Quaternion.h"
 #include "ROSIntegration/Public/nav_msgs/Path.h"
 
-#include "auto_scene_gen_msgs/WorkerStatus.h"
-#include "auto_scene_gen_srvs/RunScenarioRequest.h"
-#include "auto_scene_gen_srvs/RunScenarioResponse.h"
-#include "auto_scene_gen_srvs/AnalyzeScenarioRequest.h"
-#include "auto_scene_gen_srvs/AnalyzeScenarioResponse.h"
+#include "auto_scene_gen_msgs/msg/WorkerStatus.h"
+#include "auto_scene_gen_msgs/srv/RunScenarioRequest.h"
+#include "auto_scene_gen_msgs/srv/RunScenarioResponse.h"
+#include "auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h"
+#include "auto_scene_gen_msgs/srv/AnalyzeScenarioResponse.h"
 
 // Sets default values
 AAutoSceneGenWorker::AAutoSceneGenWorker()
@@ -135,13 +135,13 @@ void AAutoSceneGenWorker::BeginPlay()
 		
 		// AnalyzeScenario client
 		AnalyzeScenarioClient = NewObject<UService>(UService::StaticClass());
-		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioServiceName, TEXT("auto_scene_gen_srvs/AnalyzeScenario"));
+		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioServiceName, TEXT("auto_scene_gen_msgs/AnalyzeScenario"));
 		UE_LOG(LogASG, Display, TEXT("Registered ASG worker analyze scenario ROS client to: %s"), *AnalyzeScenarioServiceName);
 
 		// RunScenario service
 		RunScenarioService = NewObject<UService>(UService::StaticClass());
 		FString RunScenarioServiceName = FString::Printf(TEXT("/asg_worker%i/services/run_scenario"), WorkerID);
-		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_srvs/RunScenario"));
+		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_msgs/RunScenario"));
 		RunScenarioService->Advertise(std::bind(&AAutoSceneGenWorker::RunScenarioServiceCB, this, std::placeholders::_1, std::placeholders::_2), false);
 		UE_LOG(LogASG, Display, TEXT("Registered ASG worker run scenario ROS service: %s"), *RunScenarioServiceName);
 	}
@@ -320,10 +320,10 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	// Store requested SSA subclasses in array of TSubclassOf<AStructuralSceneActor> so we can access them later
 	TArray<TSubclassOf<AStructuralSceneActor>> RequestedSSASubclasses;
 
-	// Verify path_names to SSA subclasses
-	for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray SSAArray : RequestedSSAArray)
+	// Verify path_names to SSA subclasses (can only be done in game thread)
+	for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : RequestedSSAArray)
 	{
-		UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *SSAArray.path_name, nullptr, LOAD_None, nullptr);
+		UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Layout.path_name, nullptr, LOAD_None, nullptr);
 
 		if (CastBP)
 		{
@@ -333,13 +333,13 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 			}
 			else
 			{
-				UE_LOG(LogASG, Warning, TEXT("Failed to process RunScenarioRequest: UObject with path_name %s is not a child of AStructuralSceneActor"), *SSAArray.path_name);
+				UE_LOG(LogASG, Error, TEXT("Failed to process RunScenarioRequest: UObject with path_name %s is not a child of AStructuralSceneActor"), *Layout.path_name);
 				return;
 			}
 		}
 		else
 		{
-			UE_LOG(LogASG, Warning, TEXT("Failed to process RunScenarioRequest: Could not cast UObject with path_name %s to UBlueprintGeneratedClass"), *SSAArray.path_name);
+			UE_LOG(LogASG, Error, TEXT("Failed to process RunScenarioRequest: Could not cast UObject with path_name %s to UBlueprintGeneratedClass"), *Layout.path_name);
 			return;
 		}
 	}
@@ -356,24 +356,20 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 		}
 
 		// Find corresponding element in SSA array
-		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray SSAArray : RequestedSSAArray)
+		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : RequestedSSAArray)
 		{
-			if (Subclass->GetPathName().Equals(SSAArray.path_name))
+			if (Subclass->GetPathName().Equals(Layout.path_name))
 			{
-				TArray<bool> Visibilities;
 				TArray<FVector> Locations;
 				TArray<FRotator> Rotations;
-				TArray<float> Scales;
 
-				for (ROSMessages::auto_scene_gen_msgs::StructuralSceneAttributes Attr : SSAArray.attr_array)
+				for (int32 i = 0; i < Layout.num_instances; i++)
 				{
-					Visibilities.Emplace(Attr.visible);
-					Locations.Emplace(FVector(Attr.x, Attr.y, GroundPlaneZHeight));
-					Rotations.Emplace(FRotator(0, Attr.yaw, 0));
-					Scales.Emplace(Attr.scale);
+					Locations.Emplace(FVector(Layout.x_positions[i], Layout.y_positions[i], GroundPlaneZHeight));
+					Rotations.Emplace(FRotator(0, Layout.yaw_angles[i], 0));
 				}
 				
-				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, Locations, Rotations, Scales);
+				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Layout.visibilities, Locations, Rotations, Layout.scale_factors);
 				break;
 			}
 		}
@@ -410,7 +406,7 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 {
 	if (ROSInst && ASGVehicle && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
-		TSharedPtr<ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest());
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
 		// ROSMessages::nav_msgs::Path VehiclePath;
 		// ASGVehicle->GetVehiclePath(VehiclePath);
@@ -438,7 +434,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	DistanceToGoal.Z = 0;
 	if (DistanceToGoal.Size() <= GoalRadius)
 	{
-		TSharedPtr<ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioRequest());
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
 		// ROSMessages::nav_msgs::Path VehiclePath;
 		// ASGVehicle->GetVehiclePath(VehiclePath);
@@ -472,13 +468,13 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::std_msgs::Bool>(Msg);
 	if (!CastMsg)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to std_msgs/Bool"));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to std_msgs/Bool"));
 		return;
 	}
 
 	if (!bASGClientOnline && CastMsg->_Data)
 	{
-		UE_LOG(LogASG, Warning, TEXT("ASG client back online"));
+		UE_LOG(LogASG, Display, TEXT("ASG client back online"));
 	}
 
 	// We assume the ASG client is configured to send an offline signal whenver it gets shutdown
@@ -486,7 +482,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 	{
 		bForceVehicleReset = true; // This will reset the run for us
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-		UE_LOG(LogASG, Warning, TEXT("ASG client went offline"));
+		UE_LOG(LogASG, Display, TEXT("ASG client went offline"));
 	}
 	
 	bASGClientOnline = CastMsg->_Data;
@@ -494,10 +490,10 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 
 void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_srvs::FAnalyzeScenarioResponse>(Response);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioResponse>(Response);
 	if (!CastResponse)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to auto_scene_gen_srvs/AnalyzeScenario_Response"));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/AnalyzeScenarioResponse"));
 		return;
 	}
 	UE_LOG(LogASG, Display, TEXT("Analyze scenario request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
@@ -505,16 +501,16 @@ void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceRe
 
 void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest> Request, TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_srvs::FRunScenarioRequest>(Request);
-	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_srvs::FRunScenarioResponse>(Response);
+	auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FRunScenarioRequest>(Request);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FRunScenarioResponse>(Response);
 	if (!CastRequest)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast Request to auto_scene_gen_srvs/RunScenarioRequest"));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast Request to auto_scene_gen_msgs/RunScenarioRequest"));
 		return;
 	}
 	if (!CastResponse)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast Response to auto_scene_gen_srvs/RunScenarioResponse"));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast Response to auto_scene_gen_msgs/RunScenarioResponse"));
 		return;
 	}
 
@@ -523,18 +519,18 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	bDoneTesting = CastRequest->done_testing;
 	if (!bDoneTesting)
 	{
-		RequestedSSAArray.Empty();
-		RequestedSSAArray = CastRequest->ssa_array;
-		if (RequestedSSAArray.Num() == 0)
-		{
-			UE_LOG(LogASG, Warning, TEXT("RunScenario request field 'ssa_array' is empty"));
-		}
-
+		ScenarioNumber = CastRequest->scenario_number;
 		VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
 		VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);
 		VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);
 
-		ScenarioNumber = CastRequest->scenario_number;
+		RequestedSSAArray.Empty();
+		RequestedSSAArray = CastRequest->ssa_array;
+		if (RequestedSSAArray.Num() == 0)
+		{
+			UE_LOG(LogASG, Error, TEXT("RunScenario request field 'ssa_array' is empty"));
+		}
+
 		bWaitingForScenarioRequest = false;
 		bProcessedScenarioRequest = false;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;

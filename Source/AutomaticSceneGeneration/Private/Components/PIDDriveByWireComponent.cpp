@@ -14,7 +14,7 @@
 #include "ROSIntegration/Classes/RI/Topic.h"
 #include "ROSIntegration/Public/ROSTime.h"
 #include "ROSIntegration/Public/geometry_msgs/Pose.h"
-#include "vehicle_msgs/PhysXControl.h"
+#include "vehicle_msgs/msg/PhysXControl.h"
 
 // Sets default values for this component's properties
 UPIDDriveByWireComponent::UPIDDriveByWireComponent()
@@ -41,7 +41,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	Vehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
 	if (!Vehicle)
 	{
-		UE_LOG(LogASG, Error, TEXT("Drive by wire compent owner must be a AAutoSceneGenVehicle."));
+		UE_LOG(LogASG, Error, TEXT("Drive-by-wire component owner must be an AAutoSceneGenVehicle."));
 		return;
 	}
 
@@ -171,7 +171,7 @@ void UPIDDriveByWireComponent::BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::geometry_msgs::Pose>(Msg);
 	if (!CastMsg)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to geometry_msgs/Pose."));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to geometry_msgs/Pose."));
 		bBypassController = false;
 		return;
 	}
@@ -202,7 +202,7 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::vehicle_msgs::PhysXControl>(Msg);
 	if (!CastMsg)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Failed to cast msg to vehicle_msgs/PhysXControl."));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to vehicle_msgs/PhysXControl."));
 		return;
 	}
 	if (!bEnabled)
@@ -229,7 +229,7 @@ void UPIDDriveByWireComponent::SetThrottleInput(float DeltaTime)
 		return;
 	}
 	
-	float Error = DesiredVelocity - VehicleMovementComponent->GetForwardSpeed()/100.f; // Error in [m/s]
+	float Error = DesiredVelocity - VehicleMovementComponent->GetForwardSpeed(); // Error in [cm/s]
 	float ThrottleInput = KpThrottle * Error + KdThrottle * Error / DeltaTime;
 	VehicleMovementComponent->SetThrottleInput(ThrottleInput);
 }

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ROSIntegration/Private/Conversion/Messages/BaseMessageConverter.h"
-#include "vehicle_msgs/PhysXControl.h"
+#include "vehicle_msgs/msg/PhysXControl.h"
 #include "VehicleMsgsPhysXControlConverter.generated.h"
 
 UCLASS()

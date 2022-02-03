@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "auto_scene_gen_msgs/StructuralSceneActorArray.h"
+#include "auto_scene_gen_msgs/msg/StructuralSceneActorLayout.h"
 #include <chrono>
 #include "AutoSceneGenWorker.generated.h"
 
@@ -31,6 +31,10 @@ public: /****************************** AAutoSceneGenWorker ********************
 	uint8 GetWorkerID() const;
 
 private: /****************************** AAutoSceneGenWorker ******************************/
+	// ASG Worker ID number
+	UPROPERTY(EditAnywhere)
+	uint8 WorkerID = 0;
+
 	/**
 	 * Structural scene actor subclasses that will be placed in the scene for debugging purposes. 
 	 * They will get overwritten upon processing the new RunScenario request.
@@ -39,7 +43,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
 
 	// Keeps track of the incoming requested SSA array
-	TArray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray> RequestedSSAArray;
+	TArray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout> RequestedSSAArray;
 
 	// Keeps track of the SSA maintainers
 	UPROPERTY()
@@ -51,10 +55,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// Number of structural scene actor instances allowed per type
 	UPROPERTY(EditAnywhere)
 	uint16 DebugNumSSAInstances = 100;
-
-	// ASG Worker ID number
-	UPROPERTY(EditAnywhere)
-	uint8 WorkerID = 0;
 
 	// UPROPERTY(EditAnywhere)
 	// float GlobalTimeDilation = 1.f;

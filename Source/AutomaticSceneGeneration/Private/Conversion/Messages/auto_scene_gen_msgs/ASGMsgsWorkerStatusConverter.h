@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ROSIntegration/Private/Conversion/Messages/BaseMessageConverter.h"
-#include "auto_scene_gen_msgs/WorkerStatus.h"
+#include "auto_scene_gen_msgs/msg/WorkerStatus.h"
 #include "ASGMsgsWorkerStatusConverter.generated.h"
 
 UCLASS()
@@ -17,7 +17,6 @@ public:
 
 	virtual bool ConvertIncomingMessage(const ROSBridgePublishMsg* message, TSharedPtr<FROSBaseMsg> &BaseMsg);
 	virtual bool ConvertOutgoingMessage(TSharedPtr<FROSBaseMsg> BaseMsg, bson_t** message);
-
 
 	static bool _bson_extract_child_msg(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::WorkerStatus *msg, bool LogOnErrors = true)
 	{

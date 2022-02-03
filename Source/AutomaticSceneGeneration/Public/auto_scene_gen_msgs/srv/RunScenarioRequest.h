@@ -3,10 +3,10 @@
 #include <CoreMinimal.h>
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "ROSIntegration/Public/geometry_msgs/Point.h"
-#include "auto_scene_gen_msgs/StructuralSceneActorArray.h"
+#include "auto_scene_gen_msgs/msg/StructuralSceneActorLayout.h"
 
 namespace ROSMessages {
-	namespace auto_scene_gen_srvs {
+	namespace auto_scene_gen_msgs {
 		// RunScenario requests are to be submitted by the ASG client. They describe the scenario that the ASG worker should run
 		class FRunScenarioRequest : public FROSBaseServiceRequest {
 
@@ -29,7 +29,7 @@ namespace ROSMessages {
 			geometry_msgs::Point vehicle_goal_location;
 
 			// An array defining all of the types of SSAs and their attributes from which to place in the scene
-			TArray<auto_scene_gen_msgs::StructuralSceneActorArray> ssa_array;
+			TArray<auto_scene_gen_msgs::StructuralSceneActorLayout> ssa_array;
 		};
 	}
 }

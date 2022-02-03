@@ -6,7 +6,7 @@
 #include "GameFramework/Actor.h"
 #include "StructuralSceneActor.generated.h"
 
-// tructural scene attributes
+// Structural scene attributes (enum currently not used anymore)
 enum EStructuralSceneAttribute
 {
 	Visibility,
@@ -42,11 +42,12 @@ public: /****************************** AStructuralSceneActor ******************
 
 	uint16 GetIDNumber() const;
 
-	// void SetStructuralAttributes(TArray<float> NewAttributes);
 	void SetStructuralAttributes(bool bVisibile, FVector NewLocation, FRotator NewRotation, float NewScale);
 
+	// Use this to set if an actor is visible. We use the term "active" because several settings get modified.
 	void SetActive(bool bNewActive);
 
+	// Indicates if an actor is active/visible
 	bool IsActive() const;
 
 	bool IsTraversable() const;
@@ -63,10 +64,9 @@ private: /****************************** AStructuralSceneActor *****************
 	UPROPERTY(EditAnywhere)
 	bool bAlwaysTraversable = false;
 
-	TArray<float> Attributes;
+	uint16 IDNumber; // Currently not used
 
-	uint16 IDNumber;
-
+	// Indicates if the actor is active (visible, can tick, etc.)
 	bool bActive = true;
 
 	bool bTraversable = false;

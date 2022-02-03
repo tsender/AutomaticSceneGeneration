@@ -4,10 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "ROSIntegration/Private/Conversion/Services/BaseRequestConverter.h"
-#include "ROSIntegration/Private/Conversion/Messages/BaseMessageConverter.h"
 #include "ROSIntegration/Private/Conversion/Messages/geometry_msgs/GeometryMsgsPointConverter.h"
-#include "Conversion/Messages/auto_scene_gen_msgs/ASGMsgsStructuralSceneActorArrayConverter.h"
-#include "auto_scene_gen_srvs/RunScenarioRequest.h"
+#include "Conversion/Messages/auto_scene_gen_msgs/ASGMsgsStructuralSceneActorLayoutConverter.h"
+#include "auto_scene_gen_msgs/srv/RunScenarioRequest.h"
 #include "ASGSrvsRunScenarioRequestConverter.generated.h"
 
 
@@ -24,7 +23,7 @@ public:
 
 	virtual TSharedPtr<FROSBaseServiceRequest> AllocateConcreteRequest() override;
 
-	static bool _bson_extract_child_request(bson_t *b, FString key, ROSMessages::auto_scene_gen_srvs::FRunScenarioRequest *request, bool LogOnErrors = true)
+	static bool _bson_extract_child_request(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::FRunScenarioRequest *request, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
 
@@ -35,10 +34,10 @@ public:
 		request->vehicle_start_yaw = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_start_yaw", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		KeyFound = UGeometryMsgsPointConverter::_bson_extract_child_point(b, key + ".vehicle_goal_location", &request->vehicle_goal_location, LogOnErrors); if (!KeyFound) return false;
 		
-		request->ssa_array = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray>(key + ".ssa_array", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
+		request->ssa_array = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout>(key + ".ssa_array", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
 		{
-			ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray elem;
-			subKeyFound = UASGMsgsStructuralSceneActorArrayConverter::_bson_extract_child_msg(subMsg, subKey, &elem, LogOnErrors);
+			ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout elem;
+			subKeyFound = UASGMsgsStructuralSceneActorLayoutConverter::_bson_extract_child_msg(subMsg, subKey, &elem, LogOnErrors);
 			return elem;
 		}, LogOnErrors);
 		if (!KeyFound) return false;
@@ -46,7 +45,7 @@ public:
 		return true;
 	}
 
-	static void _bson_append_request(bson_t *b, const ROSMessages::auto_scene_gen_srvs::FRunScenarioRequest *request)
+	static void _bson_append_request(bson_t *b, const ROSMessages::auto_scene_gen_msgs::FRunScenarioRequest *request)
 	{
 		BSON_APPEND_BOOL(b, "done_testing", request->done_testing);
 		BSON_APPEND_INT32(b, "scenario_number", request->scenario_number);
@@ -55,9 +54,9 @@ public:
 		BSON_APPEND_DOUBLE(b, "vehicle_start_yaw", request->vehicle_start_yaw);
 		UGeometryMsgsPointConverter::_bson_append_child_point(b, "vehicle_goal_location", &request->vehicle_goal_location);
 
-		UBaseMessageConverter::_bson_append_tarray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray>(b, "ssa_array", request->ssa_array, [](bson_t* msg, const char* key, const ROSMessages::auto_scene_gen_msgs::StructuralSceneActorArray &ssa_info)
+		UBaseMessageConverter::_bson_append_tarray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout>(b, "ssa_array", request->ssa_array, [](bson_t* msg, const char* key, const ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout &ssa_info)
 		{
-			UASGMsgsStructuralSceneActorArrayConverter::_bson_append_child_msg(msg, key, &ssa_info);
+			UASGMsgsStructuralSceneActorLayoutConverter::_bson_append_child_msg(msg, key, &ssa_info);
 		});
 	}
 	

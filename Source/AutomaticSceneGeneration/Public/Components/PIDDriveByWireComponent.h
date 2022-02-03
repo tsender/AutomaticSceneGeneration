@@ -54,17 +54,17 @@ private: /****************************** UPIDDriveByWireComponent **************
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
 	bool bManualDrive = false;
 
-	// Desired max manual speed [m/s]
+	// Desired max manual speed [cm/s]
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
-	float MaxManualDriveSpeed = 5.;
+	float MaxManualDriveSpeed = 500.;
 	
-	// Kp coefficient for PID throttle control. Note, control velocity is in [m/s]
+	// Kp coefficient for PID throttle control. NOTE: Control velocity is in [cm/s]
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
-	float KpThrottle = 0.02;
+	float KpThrottle = 0.0002;
 
-	// Kd coefficient for PID throttle control. Note, control velocity is in [m/s]
+	// Kd coefficient for PID throttle control. NOTE: Control velocity is in [cm/s]
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
-	float KdThrottle = 0.07;
+	float KdThrottle = 0.0007;
 
 	UPROPERTY()
 	class UROSIntegrationGameInstance* ROSInst;

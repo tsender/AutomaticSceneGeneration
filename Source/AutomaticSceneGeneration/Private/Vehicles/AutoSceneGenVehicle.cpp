@@ -172,7 +172,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     TickNumber = 0;
     ResetTime = 0.f;
 
-    UE_LOG(LogASG, Warning, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
+    UE_LOG(LogASG, Display, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
 }
 
 void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, ROSMessages::nav_msgs::Path &Path) 
@@ -270,7 +270,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             HeaderSequence = 1;
 
             NominalVehicleZLocation = GetActorLocation().Z;
-            UE_LOG(LogASG, Warning, TEXT("Vehicle is enabled."));
+            UE_LOG(LogASG, Display, TEXT("Vehicle is enabled."));
         }
         else
         {
@@ -301,7 +301,7 @@ void AAutoSceneGenVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActo
     if (!bEnabled) return;
     
     AStructuralSceneActor* SSAActor = Cast<AStructuralSceneActor>(OtherActor);
-    if (SSAActor)
+    if (SSAActor && SSAActor->IsTraversable())
     {
         NumSSAHit++;
         UE_LOG(LogASG, Warning, TEXT("Vehicle hit structural scene actor %s."), *SSAActor->GetName());

@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
-#include "auto_scene_gen_msgs/StructuralSceneAttributes.h"
 #include "StructuralSceneActorMaintainer.generated.h"
 
 /**

@@ -4,7 +4,7 @@
 #include "ROSIntegration/Public/ROSBaseServiceResponse.h"
 
 namespace ROSMessages {
-	namespace auto_scene_gen_srvs {
+	namespace auto_scene_gen_msgs {
 		// Once the ASG worker receives the RunScenario request, it will submit a brief response acknowledging receipt of the request
 		class FRunScenarioResponse : public FROSBaseServiceResponse {
 

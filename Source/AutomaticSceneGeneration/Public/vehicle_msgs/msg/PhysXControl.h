@@ -16,7 +16,7 @@ namespace ROSMessages{
                 _MessageType = "vehicle_msgs/PhysXControl";
 			}
 
-			float longitudinal_velocity; // [m/s]
+			float longitudinal_velocity; // [cm/s]
 			float steering_angle; // Range [-MaxSteeringAngle, +MaxSteeringAngle] [deg]
 			bool handbrake; // false = disengaged, true = engaged
 		};
