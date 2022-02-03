@@ -49,6 +49,9 @@ void AAutoSceneGenVehicle::BeginPlay()
     PathSequence = 0; // Gets incremented when enabled
     NumSSAHit = 0;
 
+    // Start with handbrake engaged
+    DriveByWireComponent->SetHandbrakeInput(true);
+
     ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
 	if (ROSInst)
 	{
@@ -164,6 +167,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     GetMesh()->SetAllPhysicsAngularVelocityInDegrees(FVector(0.f));
     DriveForward(0.f);
     SteerRight(0.f);
+    DriveByWireComponent->SetHandbrakeInput(true);
 
     SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
     bEnabled = false;
