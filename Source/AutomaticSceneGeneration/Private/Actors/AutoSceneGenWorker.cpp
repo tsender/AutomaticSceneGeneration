@@ -482,7 +482,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 	{
 		bForceVehicleReset = true; // This will reset the run for us
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-		UE_LOG(LogASG, Display, TEXT("ASG client went offline"));
+		UE_LOG(LogASG, Warning, TEXT("ASG client went offline"));
 	}
 	
 	bASGClientOnline = CastMsg->_Data;

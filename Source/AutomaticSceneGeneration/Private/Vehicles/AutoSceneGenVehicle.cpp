@@ -71,7 +71,7 @@ void AAutoSceneGenVehicle::BeginPlay()
 
         FString StatusTopic = TopicPrefix + FString("enable_status");
 		EnableStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("std_msgs/Bool"));
-
+        EnableStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized evaluation vehicle ROS topic: %s"), *StatusTopic);
 	}
 }

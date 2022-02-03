@@ -158,9 +158,9 @@ void UCompleteCameraSensor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (ROSInst)
 	{
 		ColorCamPub->Unadvertise();
-		DepthCamPub->Unadvertise();
-		TravCamPub->Unadvertise();
-		SegCamPub->Unadvertise();
+		if (bEnableDepthCam) DepthCamPub->Unadvertise();
+		if (bEnableTravCam) TravCamPub->Unadvertise();
+		if (bEnableSegCam) SegCamPub->Unadvertise();
 	}
 }
 
