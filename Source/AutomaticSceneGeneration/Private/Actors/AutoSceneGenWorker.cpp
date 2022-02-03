@@ -523,6 +523,7 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 		VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
 		VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);
 		VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);
+		GoalRadius = CastRequest->goal_radius;
 
 		RequestedSSAArray.Empty();
 		RequestedSSAArray = CastRequest->ssa_array;

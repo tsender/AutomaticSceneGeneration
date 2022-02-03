@@ -70,14 +70,14 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.
 	UPROPERTY(EditAnywhere)
-	float DebugSafetyRadius = 5000.f; // [cm]
+	float DebugSafetyRadius = 500.f; // [cm]
 
 	/**
 	 * If vehicle is within this distance in [cm] from the goal point, then the vehicle has reached its destination. 
 	 * This distance accounts for the turning radius of the vehicle. Without this, then the vehicle may end up circling the goal point for a really long time, which we don't want.
 	 */
 	UPROPERTY(EditAnywhere)
-	float GoalRadius = 5000.f; // [cm]
+	float GoalRadius = 500.f; // [cm]
 	
 	// The starting point for the vehicle in [cm]
 	UPROPERTY(EditAnywhere)

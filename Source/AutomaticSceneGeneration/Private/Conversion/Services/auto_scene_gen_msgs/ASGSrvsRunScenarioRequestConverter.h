@@ -32,7 +32,9 @@ public:
 
 		KeyFound = UGeometryMsgsPointConverter::_bson_extract_child_point(b, key + ".vehicle_start_location", &request->vehicle_start_location, LogOnErrors); if (!KeyFound) return false;
 		request->vehicle_start_yaw = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_start_yaw", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		
 		KeyFound = UGeometryMsgsPointConverter::_bson_extract_child_point(b, key + ".vehicle_goal_location", &request->vehicle_goal_location, LogOnErrors); if (!KeyFound) return false;
+		request->goal_radius = UBaseMessageConverter::GetDoubleFromBSON(key + ".goal_radius", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		
 		request->ssa_array = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout>(key + ".ssa_array", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
 		{
@@ -52,7 +54,9 @@ public:
 
 		UGeometryMsgsPointConverter::_bson_append_child_point(b, "vehicle_start_location", &request->vehicle_start_location);
 		BSON_APPEND_DOUBLE(b, "vehicle_start_yaw", request->vehicle_start_yaw);
+		
 		UGeometryMsgsPointConverter::_bson_append_child_point(b, "vehicle_goal_location", &request->vehicle_goal_location);
+		BSON_APPEND_DOUBLE(b, "goal_radius", request->goal_radius);
 
 		UBaseMessageConverter::_bson_append_tarray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout>(b, "ssa_array", request->ssa_array, [](bson_t* msg, const char* key, const ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout &ssa_info)
 		{

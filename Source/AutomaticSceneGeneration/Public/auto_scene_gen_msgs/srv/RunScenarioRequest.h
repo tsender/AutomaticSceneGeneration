@@ -28,6 +28,9 @@ namespace ROSMessages {
 			// The Z location is ignored and will populated automatically by the ASG
 			geometry_msgs::Point vehicle_goal_location;
 
+			// If vehicle is within this distance in [cm] of the goal location, then we assume the vehicle succeeded.
+			float goal_radius;
+
 			// An array defining all of the types of SSAs and their attributes from which to place in the scene
 			TArray<auto_scene_gen_msgs::StructuralSceneActorLayout> ssa_array;
 		};
