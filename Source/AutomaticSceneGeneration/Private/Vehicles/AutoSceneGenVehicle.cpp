@@ -265,6 +265,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             bEnabled = true;
             CheckEnableTickNumber = 0;
             DriveByWireComponent->EnableDriveByWire(true);
+            NumSSAHit = 0;
             
             // Reset the internal VehiclePath message here
             VehiclePath.poses.Empty();
