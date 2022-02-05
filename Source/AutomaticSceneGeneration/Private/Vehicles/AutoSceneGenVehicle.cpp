@@ -35,7 +35,7 @@ void AAutoSceneGenVehicle::BeginPlay()
 {
     Super::BeginPlay();
 
-    // Make sure skeletal mesh is set to generate hit events
+    // NOTE: Make sure skeletal mesh is set to generate hit events
     GetMesh()->OnComponentHit.AddDynamic(this, &AAutoSceneGenVehicle::OnHit);
     // GetMesh()->OnComponentBeginOverlap.AddDynamic(this, &AAutoSceneGenVehicle::OnBeginOverlap);
     AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(0, 0, 0, 255));
@@ -305,10 +305,10 @@ void AAutoSceneGenVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActo
     if (!bEnabled) return;
     
     AStructuralSceneActor* SSAActor = Cast<AStructuralSceneActor>(OtherActor);
-    if (SSAActor && SSAActor->IsTraversable())
+    if (SSAActor && !SSAActor->IsTraversable())
     {
         NumSSAHit++;
-        UE_LOG(LogASG, Warning, TEXT("Vehicle hit structural scene actor %s."), *SSAActor->GetName());
+        UE_LOG(LogASG, Warning, TEXT("Vehicle hit AStructuralSceneActor %s."), *SSAActor->GetName());
     }
 }
 

@@ -116,6 +116,7 @@ bool AStructuralSceneActor::IsTraversable() const
 void AStructuralSceneActor::UpdateTraversabilitySettings()
 {	
 	// Must manually set the traversable annotation material
+	// I'm not sure exactly which ones to set, so I'm just gonna do everyhing...
 	if (bTraversable)
 	{
 		AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(255, 255, 255, 255));
@@ -124,7 +125,6 @@ void AStructuralSceneActor::UpdateTraversabilitySettings()
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Ignore);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Ignore);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Ignore);
-		// UE_LOG(LogASG, Error, TEXT("SSA %s collision: none"), *GetName());
 	}
 	else
 	{
@@ -132,10 +132,9 @@ void AStructuralSceneActor::UpdateTraversabilitySettings()
 		StaticMeshComponent->SetNotifyRigidBodyCollision(true);
 		StaticMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		StaticMeshComponent->SetCollisionObjectType(ECollisionChannel::ECC_WorldStatic);
-		// StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Block);
+		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldDynamic, ECollisionResponse::ECR_Block);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Pawn, ECollisionResponse::ECR_Block);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Block);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Block);
-		// UE_LOG(LogASG, Error, TEXT("SSA %s collision: query and physics"), *GetName());
 	}
 }
