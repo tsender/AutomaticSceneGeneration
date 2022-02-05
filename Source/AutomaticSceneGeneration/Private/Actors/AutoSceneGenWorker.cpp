@@ -406,6 +406,7 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 {
 	if (ROSInst && ASGVehicle && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
+		UE_LOG(LogASG, Display, TEXT("Vehicle has crashed. Vehicle has failed."));
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
 		// ROSMessages::nav_msgs::Path VehiclePath;
@@ -419,7 +420,7 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 		Req->succeeded = false;
 		// Req->vehicle_path = VehiclePath;
 
-		UE_LOG(LogASG, Warning, TEXT("Submitting analyze scenario request %i"), ScenarioNumber);
+		UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 		AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 		return true;
 	}
@@ -434,6 +435,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	DistanceToGoal.Z = 0;
 	if (DistanceToGoal.Size() <= GoalRadius)
 	{
+		UE_LOG(LogASG, Display, TEXT("Vehicle reached the goal radius. Vehicle has succeeded."));
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
 		// ROSMessages::nav_msgs::Path VehiclePath;
@@ -450,14 +452,14 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 			Req->succeeded = true;
 			// Req->vehicle_path = VehiclePath;
 
-			UE_LOG(LogASG, Display, TEXT("Submitting analyze scenario request %i"), ScenarioNumber);
+			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 			return true;
 		}
 		if (!ROSInst)
 		{
 			RandomizeDebugStructuralSceneActors();
-			UE_LOG(LogASG, Display, TEXT("ASG offline. Generating new random scene."));
+			UE_LOG(LogASG, Display, TEXT("No ROSIntegration game instance. Generating new random scene."));
 		}
 	}
 	return false;
@@ -496,7 +498,7 @@ void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceRe
 		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/AnalyzeScenarioResponse"));
 		return;
 	}
-	UE_LOG(LogASG, Display, TEXT("Analyze scenario request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
+	UE_LOG(LogASG, Display, TEXT("AnalyzeScenario request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
 }
 
 void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest> Request, TSharedPtr<FROSBaseServiceResponse> Response) 
