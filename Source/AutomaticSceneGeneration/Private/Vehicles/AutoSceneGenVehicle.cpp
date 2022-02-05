@@ -175,6 +175,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     DriveByWireComponent->EnableDriveByWire(false);
     TickNumber = 0;
     ResetTime = 0.f;
+    NumSSAHit = 0;
 
     UE_LOG(LogASG, Display, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
 }
@@ -265,7 +266,6 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             bEnabled = true;
             CheckEnableTickNumber = 0;
             DriveByWireComponent->EnableDriveByWire(true);
-            NumSSAHit = 0;
             
             // Reset the internal VehiclePath message here
             VehiclePath.poses.Empty();
