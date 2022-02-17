@@ -16,8 +16,7 @@
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
 #include "ROSIntegration/Public/ROSTime.h"
-#include "ROSIntegration/Public/std_msgs/Bool.h"
-#include "ROSIntegration/Public/nav_msgs/Path.h"
+#include "auto_scene_gen_msgs/msg/EnableStatus.h"
 
 
 AAutoSceneGenVehicle::AAutoSceneGenVehicle() 
@@ -73,7 +72,7 @@ void AAutoSceneGenVehicle::BeginPlay()
         EnableStatusPub =  NewObject<UTopic>(UTopic::StaticClass());
 
         FString StatusTopic = TopicPrefix + FString("enable_status");
-		EnableStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("std_msgs/Bool"));
+		EnableStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("auto_scene_gen_msgs/EnableStatus"));
         EnableStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized evaluation vehicle ROS topic: %s"), *StatusTopic);
 	}
@@ -82,7 +81,7 @@ void AAutoSceneGenVehicle::BeginPlay()
 void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 {
     Super::EndPlay(EndPlayReason);
-    VehiclePath.poses.Empty();
+    VehicleTrajectory.Empty();
     if (ROSInst)
     {
         EnableStatusPub->Unadvertise();
@@ -97,28 +96,45 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
     if (ROSInst)
     {
-        TSharedPtr<ROSMessages::std_msgs::Bool> EnableStatusMessage(new ROSMessages::std_msgs::Bool(bEnabled));
-        bool Success = EnableStatusPub->Publish(EnableStatusMessage);
+        TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMessage(new ROSMessages::auto_scene_gen_msgs::EnableStatus(bEnabled));
+        EnableStatusPub->Publish(EnableStatusMessage);
 
         if (bEnabled)
         {
-            // Add vehicle's location to VehiclePath. Covnert to conventional NWU coordinate frame.
-            ROSMessages::geometry_msgs::PoseStamped PoseStamped;
-            PoseStamped.header.seq = HeaderSequence;
-            PoseStamped.header.time = FROSTime::Now();
-            PoseStamped.header.frame_id = VehicleName;
+            ROSMessages::nav_msgs::Odometry Odometry;
+            TArray<double> Cov;
+            Cov.Init(0., 36); // Don't care about covariance
+            
+            Odometry.header.seq = HeaderSequence;
+            Odometry.header.time = FROSTime::Now();
+            Odometry.header.frame_id = FString("world"); // Pose is w.r.t world frame
+            Odometry.child_frame_id = VehicleName; // Velocity is expressed in vehicle frame
 
+            // Position
             ROSMessages::geometry_msgs::Point Location(GetActorLocation()/100.f); // Put into [m]
             Location.y *= -1;
-            PoseStamped.pose.position = Location;
+            Odometry.pose.pose.position = Location;
+            Odometry.pose.covariance = Cov;
 
+            // Orientation
             ROSMessages::geometry_msgs::Quaternion Quaternion;
             Quaternion = GetActorQuat();
             Quaternion.x *= -1;
             Quaternion.z *= -1;
-            PoseStamped.pose.orientation = Quaternion;
+            Odometry.pose.pose.orientation = Quaternion;
 
-            VehiclePath.poses.Emplace(PoseStamped);
+            // Linear Velocity
+            FVector LinearVelocity = GetMesh()->GetPhysicsLinearVelocity()/100.f; // Put into [m/s]
+            LinearVelocity.Y *= -1;
+            Odometry.twist.twist.linear = ROSMessages::geometry_msgs::Vector3(LinearVelocity);
+
+            // Angular Velocity
+            FVector AngularVelocity = GetMesh()->GetPhysicsAngularVelocityInRadians();
+            AngularVelocity.Y *= -1;
+            Odometry.twist.twist.angular = ROSMessages::geometry_msgs::Vector3(AngularVelocity);
+            Odometry.twist.covariance = Cov;
+
+            VehicleTrajectory.Emplace(Odometry);
             HeaderSequence++;
         }
     }
@@ -180,9 +196,9 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     UE_LOG(LogASG, Display, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
 }
 
-void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, ROSMessages::nav_msgs::Path &Path) 
+void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::nav_msgs::Odometry> &Trajectory) 
 {
-    Path = VehiclePath;
+    Trajectory = VehicleTrajectory;
     ResetVehicle(NewLocation, NewRotation);
 }
 
@@ -254,24 +270,21 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             return;
         }
 
-        // Check distance traveled over 10 ticks
-        if ((TickNumber - CheckEnableTickNumber) % 10 == 0 )
+        // Check distance traveled over X ticks
+        if ((TickNumber - CheckEnableTickNumber) % 20 == 0 )
         {
             DistanceMoved = (GetActorLocation() - CheckEnableLocation).Size();
         }
         
         // If criteria below is met, then we can assume the vehicle was reset properly without issue
-        if (DistanceMoved <= 1.f && TransVel <= 10.f && AngVel <= 1.f)
+        if (DistanceMoved <= 1.f && TransVel <= 5.f && AngVel <= 1.f)
         {
             bEnabled = true;
             CheckEnableTickNumber = 0;
             DriveByWireComponent->EnableDriveByWire(true);
             
-            // Reset the internal VehiclePath message here
-            VehiclePath.poses.Empty();
-            VehiclePath.header.frame_id = VehicleName;
-            VehiclePath.header.time = FROSTime::Now();
-            VehiclePath.header.seq = ++PathSequence;
+            // Reset these here
+            VehicleTrajectory.Empty();
             HeaderSequence = 1;
 
             NominalVehicleZLocation = GetActorLocation().Z;
@@ -290,9 +303,9 @@ float AAutoSceneGenVehicle::GetNominalVehicleZLocation()
     return NominalVehicleZLocation;
 }
 
-void AAutoSceneGenVehicle::GetVehiclePath(class ROSMessages::nav_msgs::Path &Path) 
+void AAutoSceneGenVehicle::GetVehicleTrajectory(TArray<ROSMessages::nav_msgs::Odometry> &Trajectory) 
 {
-    Path = VehiclePath;
+    Trajectory = VehicleTrajectory;
 }
 
 int32 AAutoSceneGenVehicle::GetNumStructuralSceneActorsHit() const

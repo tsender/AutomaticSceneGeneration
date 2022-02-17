@@ -27,7 +27,6 @@ public:
 	{
 		bool KeyFound = false;
 
-		request->done_testing = UBaseMessageConverter::GetBoolFromBSON(key + ".done_testing", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->scenario_number = UBaseMessageConverter::GetInt32FromBSON(key + ".scenario_number", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		KeyFound = UGeometryMsgsPointConverter::_bson_extract_child_point(b, key + ".vehicle_start_location", &request->vehicle_start_location, LogOnErrors); if (!KeyFound) return false;
@@ -49,7 +48,6 @@ public:
 
 	static void _bson_append_request(bson_t *b, const ROSMessages::auto_scene_gen_msgs::FRunScenarioRequest *request)
 	{
-		BSON_APPEND_BOOL(b, "done_testing", request->done_testing);
 		BSON_APPEND_INT32(b, "scenario_number", request->scenario_number);
 
 		UGeometryMsgsPointConverter::_bson_append_child_point(b, "vehicle_start_location", &request->vehicle_start_location);

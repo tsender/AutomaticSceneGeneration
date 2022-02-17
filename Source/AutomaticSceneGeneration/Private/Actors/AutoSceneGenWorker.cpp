@@ -20,7 +20,7 @@
 #include "ROSIntegration/Public/geometry_msgs/Quaternion.h"
 #include "ROSIntegration/Public/nav_msgs/Path.h"
 
-#include "auto_scene_gen_msgs/msg/WorkerStatus.h"
+#include "auto_scene_gen_msgs/msg/StatusCode.h"
 #include "auto_scene_gen_msgs/srv/RunScenarioRequest.h"
 #include "auto_scene_gen_msgs/srv/RunScenarioResponse.h"
 #include "auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h"
@@ -39,36 +39,13 @@ void AAutoSceneGenWorker::BeginPlay()
 	Super::BeginPlay();
 	// UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GlobalTimeDilation);
 
-	// FString Hero3FileName =  FString("/Game/Blueprints/Structural_Scene_Actors/Bushes/BP_SSA_Bush_Barberry_Hero3.BP_SSA_Bush_Barberry_Hero3_C"); // Path name
-	// UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Hero3FileName, nullptr, LOAD_None, nullptr);
-
-	// if (CastBP)
-	// {
-	// 	if (CastBP->IsChildOf(AStructuralSceneActor::StaticClass()))
-	// 	{
-	// 		UE_LOG(LogASG, Warning, TEXT("IsChildOf AStructuralSceneActor"));
-	// 		DebugSSASubclasses.Add(CastBP);
-	// 	}
-	// }
-	// else
-	// 	UE_LOG(LogASG, Warning, TEXT("Failed cast to UBlueprintGeneratedClass"));
-
-
-	// UE_LOG(LogASG, Warning, TEXT("Num subclasses = %i"), DebugSSASubclasses.Num());
-	// for (int32 i=0; i < DebugSSASubclasses.Num(); i++)
-	// {
-	// 	UE_LOG(LogASG, Warning, TEXT("SSA subclass name: %s"), *(DebugSSASubclasses[i]->GetName()));
-	// 	UE_LOG(LogASG, Warning, TEXT("SSA subclass path name: %s"), *(DebugSSASubclasses[i]->GetPathName())); // This is what we want
-	// }
-
-	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 	ScenarioNumber = 0;
 	bASGClientOnline = false;
 	bForceVehicleReset = false;
 	bWaitingForScenarioRequest = false;
 	bProcessedScenarioRequest = true;
 	bReadyToTick = false;
-	bDoneTesting = false;
 
 	// Find ground plane actor
 	TArray<AActor*> TempArray;
@@ -115,14 +92,14 @@ void AAutoSceneGenWorker::BeginPlay()
 	{
 		// ASG client status sub
 		ASGClientStatusSub = NewObject<UTopic>(UTopic::StaticClass());
-		ASGClientStatusSub->Init(ROSInst->ROSIntegrationCore, ASGClientStatusTopic, TEXT("std_msgs/Bool"));
+		ASGClientStatusSub->Init(ROSInst->ROSIntegrationCore, ASGClientStatusTopic, TEXT("auto_scene_gen_msgs/StatusCode"));
 		ASGClientStatusSub->Subscribe(std::bind(&AAutoSceneGenWorker::ASGClientStatusCB, this, std::placeholders::_1));
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS subscriber: %s"), *ASGClientStatusTopic);
 
 		// ASG worker status pub
 		WorkerStatusPub = NewObject<UTopic>(UTopic::StaticClass());
 		FString WorkerStatusTopic = FString::Printf(TEXT("/asg_worker%i/status"), WorkerID);
-		WorkerStatusPub->Init(ROSInst->ROSIntegrationCore, WorkerStatusTopic, TEXT("auto_scene_gen_msgs/WorkerStatus"));
+		WorkerStatusPub->Init(ROSInst->ROSIntegrationCore, WorkerStatusTopic, TEXT("auto_scene_gen_msgs/StatusCode"));
 		WorkerStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS publisher: %s"), *WorkerStatusTopic);
 
@@ -165,7 +142,7 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	if (ROSInst)
 	{
 		// Publish status as offline 10 times to ensure at least 1 or 2 messages get recceived before the game ends
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus(ROSMessages::auto_scene_gen_msgs::WorkerStatus::OFFLINE));
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(ROSMessages::auto_scene_gen_msgs::StatusCode::OFFLINE));
 		for (int32 I = 0; I < 10; I++)
 		{
 			WorkerStatusPub->Publish(StatusMsg);
@@ -214,7 +191,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 	if (ROSInst)
 	{
 		// Publish ASG worker status
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerStatus> StatusMsg(new ROSMessages::auto_scene_gen_msgs::WorkerStatus(WorkerStatus));
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(WorkerStatus));
 		WorkerStatusPub->Publish(StatusMsg);
 		
 		// Publish vehicle destination info
@@ -235,16 +212,9 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		{
 			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
 			bProcessedScenarioRequest = false; // This will reset the run for us
-			WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+			WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 			return;
 		}
-	}
-
-	if (bDoneTesting)
-	{
-		UE_LOG(LogASG, Display, TEXT("All done testing. Ending the game."));
-		UGameplayStatics::GetPlayerController(GetWorld(), 0)->ConsoleCommand("quit");
-		return;
 	}
 }
 
@@ -347,8 +317,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	// Add SSA subclasses to maintainer map and update attributes
 	for (TSubclassOf<AStructuralSceneActor> Subclass : RequestedSSASubclasses)
 	{
-		// It is more efficient to only add a new subclass to the TMap if the key does not already exist.
-		// Further, if we were to always use .Add(), then I do not know if the SSA maintainer associated with the old existing key will get destroyed properly.
+		// It is more efficient to only add a new subclass to the TMap if the key does not already exist, otherwise the old objects will not get gc'd immediately.
 		if (!SSAMaintainerMap.Contains(Subclass->GetPathName()))
 		{
 			SSAMaintainerMap.Add(Subclass->GetPathName(), NewObject<UStructuralSceneActorMaintainer>(UStructuralSceneActorMaintainer::StaticClass()));
@@ -377,7 +346,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	
 	bReadyToTick = false;
 	bProcessedScenarioRequest = true;
-	WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_RUNNING;
+	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING;
 	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i"), ScenarioNumber);
 }
 
@@ -408,17 +377,14 @@ bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
 	{
 		UE_LOG(LogASG, Display, TEXT("Vehicle has crashed. Vehicle has failed."));
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
-		// ROSMessages::nav_msgs::Path VehiclePath;
-		// ASGVehicle->GetVehiclePath(VehiclePath);
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_trajectory);
 		
 		bWaitingForScenarioRequest = true;
-		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 		Req->worker_id = WorkerID;
 		Req->scenario_number = ScenarioNumber;
 		Req->crashed = true;
 		Req->succeeded = false;
-		// Req->vehicle_path = VehiclePath;
 
 		UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 		AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
@@ -437,20 +403,17 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	{
 		UE_LOG(LogASG, Display, TEXT("Vehicle reached the goal radius. Vehicle has succeeded."));
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_path);
-		// ROSMessages::nav_msgs::Path VehiclePath;
-		// ASGVehicle->GetVehiclePath(VehiclePath);
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_trajectory);
 
 		if (ROSInst && !bWaitingForScenarioRequest /*&& bASGClientOnline*/)
 		{
 			bWaitingForScenarioRequest = true;
-			WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+			WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 
 			Req->worker_id = WorkerID;
 			Req->scenario_number = ScenarioNumber;
 			Req->crashed = false;
 			Req->succeeded = true;
-			// Req->vehicle_path = VehiclePath;
 
 			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
@@ -467,27 +430,27 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 
 void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg) 
 {
-	auto CastMsg = StaticCastSharedPtr<ROSMessages::std_msgs::Bool>(Msg);
+	auto CastMsg = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode>(Msg);
 	if (!CastMsg)
 	{
-		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to std_msgs/Bool"));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/StatusCode"));
 		return;
 	}
 
-	if (!bASGClientOnline && CastMsg->_Data)
+	if (!bASGClientOnline && CastMsg->status == ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING)
 	{
 		UE_LOG(LogASG, Display, TEXT("ASG client back online"));
 	}
 
-	// We assume the ASG client is configured to send an offline signal whenver it gets shutdown
-	if (bASGClientOnline && !CastMsg->_Data)
+	// We assume the ASG client is configured to send an offline signal whenever it gets shutdown
+	if (bASGClientOnline && CastMsg->status != ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING)
 	{
 		bForceVehicleReset = true; // This will reset the run for us
-		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
+		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 		UE_LOG(LogASG, Warning, TEXT("ASG client went offline"));
 	}
 	
-	bASGClientOnline = CastMsg->_Data;
+	bASGClientOnline = CastMsg->status == ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING;
 }
 
 void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
@@ -518,27 +481,23 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 
 	UE_LOG(LogASG, Display, TEXT("Received RunScenario request %i"), CastRequest->scenario_number);
 
-	bDoneTesting = CastRequest->done_testing;
-	if (!bDoneTesting)
+	ScenarioNumber = CastRequest->scenario_number;
+	VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
+	VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);
+	VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);
+	GoalRadius = CastRequest->goal_radius;
+
+	RequestedSSAArray.Empty();
+	RequestedSSAArray = CastRequest->ssa_array;
+	if (RequestedSSAArray.Num() == 0)
 	{
-		ScenarioNumber = CastRequest->scenario_number;
-		VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
-		VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);
-		VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);
-		GoalRadius = CastRequest->goal_radius;
-
-		RequestedSSAArray.Empty();
-		RequestedSSAArray = CastRequest->ssa_array;
-		if (RequestedSSAArray.Num() == 0)
-		{
-			UE_LOG(LogASG, Error, TEXT("RunScenario request field 'ssa_array' is empty"));
-		}
-
-		bWaitingForScenarioRequest = false;
-		bProcessedScenarioRequest = false;
-		WorkerStatus = ROSMessages::auto_scene_gen_msgs::WorkerStatus::ONLINE_AND_READY;
-		UE_LOG(LogASG, Display, TEXT("Saved scenario description %i"), ScenarioNumber);
+		UE_LOG(LogASG, Error, TEXT("RunScenario request field 'ssa_array' is empty"));
 	}
+
+	bWaitingForScenarioRequest = false;
+	bProcessedScenarioRequest = false;
+	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
+	UE_LOG(LogASG, Display, TEXT("Saved scenario description %i"), ScenarioNumber);
 
 	// Fill in response
 	CastResponse->received = true;

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "WheeledVehicle.h"
-#include "ROSIntegration/Public/nav_msgs/Path.h"
+#include "ROSIntegration/Public/nav_msgs/Odometry.h"
 #include "AutoSceneGenVehicle.generated.h"
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
@@ -44,11 +44,11 @@ public: /****************************** AAutoSceneGenVehicle *******************
 
 	void ResetVehicle(FVector NewLocation, FRotator NewRotation);
 	
-	void ResetVehicle(FVector NewLocation, FRotator NewRotation, class ROSMessages::nav_msgs::Path &Path);
+	void ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::nav_msgs::Odometry> &Trajectory);
 
 	float GetNominalVehicleZLocation();
 
-	void GetVehiclePath(class ROSMessages::nav_msgs::Path &Path);
+	void GetVehicleTrajectory(TArray<ROSMessages::nav_msgs::Odometry> &Trajectory);
 
 	int32 GetNumStructuralSceneActorsHit() const;
 
@@ -75,6 +75,7 @@ private: /****************************** AEvaluationVehicle ********************
 
 	float ResetTime = 0.f;
 
+	// We currently assume we are on a flat ground plane
 	float NominalVehicleZLocation = 0.f;
 
 	// Number of structural scene actors hit
@@ -92,7 +93,7 @@ private: /****************************** AEvaluationVehicle ********************
 	UPROPERTY()
 	class UTopic* EnableStatusSub;
 
-	class ROSMessages::nav_msgs::Path VehiclePath;
+	TArray<ROSMessages::nav_msgs::Odometry> VehicleTrajectory;
 
 	int32 HeaderSequence;
 

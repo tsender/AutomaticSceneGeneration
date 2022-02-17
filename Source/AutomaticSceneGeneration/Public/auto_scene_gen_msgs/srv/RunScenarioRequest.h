@@ -14,9 +14,6 @@ namespace ROSMessages {
 			FRunScenarioRequest() = default;
 			~FRunScenarioRequest() = default;
 
-			// Indicates if we are done testing and the UE4 editor can end the game
-			bool done_testing;
-
 			// Mainly just used to check on progress
 			int32 scenario_number;
 

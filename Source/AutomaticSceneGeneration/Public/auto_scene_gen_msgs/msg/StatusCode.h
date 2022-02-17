@@ -4,14 +4,14 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
-		class WorkerStatus: public FROSBaseMsg {
+		class StatusCode: public FROSBaseMsg {
 		public:
-			WorkerStatus() : WorkerStatus(0) {}
+			StatusCode() : StatusCode(0) {}
 
-			WorkerStatus(uint8 status_in)
+			StatusCode(uint8 status_in)
             {
 				status = status_in;
-                _MessageType = "auto_scene_gen_msgs/WorkerStatus";
+                _MessageType = "auto_scene_gen_msgs/StatusCode";
 			}
 
 			uint8 status;

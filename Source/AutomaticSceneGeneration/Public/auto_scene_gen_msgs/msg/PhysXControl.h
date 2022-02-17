@@ -3,17 +3,17 @@
 #include "ROSIntegration/Public/ROSBaseMsg.h"
 
 namespace ROSMessages{
-	namespace vehicle_msgs {
+	namespace auto_scene_gen_msgs {
 		class PhysXControl: public FROSBaseMsg {
 		public:
-			PhysXControl() : PhysXControl(0, 0, false) {}
+			PhysXControl() : PhysXControl(0, 0, true) {}
 
-			PhysXControl(float longitudinal_velocity_in, float steering_angle_in, bool handbrake_in = false)
+			PhysXControl(float longitudinal_velocity_in, float steering_angle_in, bool handbrake_in = true)
             {
 				longitudinal_velocity = longitudinal_velocity_in;
                 steering_angle = steering_angle_in;
                 handbrake = handbrake_in;
-                _MessageType = "vehicle_msgs/PhysXControl";
+                _MessageType = "auto_scene_gen_msgs/PhysXControl";
 			}
 
 			float longitudinal_velocity; // [cm/s]

@@ -4,21 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "ROSIntegration/Private/Conversion/Messages/BaseMessageConverter.h"
-#include "auto_scene_gen_msgs/msg/WorkerStatus.h"
-#include "ASGMsgsWorkerStatusConverter.generated.h"
+#include "auto_scene_gen_msgs/msg/StatusCode.h"
+#include "ASGMsgsStatusCodeConverter.generated.h"
 
 UCLASS()
-class AUTOMATICSCENEGENERATION_API UASGMsgsWorkerStatusConverter : public UBaseMessageConverter
+class AUTOMATICSCENEGENERATION_API UASGMsgsStatusCodeConverter : public UBaseMessageConverter
 {
 	GENERATED_BODY()
 
 public:
-	UASGMsgsWorkerStatusConverter();
+	UASGMsgsStatusCodeConverter();
 
 	virtual bool ConvertIncomingMessage(const ROSBridgePublishMsg* message, TSharedPtr<FROSBaseMsg> &BaseMsg);
 	virtual bool ConvertOutgoingMessage(TSharedPtr<FROSBaseMsg> BaseMsg, bson_t** message);
 
-	static bool _bson_extract_child_msg(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::WorkerStatus *msg, bool LogOnErrors = true)
+	static bool _bson_extract_child_msg(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::StatusCode *msg, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
 
@@ -26,7 +26,7 @@ public:
 		return true;
 	}
 
-	static void _bson_append_child_msg(bson_t *b, const char *key, const ROSMessages::auto_scene_gen_msgs::WorkerStatus *msg)
+	static void _bson_append_child_msg(bson_t *b, const char *key, const ROSMessages::auto_scene_gen_msgs::StatusCode *msg)
 	{
 		bson_t child;
 		BSON_APPEND_DOCUMENT_BEGIN(b, key, &child);
@@ -34,7 +34,7 @@ public:
 		bson_append_document_end(b, &child);
 	}
 
-	static void _bson_append_msg(bson_t *b, const ROSMessages::auto_scene_gen_msgs::WorkerStatus *msg)
+	static void _bson_append_msg(bson_t *b, const ROSMessages::auto_scene_gen_msgs::StatusCode *msg)
 	{
 		BSON_APPEND_INT32(b, "status", msg->status);
 	}

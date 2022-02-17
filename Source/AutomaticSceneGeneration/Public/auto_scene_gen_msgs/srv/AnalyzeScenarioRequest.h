@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
-#include "ROSIntegration/Public/nav_msgs/Path.h"
+#include "ROSIntegration/Public/nav_msgs/Odometry.h"
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
@@ -26,8 +26,8 @@ namespace ROSMessages{
 			// Incidates if the vehicle reached the goal location
 			bool succeeded;
 
-			// The vehicle's path from start to goal
-			ROSMessages::nav_msgs::Path vehicle_path;
+			// The vehicle's trajectory from start to goal
+			TArray<ROSMessages::nav_msgs::Odometry> vehicle_trajectory;
 		};
 	}
 }

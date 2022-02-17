@@ -151,8 +151,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	bool bReadyToTick = false;
 
-	bool bDoneTesting = false;
-
 	void InitDebugStructuralSceneActors();
 
 	void RandomizeDebugStructuralSceneActors();
