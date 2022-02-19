@@ -31,6 +31,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	Super::BeginPlay();
 
 	bEnabled = false;
+	bReceivedFirstControlInput = false;
 	bBypassController = false; // Updated based on what control messages arrive
 	bProcessedBypassControlInput = true;
 
@@ -132,6 +133,11 @@ bool UPIDDriveByWireComponent::IsManualDrive() const
 	return bManualDrive;
 }
 
+bool UPIDDriveByWireComponent::ReceivedFirstControlInput() const
+{
+	return bReceivedFirstControlInput;
+}
+
 float UPIDDriveByWireComponent::GetMaxManualDriveSpeed() const
 {
 	return MaxManualDriveSpeed;
@@ -145,25 +151,33 @@ float UPIDDriveByWireComponent::GetMaxSteeringAngle() const
 void UPIDDriveByWireComponent::EnableDriveByWire(bool bEnable) 
 {
 	bEnabled = bEnable;
+	if (!bEnabled){
+		bReceivedFirstControlInput = false;
+	}
+
 	SetDesiredForwardVelocity(0.f);
 	SetDesiredSteeringAngle(0.f);
 	VehicleMovementComponent->SetThrottleInput(0.f);
 	VehicleMovementComponent->SetSteeringInput(0.f);
+	VehicleMovementComponent->SetHandbrakeInput(true);
 }
 
 void UPIDDriveByWireComponent::SetDesiredForwardVelocity(float NewVelocity) 
 {
 	DesiredVelocity = NewVelocity;
+	if (bEnabled && !bReceivedFirstControlInput) bReceivedFirstControlInput = true;
 }
 
 void UPIDDriveByWireComponent::SetDesiredSteeringAngle(float NewSteeringAngle) 
 {
 	DesiredSteeringAngle = FMath::Clamp<float>(NewSteeringAngle, -MaxSteeringAngle, MaxSteeringAngle);
+	if (bEnabled && !bReceivedFirstControlInput) bReceivedFirstControlInput = true;
 }
 
 void UPIDDriveByWireComponent::SetHandbrakeInput(bool bEngaged)
 {
 	VehicleMovementComponent->SetHandbrakeInput(bEngaged);
+	if (bEnabled && !bReceivedFirstControlInput) bReceivedFirstControlInput = true;
 }
 
 void UPIDDriveByWireComponent::BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg) 

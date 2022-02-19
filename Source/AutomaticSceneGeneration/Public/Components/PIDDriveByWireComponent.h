@@ -34,6 +34,8 @@ public:	/****************************** UActorComponent Overrides **************
 public: /****************************** UPIDDriveByWireComponent ******************************/
 	bool IsManualDrive() const;
 
+	bool ReceivedFirstControlInput() const;
+
 	float GetMaxManualDriveSpeed() const;
 
 	float GetMaxSteeringAngle() const;
@@ -81,14 +83,21 @@ private: /****************************** UPIDDriveByWireComponent **************
 	class UWheeledVehicleMovementComponent* VehicleMovementComponent;
 
 	bool bEnabled = false;
+
+	bool bReceivedFirstControlInput = false;
+
 	bool bBypassController = false; // Updated based on what control messages arrive
+
 	bool bProcessedBypassControlInput = true;
 	
 	float MaxSteeringAngle = 0.f;
+
 	float DesiredVelocity = 0.f; // [m/s]
+
 	float DesiredSteeringAngle = 0.f; // [deg]
 
 	FVector BypassLocation;
+
 	FQuat BypassQuat;
 
 	/**

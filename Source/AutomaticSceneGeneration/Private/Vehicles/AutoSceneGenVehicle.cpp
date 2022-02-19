@@ -99,7 +99,7 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
         TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMessage(new ROSMessages::auto_scene_gen_msgs::EnableStatus(bEnabled));
         EnableStatusPub->Publish(EnableStatusMessage);
 
-        if (bEnabled)
+        if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
             ROSMessages::nav_msgs::Odometry Odometry;
             TArray<double> Cov;
