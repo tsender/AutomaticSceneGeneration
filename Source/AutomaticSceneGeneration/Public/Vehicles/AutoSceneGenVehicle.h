@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "WheeledVehicle.h"
-#include "ROSIntegration/Public/nav_msgs/Odometry.h"
+#include "auto_scene_gen_msgs/msg/OdometryWithoutCovariance.h"
 #include "AutoSceneGenVehicle.generated.h"
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
@@ -44,11 +44,11 @@ public: /****************************** AAutoSceneGenVehicle *******************
 
 	void ResetVehicle(FVector NewLocation, FRotator NewRotation);
 	
-	void ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::nav_msgs::Odometry> &Trajectory);
+	void ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory);
 
 	float GetNominalVehicleZLocation();
 
-	void GetVehicleTrajectory(TArray<ROSMessages::nav_msgs::Odometry> &Trajectory);
+	void GetVehicleTrajectory(TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory);
 
 	int32 GetNumStructuralSceneActorsHit() const;
 
@@ -93,7 +93,7 @@ private: /****************************** AEvaluationVehicle ********************
 	UPROPERTY()
 	class UTopic* EnableStatusSub;
 
-	TArray<ROSMessages::nav_msgs::Odometry> VehicleTrajectory;
+	TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> VehicleTrajectory;
 
 	int32 HeaderSequence;
 

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Conversion/Services/BaseRequestConverter.h"
-#include "Conversion/Messages/nav_msgs/NavMsgsOdometryConverter.h"
+#include "Conversion/Messages/auto_scene_gen_msgs/ASGMsgsOdometryWithoutCovarianceConverter.h"
 #include "auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h"
 #include "ASGSrvsAnalyzeScenarioRequestConverter.generated.h"
 
@@ -30,11 +30,10 @@ public:
 		request->scenario_number = UBaseMessageConverter::GetInt32FromBSON(key + ".scenario_number", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->crashed = UBaseMessageConverter::GetBoolFromBSON(key + ".crashed", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->succeeded = UBaseMessageConverter::GetBoolFromBSON(key + ".succeeded", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		// bool bSuccess = UNavMsgsPathConverter::_bson_extract_child_path(b, key + ".vehicle_path", &request->vehicle_path, LogOnErrors);
-		request->vehicle_trajectory = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::nav_msgs::Odometry>(key + ".poses", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
+		request->vehicle_trajectory = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(key + ".poses", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
 		{
-			ROSMessages::nav_msgs::Odometry ret;
-			subKeyFound = UNavMsgsOdometryConverter::_bson_extract_child_odometry(subMsg, subKey, &ret, LogOnErrors);
+			ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance ret;
+			subKeyFound = UASGMsgsOdometryWithoutCovarianceConverter::_bson_extract_child_msg(subMsg, subKey, &ret, LogOnErrors);
 			return ret;
 		}, LogOnErrors);
 		if (!KeyFound) return false;
@@ -48,10 +47,9 @@ public:
 		BSON_APPEND_INT32(b, "scenario_number", request->scenario_number);
 		BSON_APPEND_BOOL(b, "crashed", request->crashed);
 		BSON_APPEND_BOOL(b, "succeeded", request->succeeded);
-		// UNavMsgsPathConverter::_bson_append_child_path(b, "vehicle_path", &request->vehicle_path);
-		UBaseMessageConverter::_bson_append_tarray<ROSMessages::nav_msgs::Odometry>(b, "vehicle_trajectory", request->vehicle_trajectory, [](bson_t* msg, const char* key, const ROSMessages::nav_msgs::Odometry& odometry)
+		UBaseMessageConverter::_bson_append_tarray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(b, "vehicle_trajectory", request->vehicle_trajectory, [](bson_t* msg, const char* key, const ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance& odometry)
 		{
-			UNavMsgsOdometryConverter::_bson_append_child_odometry(msg, key, &odometry);
+			UASGMsgsOdometryWithoutCovarianceConverter::_bson_append_child_msg(msg, key, &odometry);
 		});
 	}
 	

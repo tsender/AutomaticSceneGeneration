@@ -154,6 +154,11 @@ void UPIDDriveByWireComponent::EnableDriveByWire(bool bEnable)
 	if (!bEnabled){
 		bReceivedFirstControlInput = false;
 	}
+	if (bEnabled && bManualDrive && !bReceivedFirstControlInput)
+	{
+		bReceivedFirstControlInput = true;
+		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first control input."));
+	}
 
 	SetDesiredForwardVelocity(0.f);
 	SetDesiredSteeringAngle(0.f);
@@ -165,19 +170,16 @@ void UPIDDriveByWireComponent::EnableDriveByWire(bool bEnable)
 void UPIDDriveByWireComponent::SetDesiredForwardVelocity(float NewVelocity) 
 {
 	DesiredVelocity = NewVelocity;
-	if (bEnabled && !bReceivedFirstControlInput) bReceivedFirstControlInput = true;
 }
 
 void UPIDDriveByWireComponent::SetDesiredSteeringAngle(float NewSteeringAngle) 
 {
 	DesiredSteeringAngle = FMath::Clamp<float>(NewSteeringAngle, -MaxSteeringAngle, MaxSteeringAngle);
-	if (bEnabled && !bReceivedFirstControlInput) bReceivedFirstControlInput = true;
 }
 
 void UPIDDriveByWireComponent::SetHandbrakeInput(bool bEngaged)
 {
 	VehicleMovementComponent->SetHandbrakeInput(bEngaged);
-	if (bEnabled && !bReceivedFirstControlInput) bReceivedFirstControlInput = true;
 }
 
 void UPIDDriveByWireComponent::BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg) 
@@ -234,6 +236,11 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	SetDesiredSteeringAngle(CastMsg->steering_angle);
 	SetHandbrakeInput(CastMsg->handbrake);
 	bBypassController = false;
+	if (bEnabled && !bReceivedFirstControlInput)
+	{
+		bReceivedFirstControlInput = true;
+		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first control input."));
+	}
 }
 
 void UPIDDriveByWireComponent::SetThrottleInput(float DeltaTime)

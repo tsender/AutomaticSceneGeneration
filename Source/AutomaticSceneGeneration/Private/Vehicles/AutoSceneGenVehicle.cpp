@@ -101,9 +101,7 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
         if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
-            ROSMessages::nav_msgs::Odometry Odometry;
-            TArray<double> Cov;
-            Cov.Init(0., 36); // Don't care about covariance
+            ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance Odometry;
             
             Odometry.header.seq = HeaderSequence;
             Odometry.header.time = FROSTime::Now();
@@ -113,26 +111,24 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
             // Position
             ROSMessages::geometry_msgs::Point Location(GetActorLocation()/100.f); // Put into [m]
             Location.y *= -1;
-            Odometry.pose.pose.position = Location;
-            Odometry.pose.covariance = Cov;
+            Odometry.pose.position = Location;
 
             // Orientation
             ROSMessages::geometry_msgs::Quaternion Quaternion;
             Quaternion = GetActorQuat();
             Quaternion.x *= -1;
             Quaternion.z *= -1;
-            Odometry.pose.pose.orientation = Quaternion;
+            Odometry.pose.orientation = Quaternion;
 
             // Linear Velocity
             FVector LinearVelocity = GetMesh()->GetPhysicsLinearVelocity()/100.f; // Put into [m/s]
             LinearVelocity.Y *= -1;
-            Odometry.twist.twist.linear = ROSMessages::geometry_msgs::Vector3(LinearVelocity);
+            Odometry.twist.linear = ROSMessages::geometry_msgs::Vector3(LinearVelocity);
 
             // Angular Velocity
             FVector AngularVelocity = GetMesh()->GetPhysicsAngularVelocityInRadians();
             AngularVelocity.Y *= -1;
-            Odometry.twist.twist.angular = ROSMessages::geometry_msgs::Vector3(AngularVelocity);
-            Odometry.twist.covariance = Cov;
+            Odometry.twist.angular = ROSMessages::geometry_msgs::Vector3(AngularVelocity);
 
             VehicleTrajectory.Emplace(Odometry);
             HeaderSequence++;
@@ -196,7 +192,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     UE_LOG(LogASG, Display, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
 }
 
-void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::nav_msgs::Odometry> &Trajectory) 
+void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory) 
 {
     Trajectory = VehicleTrajectory;
     ResetVehicle(NewLocation, NewRotation);
@@ -303,7 +299,7 @@ float AAutoSceneGenVehicle::GetNominalVehicleZLocation()
     return NominalVehicleZLocation;
 }
 
-void AAutoSceneGenVehicle::GetVehicleTrajectory(TArray<ROSMessages::nav_msgs::Odometry> &Trajectory) 
+void AAutoSceneGenVehicle::GetVehicleTrajectory(TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory) 
 {
     Trajectory = VehicleTrajectory;
 }

@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
-#include "ROSIntegration/Public/nav_msgs/Odometry.h"
+#include "auto_scene_gen_msgs/msg/OdometryWithoutCovariance.h"
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
@@ -27,7 +27,7 @@ namespace ROSMessages{
 			bool succeeded;
 
 			// The vehicle's trajectory from start to goal
-			TArray<ROSMessages::nav_msgs::Odometry> vehicle_trajectory;
+			TArray<auto_scene_gen_msgs::OdometryWithoutCovariance> vehicle_trajectory;
 		};
 	}
 }
