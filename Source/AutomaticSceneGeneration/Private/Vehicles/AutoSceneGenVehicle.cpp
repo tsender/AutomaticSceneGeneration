@@ -113,9 +113,9 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
             Location.y *= -1;
             Odometry.pose.position = Location;
 
+            // NOTE: For orientation and angular velocity, we negate the X and Z components to express the vector in a north-west-up right-hand coordinate frame
             // Orientation
-            ROSMessages::geometry_msgs::Quaternion Quaternion;
-            Quaternion = GetActorQuat();
+            ROSMessages::geometry_msgs::Quaternion Quaternion(GetActorQuat());
             Quaternion.x *= -1;
             Quaternion.z *= -1;
             Odometry.pose.orientation = Quaternion;
@@ -127,7 +127,8 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
             // Angular Velocity
             FVector AngularVelocity = GetMesh()->GetPhysicsAngularVelocityInRadians();
-            AngularVelocity.Y *= -1;
+            AngularVelocity.X *= -1;
+            AngularVelocity.Z *= -1;
             Odometry.twist.angular = ROSMessages::geometry_msgs::Vector3(AngularVelocity);
 
             VehicleTrajectory.Emplace(Odometry);
