@@ -3,14 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SceneComponent.h"
-#include "Camera/CameraComponent.h"
+#include "Sensors/BaseSensor.h"
+// #include "Camera/CameraComponent.h"
 #include <vector>
 #include "CompleteCameraSensor.generated.h"
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class AUTOMATICSCENEGENERATION_API UCompleteCameraSensor : public UCameraComponent
+class AUTOMATICSCENEGENERATION_API UCompleteCameraSensor : public UBaseSensor
 {
 	GENERATED_BODY()
 
@@ -18,13 +18,13 @@ public:
 	// Sets default values for this component's properties
 	UCompleteCameraSensor();
 
-protected: /****************************** UCameraComponent Overrides ******************************/
+protected: /****************************** UBaseSensor Overrides ******************************/
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
-public:	/****************************** UCameraComponent Overrides ******************************/
+public:	/****************************** UBaseSensor Overrides ******************************/
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
@@ -52,9 +52,6 @@ private: /****************************** UCompleteCameraSensor *****************
 
 	UPROPERTY(EditAnywhere)
 	bool bSaveImagesToDisk = false;
-
-	UPROPERTY(EditAnywhere)
-	bool bUseCustomFrameRate = true;
 	
 	UPROPERTY(EditAnywhere)
 	float FrameRate = 15.f;
@@ -85,8 +82,6 @@ private: /****************************** UCompleteCameraSensor *****************
 
 	FString HeaderFrameID;
 	int HeaderSequence = 1;
-	bool bEnabled = true;
-	bool bIsLittleEndian = true; // Most computers are little endian
 
 	// Vectors to store raw/encoded image data
 	std::vector<uint8> EncodedColorData;

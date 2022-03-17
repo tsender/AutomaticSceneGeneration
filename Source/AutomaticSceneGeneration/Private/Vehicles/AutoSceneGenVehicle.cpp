@@ -8,6 +8,7 @@
 #include "WheeledVehicleMovementComponent.h"
 #include "Actors/StructuralSceneActor.h"
 #include "Actors/AutoSceneGenWorker.h"
+#include "Sensors/BaseSensor.h"
 #include "Sound/SoundCue.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -51,6 +52,13 @@ void AAutoSceneGenVehicle::BeginPlay()
     // Start with handbrake engaged
     DriveByWireComponent->SetHandbrakeInput(true);
 
+    // Get attached sensors
+    GetComponents<UBaseSensor>(Sensors, false);
+    if (Sensors.Num() > 0)
+    {
+        UE_LOG(LogASG, Display, TEXT("Vehicle has %i sensors attached"), Sensors.Num());
+    }
+
     ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
 	if (ROSInst)
 	{
@@ -69,7 +77,7 @@ void AAutoSceneGenVehicle::BeginPlay()
 			}
 		}
 
-        EnableStatusPub =  NewObject<UTopic>(UTopic::StaticClass());
+        EnableStatusPub = NewObject<UTopic>(UTopic::StaticClass());
 
         FString StatusTopic = TopicPrefix + FString("enable_status");
 		EnableStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("auto_scene_gen_msgs/EnableStatus"));
@@ -183,6 +191,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     DriveByWireComponent->SetHandbrakeInput(true);
 
     SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
+    EnableSensors(false);
     bEnabled = false;
     bWorldIsReady = false;
     DriveByWireComponent->EnableDriveByWire(false);
@@ -197,6 +206,21 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
 {
     Trajectory = VehicleTrajectory;
     ResetVehicle(NewLocation, NewRotation);
+}
+
+float AAutoSceneGenVehicle::GetNominalVehicleZLocation() 
+{
+    return NominalVehicleZLocation;
+}
+
+void AAutoSceneGenVehicle::GetVehicleTrajectory(TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory) 
+{
+    Trajectory = VehicleTrajectory;
+}
+
+int32 AAutoSceneGenVehicle::GetNumStructuralSceneActorsHit() const
+{
+    return NumSSAHit;
 }
 
 void AAutoSceneGenVehicle::DriveForward(float AxisValue) 
@@ -248,7 +272,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
         }
 
         // If vehicle roll/pitch is too large after reset (e.g. from being thrown out of bounds), then reset the vehicle to try again
-        if (FMath::Abs(GetActorRotation().Euler().X) > 15.f || FMath::Abs(GetActorRotation().Euler().Y) > 15.f)
+        if (FMath::Abs(GetActorRotation().Euler().X) > 30.f || FMath::Abs(GetActorRotation().Euler().Y) > 30.f)
         {
             UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large after reset, trying again."));
             ResetVehicle(ResetLocation, ResetRotation);
@@ -271,43 +295,37 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
         if ((TickNumber - CheckEnableTickNumber) % 20 == 0 )
         {
             DistanceMoved = (GetActorLocation() - CheckEnableLocation).Size();
+            CheckEnableTickNumber = TickNumber;
         }
         
         // If criteria below is met, then we can assume the vehicle was reset properly without issue
         if (DistanceMoved <= 1.f && TransVel <= 5.f && AngVel <= 1.f)
         {
             bEnabled = true;
+            EnableSensors(true);
             CheckEnableTickNumber = 0;
             DriveByWireComponent->EnableDriveByWire(true);
-            
-            // Reset these here
             VehicleTrajectory.Empty();
             HeaderSequence = 1;
-
             NominalVehicleZLocation = GetActorLocation().Z;
             UE_LOG(LogASG, Display, TEXT("Vehicle is enabled."));
         }
         else
         {
             CheckEnableLocation = GetActorLocation();
-            CheckEnableTickNumber = TickNumber;
         }
     }
 }
 
-float AAutoSceneGenVehicle::GetNominalVehicleZLocation() 
+void AAutoSceneGenVehicle::EnableSensors(bool bEnable)
 {
-    return NominalVehicleZLocation;
-}
-
-void AAutoSceneGenVehicle::GetVehicleTrajectory(TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory) 
-{
-    Trajectory = VehicleTrajectory;
-}
-
-int32 AAutoSceneGenVehicle::GetNumStructuralSceneActorsHit() const
-{
-    return NumSSAHit;
+    for (UBaseSensor* Sensor : Sensors)
+    {
+        if (Sensor->IsEnabled() != bEnable)
+        {
+            Sensor->Enable(bEnable);
+        }
+    }
 }
 
 void AAutoSceneGenVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, 

@@ -15,8 +15,6 @@
 // Sets default values for this component's properties
 ULocalizationSensor::ULocalizationSensor()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.TickGroup = TG_PostPhysics; // Sensors tick in PostPhysics
 }
@@ -34,11 +32,11 @@ void ULocalizationSensor::BeginPlay()
 		FString TopicPrefix = FString("/sensors/") + SensorName;
 		HeaderFrameID = SensorName;
 
-		AAutoSceneGenVehicle* Vehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
-		if (Vehicle)
+		AAutoSceneGenVehicle* OwningVehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
+		if (OwningVehicle)
 		{
-			TopicPrefix = FString::Printf(TEXT("/%s"), *Vehicle->GetVehicleName()) + TopicPrefix;
-			HeaderFrameID = FString::Printf(TEXT("/%s/"), *Vehicle->GetVehicleName()) + SensorName;
+			TopicPrefix = FString::Printf(TEXT("/%s"), *OwningVehicle->GetVehicleName()) + TopicPrefix;
+			HeaderFrameID = FString::Printf(TEXT("/%s/"), *OwningVehicle->GetVehicleName()) + SensorName;
 		}
 
 		// Find ASG Worker ID, if applicable
@@ -62,11 +60,8 @@ void ULocalizationSensor::BeginPlay()
 		UE_LOG(LogASG, Display, TEXT("Initialized localization sensor ROS topic: %s"), *LocTopic);
 	}
 
-	if (bUseCustomFrameRate)
-	{
-		FTimerHandle TimerHandle;
-		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &ULocalizationSensor::TickSensor, 1./FrameRate, true);
-	}
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &ULocalizationSensor::TickSensor, 1./FrameRate, true);
 }
 
 void ULocalizationSensor::EndPlay(const EEndPlayReason::Type EndPlayReason) 
@@ -81,20 +76,11 @@ void ULocalizationSensor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void ULocalizationSensor::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (bUseCustomFrameRate)
-	{
-		return;
-	}
-	else
-	{
-		TickSensor();
-	}
 }
 
 void ULocalizationSensor::TickSensor()
-{
-	if (ROSInst)
+{	
+	if (bEnabled && ROSInst)
 	{
 		TSharedPtr<ROSMessages::geometry_msgs::PoseStamped> LocMsg(new ROSMessages::geometry_msgs::PoseStamped());
 		LocMsg->header.seq = HeaderSequence;
@@ -111,7 +97,7 @@ void ULocalizationSensor::TickSensor()
 		Quaternion.z *= -1;
 		LocMsg->pose.orientation = Quaternion;
 		SensorPub->Publish(LocMsg);
+		HeaderSequence++;
 	}
 
-	HeaderSequence++;
 }

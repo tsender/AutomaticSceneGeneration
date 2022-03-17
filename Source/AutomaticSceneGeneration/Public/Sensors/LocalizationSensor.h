@@ -3,12 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Components/SceneComponent.h"
+#include "Sensors/BaseSensor.h"
 #include "LocalizationSensor.generated.h"
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class AUTOMATICSCENEGENERATION_API ULocalizationSensor : public USceneComponent
+class AUTOMATICSCENEGENERATION_API ULocalizationSensor : public UBaseSensor
 {
 	GENERATED_BODY()
 
@@ -26,7 +26,7 @@ public:	/****************************** USceneComponent Overrides **************
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
-private: /****************************** ULocalizationSensor ******************************/
+private: /****************************** ULocalizationSensor ******************************/	
 	UPROPERTY()
 	class UROSIntegrationGameInstance* ROSInst;
 
@@ -35,9 +35,6 @@ private: /****************************** ULocalizationSensor *******************
 
 	UPROPERTY(EditAnywhere)
 	FString SensorName = TEXT("localization");
-
-	UPROPERTY(EditAnywhere)
-	bool bUseCustomFrameRate = true;
 	
 	UPROPERTY(EditAnywhere)
 	float FrameRate = 60.f;

@@ -59,6 +59,9 @@ private: /****************************** AEvaluationVehicle ********************
 	UPROPERTY(Category = Display, VisibleDefaultsOnly, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	class UAudioComponent* EngineSoundComponent;
 
+	UPROPERTY()
+	TArray<class UBaseSensor*> Sensors;
+
 	bool bWorldIsReady = false;
 
 	FVector CheckEnableLocation;
@@ -108,6 +111,8 @@ private: /****************************** AEvaluationVehicle ********************
 	void OnHandbrakeReleased();
 
 	void CheckIfReadyForEnable(float DeltaTime);
+
+	void EnableSensors(bool bEnable);
 
 	UFUNCTION()
 	void OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, 

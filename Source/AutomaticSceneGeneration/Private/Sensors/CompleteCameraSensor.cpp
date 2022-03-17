@@ -27,8 +27,6 @@
 // Sets default values for this component's properties
 UCompleteCameraSensor::UCompleteCameraSensor()
 {
-	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
-	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 	PrimaryComponentTick.TickGroup = TG_PostPhysics; // Sensors tick in PostPhysics
 
@@ -50,20 +48,7 @@ void UCompleteCameraSensor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// Checking for endianness
-	unsigned int i = 1;
-	char *c = (char*)&i;
-	if (*c) // Little endian
-	{
-		bIsLittleEndian = true;
-	}
-	else // Big endian
-	{
-		bIsLittleEndian = false;
-	}
-
 	HeaderSequence = 1;
-	bEnabled = true;
 
 	EncodedColorData.resize(ImageWidth*ImageHeight*3);
 	EncodedDepthData.resize(ImageWidth*ImageHeight*4);
@@ -90,11 +75,11 @@ void UCompleteCameraSensor::BeginPlay()
 		FString TopicPrefix = FString("/sensors/") + SensorName;
 		HeaderFrameID = SensorName;
 
-		AAutoSceneGenVehicle* Vehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
-		if (Vehicle)
+		AAutoSceneGenVehicle* OwningVehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
+		if (OwningVehicle)
 		{
-			TopicPrefix = FString::Printf(TEXT("/%s"), *Vehicle->GetVehicleName()) + TopicPrefix;
-			HeaderFrameID = FString::Printf(TEXT("/%s/"), *Vehicle->GetVehicleName()) + SensorName;
+			TopicPrefix = FString::Printf(TEXT("/%s"), *OwningVehicle->GetVehicleName()) + TopicPrefix;
+			HeaderFrameID = FString::Printf(TEXT("/%s/"), *OwningVehicle->GetVehicleName()) + SensorName;
 		}
 
 		// Find ASG Worker ID, if applicable
@@ -145,11 +130,8 @@ void UCompleteCameraSensor::BeginPlay()
 		}
 	}
 
-	if (bUseCustomFrameRate)
-	{
-		FTimerHandle TimerHandle;
-		GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UCompleteCameraSensor::TickSensor, 1./FrameRate, true);
-	}
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UCompleteCameraSensor::TickSensor, 1./FrameRate, true);
 }
 
 void UCompleteCameraSensor::EndPlay(const EEndPlayReason::Type EndPlayReason) 
@@ -168,24 +150,12 @@ void UCompleteCameraSensor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 void UCompleteCameraSensor::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-
-	if (bUseCustomFrameRate || !bEnabled)
-	{
-		return;
-	}
-	else
-	{
-		TickSensor();
-	}
 }
 
-// Primary tick function for the camera sensor. Encode all message data in little endian format
+// Primary tick function for the camera sensor. Encode all message data in native byte ordering to minimize runtime cost.
 void UCompleteCameraSensor::TickSensor()
 {
-	if (!bEnabled) // !ROSInst && !bSaveImagesToDisk || !bEnabled
-	{
-		return;
-	}
+	if (!bEnabled) return;
 
 	FROSTime ROSTime;
 	if (ROSInst)
@@ -207,21 +177,15 @@ void UCompleteCameraSensor::TickSensor()
 			for (int32 i = 0; i < DepthData.Num(); ++i)
 			{
 				float d = DepthData[i].R.GetFloat() / 100.f; // Convert depth to float32 and then convert to [m]
-
-				// Copy data to EncodedDepthData array with little endian order
-				// If we only care about speed of data transfer, then we should instead just use the native byte ordering
-				if (bIsLittleEndian)
-				{
-					// memcpy order: dest, src, size
-					std::memcpy(&EncodedDepthData[i*4], &d, sizeof(float)); // Encode float32 as 4 bytes
-				}
-				else
-				{
-					uint8 Bytes[4];
-					std::memcpy(Bytes, &d, sizeof(float)); // Encode float32 as 4 bytes
-					uint8 LittleBytes[4] = {Bytes[3], Bytes[2], Bytes[1], Bytes[0]}; // Reverse byte order
-					std::memcpy(&EncodedDepthData[i*4], LittleBytes, sizeof(float)); // Then copy to array
-				}
+				
+				// Encode float32 as 4 bytes with native byte ordering
+				std::memcpy(&EncodedDepthData[i*4], &d, sizeof(float)); // memcpy order: dest, src, size
+				
+				// // Convert to little endian if in big endian
+				// uint8 Bytes[4];
+				// std::memcpy(Bytes, &d, sizeof(float)); // Encode float32 as 4 bytes
+				// uint8 LittleBytes[4] = {Bytes[3], Bytes[2], Bytes[1], Bytes[0]}; // Reverse byte order
+				// std::memcpy(&EncodedDepthData[i*4], LittleBytes, sizeof(float)); // Then copy to array
 			}
 
 			TSharedPtr<ROSMessages::sensor_msgs::Image> DepthCamMsg(new ROSMessages::sensor_msgs::Image());
@@ -230,8 +194,12 @@ void UCompleteCameraSensor::TickSensor()
 			DepthCamMsg->header.frame_id = HeaderFrameID;
 			DepthCamMsg->height = ImageHeight;
 			DepthCamMsg->width = ImageWidth;
-			DepthCamMsg->encoding = TEXT("32FC1"); // Each pixel encodes the float32 depth as 4 uint8 bytes in little endian format
+			DepthCamMsg->encoding = TEXT("32FC1"); // Each pixel encodes the float32 depth as 4 uint8 bytes
+#if PLATFORM_LITTLE_ENDIAN
 			DepthCamMsg->is_bigendian = false;
+#else
+			DepthCamMsg->is_bigendian = true;
+#endif
 			DepthCamMsg->step = ImageWidth * 4;
 			DepthCamMsg->data = &EncodedDepthData[0];
 			DepthCamPub->Publish(DepthCamMsg);
