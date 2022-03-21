@@ -93,7 +93,7 @@ void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason)
     bEnabled = false;
     if (ROSInst)
     {
-        // Publish disabled status: Send many 10 messages with the hope that 1 or 2 are received.
+        // Publish disabled status: Publish numerous messages with the hope that 1 or 2 are received.
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMsg(new ROSMessages::auto_scene_gen_msgs::EnableStatus(false));
         for (int32 I = 0; I < 10; I++)
 		{
