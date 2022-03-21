@@ -140,12 +140,12 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 	if (ROSInst)
 	{
-		// Publish status as offline 10 times to ensure at least 1 or 2 messages get recceived before the game ends
+		// Publish offline status. Send many 10 messages with the hope that 1 or 2 are received.
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(ROSMessages::auto_scene_gen_msgs::StatusCode::OFFLINE));
 		for (int32 I = 0; I < 10; I++)
 		{
 			WorkerStatusPub->Publish(StatusMsg);
-			FPlatformProcess::Sleep(0.1f); // Brief pause helps ensure the messages are received
+			FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
 		}
 		WorkerStatusPub->Unadvertise();
 

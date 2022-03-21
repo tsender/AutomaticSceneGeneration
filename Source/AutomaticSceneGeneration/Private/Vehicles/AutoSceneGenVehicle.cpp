@@ -90,8 +90,16 @@ void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     Super::EndPlay(EndPlayReason);
     VehicleTrajectory.Empty();
+    bEnabled = false;
     if (ROSInst)
     {
+        // Publish disabled status: Send many 10 messages with the hope that 1 or 2 are received.
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMsg(new ROSMessages::auto_scene_gen_msgs::EnableStatus(false));
+        for (int32 I = 0; I < 10; I++)
+		{
+			EnableStatusPub->Publish(EnableStatusMsg);
+			FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
+		}
         EnableStatusPub->Unadvertise();
     }
 }
@@ -104,8 +112,8 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
     if (ROSInst)
     {
-        TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMessage(new ROSMessages::auto_scene_gen_msgs::EnableStatus(bEnabled));
-        EnableStatusPub->Publish(EnableStatusMessage);
+        TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMsg(new ROSMessages::auto_scene_gen_msgs::EnableStatus(bEnabled));
+        EnableStatusPub->Publish(EnableStatusMsg);
 
         if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
