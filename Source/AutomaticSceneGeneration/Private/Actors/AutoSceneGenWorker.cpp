@@ -163,7 +163,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 	if (ASGVehicle && bForceVehicleReset)
 	{
 		UE_LOG(LogASG, Warning, TEXT("Forcing vehicle reset"));
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, true);
 		bForceVehicleReset = false;
 	}
 	
@@ -284,7 +284,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 {
 	if (!ROSInst || !ASGVehicle || !bASGClientOnline || bProcessedScenarioRequest) return;
 
-	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, true);
 
 	// Store requested SSA subclasses in array of TSubclassOf<AStructuralSceneActor> so we can access them later
 	TArray<TSubclassOf<AStructuralSceneActor>> RequestedSSASubclasses;
@@ -356,14 +356,14 @@ bool AAutoSceneGenWorker::CheckIfVehicleFlipped()
 	if (FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > MaxVehicleRoll)
 	{
 		UE_LOG(LogASG, Warning, TEXT("Vehicle roll %i degrees exceeds %i degree maximum. Resetting vehicle."), ASGVehicle->GetActorRotation().Euler().X, MaxVehicleRoll);
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, true);
 		ASGVehicle->SetWorldIsReadyFlag(true);
 		return true;
 	}
 	if ( FMath::Abs(ASGVehicle->GetActorRotation().Euler().Y) > MaxVehiclePitch)
 	{
 		UE_LOG(LogASG, Warning, TEXT("Vehicle pitch %i degrees exceeds %i degree maximum. Resetting vehicle."), ASGVehicle->GetActorRotation().Euler().Y, MaxVehiclePitch);
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, true);
 		ASGVehicle->SetWorldIsReadyFlag(true);
 		return true;
 	}

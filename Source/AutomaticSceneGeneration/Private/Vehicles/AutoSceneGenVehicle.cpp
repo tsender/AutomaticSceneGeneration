@@ -17,7 +17,7 @@
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
 #include "ROSIntegration/Public/ROSTime.h"
-#include "auto_scene_gen_msgs/msg/EnableStatus.h"
+#include "auto_scene_gen_msgs/msg/VehicleStatus.h"
 
 
 AAutoSceneGenVehicle::AAutoSceneGenVehicle() 
@@ -41,6 +41,7 @@ void AAutoSceneGenVehicle::BeginPlay()
     AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(0, 0, 0, 255));
 
     bEnabled = false;
+    bPreempted = false;
     bWorldIsReady = false;
     TickNumber = 0;
     ResetTime = 0.f;
@@ -77,11 +78,11 @@ void AAutoSceneGenVehicle::BeginPlay()
 			}
 		}
 
-        EnableStatusPub = NewObject<UTopic>(UTopic::StaticClass());
+        VehicleStatusPub = NewObject<UTopic>(UTopic::StaticClass());
 
-        FString StatusTopic = TopicPrefix + FString("enable_status");
-		EnableStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("auto_scene_gen_msgs/EnableStatus"));
-        EnableStatusPub->Advertise();
+        FString StatusTopic = TopicPrefix + FString("status");
+		VehicleStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("auto_scene_gen_msgs/VehicleStatus"));
+        VehicleStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized evaluation vehicle ROS topic: %s"), *StatusTopic);
 	}
 }
@@ -91,16 +92,17 @@ void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason)
     Super::EndPlay(EndPlayReason);
     VehicleTrajectory.Empty();
     bEnabled = false;
+    bPreempted = true;
     if (ROSInst)
     {
         // Publish disabled status: Publish numerous messages with the hope that 1 or 2 are received.
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMsg(new ROSMessages::auto_scene_gen_msgs::EnableStatus(false));
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::VehicleStatus> VehicleStatusMsg(new ROSMessages::auto_scene_gen_msgs::VehicleStatus(bEnabled, bPreempted));
         for (int32 I = 0; I < 10; I++)
 		{
-			EnableStatusPub->Publish(EnableStatusMsg);
+			VehicleStatusPub->Publish(VehicleStatusMsg);
 			FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
 		}
-        EnableStatusPub->Unadvertise();
+        VehicleStatusPub->Unadvertise();
     }
 }
 
@@ -112,8 +114,8 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
     if (ROSInst)
     {
-        TSharedPtr<ROSMessages::auto_scene_gen_msgs::EnableStatus> EnableStatusMsg(new ROSMessages::auto_scene_gen_msgs::EnableStatus(bEnabled));
-        EnableStatusPub->Publish(EnableStatusMsg);
+        TSharedPtr<ROSMessages::auto_scene_gen_msgs::VehicleStatus> VehicleStatusMsg(new ROSMessages::auto_scene_gen_msgs::VehicleStatus(bEnabled, bPreempted));
+        VehicleStatusPub->Publish(VehicleStatusMsg);
 
         if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
@@ -187,7 +189,7 @@ void AAutoSceneGenVehicle::SetDefaultResetInfo(FVector DefaultLocation, FRotator
     ResetRotation = DefaultRotation;
 }
 
-void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation) 
+void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotation, bool bPreemptedDisable) 
 {
     ResetLocation = NewLocation;
     ResetRotation = NewRotation;
@@ -201,6 +203,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
     EnableSensors(false);
     bEnabled = false;
+    bPreempted = bPreemptedDisable;
     bWorldIsReady = false;
     DriveByWireComponent->EnableDriveByWire(false);
     TickNumber = 0;

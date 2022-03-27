@@ -42,7 +42,7 @@ public: /****************************** AAutoSceneGenVehicle *******************
 
 	void SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation);
 
-	void ResetVehicle(FVector NewLocation, FRotator NewRotation);
+	void ResetVehicle(FVector NewLocation, FRotator NewRotation, bool bPreemptedDisable = false);
 	
 	void ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory);
 
@@ -70,6 +70,9 @@ private: /****************************** AEvaluationVehicle ********************
 
 	bool bEnabled = false;
 
+	// Indicates if the vehicle was disabled preemptively (only applies if enabled is False)
+	bool bPreempted = false;
+
 	int32 TickNumber = 0;
 
 	FVector ResetLocation;
@@ -91,10 +94,7 @@ private: /****************************** AEvaluationVehicle ********************
 	class UROSIntegrationGameInstance* ROSInst;
 
 	UPROPERTY()
-	class UTopic* EnableStatusPub;
-
-	UPROPERTY()
-	class UTopic* EnableStatusSub;
+	class UTopic* VehicleStatusPub;
 
 	TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> VehicleTrajectory;
 
