@@ -284,7 +284,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 {
 	if (!ROSInst || !ASGVehicle || !bASGClientOnline || bProcessedScenarioRequest) return;
 
-	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, true);
+	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 
 	// Store requested SSA subclasses in array of TSubclassOf<AStructuralSceneActor> so we can access them later
 	TArray<TSubclassOf<AStructuralSceneActor>> RequestedSSASubclasses;
