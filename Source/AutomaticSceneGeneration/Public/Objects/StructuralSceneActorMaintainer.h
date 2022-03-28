@@ -25,7 +25,7 @@ public: /****************************** UStructuralSceneActorMaintainer ********
 
 	void DestroyActors();
 
-	void UpdateAttributes(TArray<bool> &NewVisibilities, TArray<FVector> &NewLocations, TArray<FRotator> &NewRotations, TArray<float> &NewScales);
+	void UpdateAttributes(TArray<bool> &NewVisibilities, TArray<bool> &NewCastShadows, TArray<FVector> &NewLocations, TArray<FRotator> &NewRotations, TArray<float> &NewScales);
 
 private: /****************************** UStructuralSceneActorMaintainer ******************************/
 	// Array of pointers to all maintained SSAs

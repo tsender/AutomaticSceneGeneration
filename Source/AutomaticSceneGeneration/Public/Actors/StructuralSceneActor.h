@@ -6,17 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "StructuralSceneActor.generated.h"
 
-// Structural scene attributes (enum currently not used anymore)
-enum EStructuralSceneAttribute
-{
-	Visibility,
-	X,
-	Y,
-	Yaw,
-	Scale,
-	Size // This must be last
-};
 
+/**
+ * This class defines the core functionality for an AutoSceneGen structural scene actor.
+ */
 UCLASS()
 class AUTOMATICSCENEGENERATION_API AStructuralSceneActor : public AActor
 {
@@ -42,7 +35,7 @@ public: /****************************** AStructuralSceneActor ******************
 
 	uint16 GetIDNumber() const;
 
-	void SetStructuralAttributes(bool bVisibile, FVector NewLocation, FRotator NewRotation, float NewScale);
+	void SetStructuralAttributes(bool bVisibile,  bool bNewCastShadow, FVector NewLocation, FRotator NewRotation, float NewScale);
 
 	// Use this to set if an actor is visible. We use the term "active" because several settings get modified.
 	void SetActive(bool bNewActive);

@@ -36,7 +36,6 @@ AAutoSceneGenWorker::AAutoSceneGenWorker()
 void AAutoSceneGenWorker::BeginPlay()
 {
 	Super::BeginPlay();
-	// UGameplayStatics::SetGlobalTimeDilation(GetWorld(), GlobalTimeDilation);
 
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 	ScenarioNumber = 0;
@@ -91,6 +90,7 @@ void AAutoSceneGenWorker::BeginPlay()
 	{
 		// ASG client status sub
 		ASGClientStatusSub = NewObject<UTopic>(UTopic::StaticClass());
+		FString ASGClientStatusTopic = FString::Printf(TEXT("/%s/status"), *AutoSceneGenClientName);
 		ASGClientStatusSub->Init(ROSInst->ROSIntegrationCore, ASGClientStatusTopic, TEXT("auto_scene_gen_msgs/StatusCode"));
 		ASGClientStatusSub->Subscribe(std::bind(&AAutoSceneGenWorker::ASGClientStatusCB, this, std::placeholders::_1));
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS subscriber: %s"), *ASGClientStatusTopic);
@@ -111,6 +111,7 @@ void AAutoSceneGenWorker::BeginPlay()
 		
 		// AnalyzeScenario client
 		AnalyzeScenarioClient = NewObject<UService>(UService::StaticClass());
+		FString AnalyzeScenarioServiceName = FString::Printf(TEXT("/%s/services/analyze_scenario"), *AutoSceneGenClientName);
 		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioServiceName, TEXT("auto_scene_gen_msgs/AnalyzeScenario"));
 		UE_LOG(LogASG, Display, TEXT("Registered ASG worker analyze scenario ROS client to: %s"), *AnalyzeScenarioServiceName);
 
@@ -225,6 +226,7 @@ uint8 AAutoSceneGenWorker::GetWorkerID() const
 void AAutoSceneGenWorker::InitDebugStructuralSceneActors()  // Remove?
 {
 	TArray<bool> Visibilities;
+	TArray<bool> CastShadows;
 	TArray<FVector> Locations;
 	TArray<FRotator> Rotations;
 	TArray<float> Scales;
@@ -233,6 +235,7 @@ void AAutoSceneGenWorker::InitDebugStructuralSceneActors()  // Remove?
 	for (int32 i = 0; i < DebugNumSSAInstances; i++)
 	{
 		Visibilities.Emplace(true);
+		CastShadows.Emplace(bDebugSSACastShadow);
 		Locations.Emplace(FVector(0,0,GroundPlaneZHeight));
 		Rotations.Emplace(FRotator(0,0,0));
 		Scales.Emplace(1.f);
@@ -240,7 +243,7 @@ void AAutoSceneGenWorker::InitDebugStructuralSceneActors()  // Remove?
 
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
-		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, Locations, Rotations, Scales);
+		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, CastShadows, Locations, Rotations, Scales);
 	}
 	
 	bSSAInit = true;
@@ -251,6 +254,7 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
 		TArray<bool> Visibilities;
+		TArray<bool> CastShadows;
 		TArray<FVector> Locations;
 		TArray<FRotator> Rotations;
 		TArray<float> Scales;
@@ -258,6 +262,7 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 		// For the debug SSAs, we use the same number of instances of each subclass
 		for (int32 i = 0; i < DebugNumSSAInstances; i++)
 		{
+			CastShadows.Emplace(bDebugSSACastShadow);
 			FVector Location = FVector(FMath::RandRange(0.f, 1.f) * LandscapeSize.X, -FMath::RandRange(0.f, 1.f) * LandscapeSize.Y, GroundPlaneZHeight);
 			Locations.Emplace(Location);
 			Rotations.Emplace(FRotator(0, FMath::RandRange(0.f, 1.f) * 360.f, 0));
@@ -276,7 +281,7 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 			}
 		}
 		
-		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, Locations, Rotations, Scales);
+		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, CastShadows, Locations, Rotations, Scales);
 	}
 }
 
@@ -337,7 +342,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 					Rotations.Emplace(FRotator(0, Layout.yaw_angles[i], 0));
 				}
 				
-				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Layout.visibilities, Locations, Rotations, Layout.scale_factors);
+				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Layout.visibilities, Layout.cast_shadows, Locations, Rotations, Layout.scale_factors);
 				break;
 			}
 		}

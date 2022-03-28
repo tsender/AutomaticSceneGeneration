@@ -61,9 +61,10 @@ uint16 AStructuralSceneActor::GetIDNumber() const
 	return IDNumber;
 }
 
-void AStructuralSceneActor::SetStructuralAttributes(bool bVisibile, FVector NewLocation, FRotator NewRotation, float NewScale) 
+void AStructuralSceneActor::SetStructuralAttributes(bool bVisibile, bool bNewCastShadow, FVector NewLocation, FRotator NewRotation, float NewScale) 
 {
 	SetActive(bVisibile);
+	StaticMeshComponent->SetCastShadow(bNewCastShadow);
 	SetActorLocation(NewLocation);
 	SetActorRotation(NewRotation);
 
@@ -116,7 +117,7 @@ bool AStructuralSceneActor::IsTraversable() const
 void AStructuralSceneActor::UpdateTraversabilitySettings()
 {	
 	// Must manually set the traversable annotation material
-	// I'm not sure exactly which ones to set, so I'm just gonna do everyhing...
+	// I'm not sure exactly which collision response channels to set, so I'm just gonna set a bunch of them...
 	if (bTraversable)
 	{
 		AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(255, 255, 255, 255));

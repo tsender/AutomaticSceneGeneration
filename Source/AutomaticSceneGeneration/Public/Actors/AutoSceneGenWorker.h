@@ -56,10 +56,11 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY(EditAnywhere)
 	uint16 DebugNumSSAInstances = 100;
 
-	// UPROPERTY(EditAnywhere)
-	// float GlobalTimeDilation = 1.f;
+	// Indicates if the debug structural scene actors can cast a shadow
+	UPROPERTY(EditAnywhere)
+	bool bDebugSSACastShadow = true;
 
-	bool bSSAInit = false;
+	bool bSSAInit = false; // Remove?
 
 	// For now, we assume the ground plane is flat
 	float GroundPlaneZHeight = 0.f;
@@ -109,13 +110,9 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	class UROSIntegrationGameInstance* ROSInst;
 	
-	// ROS topic name for ASG client's status message
+	// Name of the ROS AutoSceneGenClient
 	UPROPERTY(Editanywhere)
-	FString ASGClientStatusTopic = FString("/asg_client/status");
-
-	// ROS service name for ASG client's AnalyzeScenario service
-	UPROPERTY(Editanywhere)
-	FString AnalyzeScenarioServiceName = FString("/asg_client/services/analyze_scenario");
+	FString AutoSceneGenClientName = FString("asg_client");
 
 	// ROS subscriber: Subscribes to the ASG client's status
 	UPROPERTY()

@@ -26,6 +26,8 @@ public:
 		msg->num_instances = GetInt32FromBSON(key + ".num_instances", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		msg->visibilities = GetBoolTArrayFromBSON(key + ".visibilities", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->cast_shadows = GetBoolTArrayFromBSON(key + ".cast_shadows", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		
 		msg->x_positions = GetFloatTArrayFromBSON(key + ".x_positions", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		msg->y_positions = GetFloatTArrayFromBSON(key + ".y_positions", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		msg->yaw_angles = GetFloatTArrayFromBSON(key + ".yaw_angles", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
@@ -48,6 +50,8 @@ public:
 		BSON_APPEND_INT32(b, "num_instances", msg->num_instances);
 
 		_bson_append_bool_tarray(b, "visibilities", msg->visibilities);
+		_bson_append_bool_tarray(b, "cast_shadows", msg->cast_shadows);
+
 		_bson_append_float_tarray(b, "x_positions", msg->x_positions);
 		_bson_append_float_tarray(b, "y_positions", msg->y_positions);
 		_bson_append_float_tarray(b, "yaw_angles", msg->yaw_angles);

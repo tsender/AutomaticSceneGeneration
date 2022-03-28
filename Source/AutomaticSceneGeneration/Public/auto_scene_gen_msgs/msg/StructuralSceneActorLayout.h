@@ -21,6 +21,9 @@ namespace ROSMessages{
 			// Indicates if the actor is visible in the game. Toggling this is more efficient than adding/removing elements from the arrays below
 			TArray<bool> visibilities;
 
+			// Indicates if the actor can cast a shadow in the game.
+			TArray<bool> cast_shadows;
+
 			// X positions in [cm]
 			TArray<float> x_positions;
 
