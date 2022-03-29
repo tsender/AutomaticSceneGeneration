@@ -24,10 +24,10 @@ public:
 	static bool _bson_extract_child_msg(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance * msg, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
-		KeyFound = UStdMsgsHeaderConverter::_bson_extract_child_header(b, key + ".header", &msg->header); if (!KeyFound) return false;
+		if (!UStdMsgsHeaderConverter::_bson_extract_child_header(b, key + ".header", &msg->header)) return false;
 		msg->child_frame_id = GetFStringFromBSON(key + ".child_frame_id", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		KeyFound = UGeometryMsgsPoseConverter::_bson_extract_child_pose(b, key + ".pose", &msg->pose); if (!KeyFound) return false;
-		KeyFound = UGeometryMsgsTwistConverter::_bson_extract_child_twist(b, key + ".twist", &msg->twist); if (!KeyFound) return false;
+		if (!UGeometryMsgsPoseConverter::_bson_extract_child_pose(b, key + ".pose", &msg->pose)) return false;
+		if (!UGeometryMsgsTwistConverter::_bson_extract_child_twist(b, key + ".twist", &msg->twist)) return false;
 		return true;
 	}
 

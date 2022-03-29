@@ -338,11 +338,11 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 
 				for (int32 i = 0; i < Layout.num_instances; i++)
 				{
-					Locations.Emplace(FVector(Layout.x_positions[i], Layout.y_positions[i], GroundPlaneZHeight));
-					Rotations.Emplace(FRotator(0, Layout.yaw_angles[i], 0));
+					Locations.Emplace(FVector(Layout.x[i], Layout.y[i], GroundPlaneZHeight));
+					Rotations.Emplace(FRotator(0, Layout.yaw[i], 0));
 				}
 				
-				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Layout.visibilities, Layout.cast_shadows, Locations, Rotations, Layout.scale_factors);
+				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Layout.visible, Layout.cast_shadow, Locations, Rotations, Layout.scale);
 				break;
 			}
 		}
@@ -492,7 +492,7 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	GoalRadius = CastRequest->goal_radius;
 
 	RequestedSSAArray.Empty();
-	RequestedSSAArray = CastRequest->ssa_array;
+	RequestedSSAArray = CastRequest->scene_description.ssa_array;
 	if (RequestedSSAArray.Num() == 0)
 	{
 		UE_LOG(LogASG, Error, TEXT("RunScenario request field 'ssa_array' is empty"));

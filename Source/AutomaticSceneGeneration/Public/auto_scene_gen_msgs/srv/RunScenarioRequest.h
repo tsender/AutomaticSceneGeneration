@@ -3,7 +3,7 @@
 #include <CoreMinimal.h>
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "ROSIntegration/Public/geometry_msgs/Point.h"
-#include "auto_scene_gen_msgs/msg/StructuralSceneActorLayout.h"
+#include "auto_scene_gen_msgs/msg/SceneDescription.h"
 
 namespace ROSMessages {
 	namespace auto_scene_gen_msgs {
@@ -28,8 +28,8 @@ namespace ROSMessages {
 			// If vehicle is within this distance in [cm] of the goal location, then we assume the vehicle succeeded.
 			float goal_radius;
 
-			// An array defining all of the types of SSAs and their attributes from which to place in the scene
-			TArray<auto_scene_gen_msgs::StructuralSceneActorLayout> ssa_array;
+			// The scene description
+			auto_scene_gen_msgs::SceneDescription scene_description;
 		};
 	}
 }
