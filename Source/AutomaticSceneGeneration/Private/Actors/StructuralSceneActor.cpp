@@ -6,7 +6,7 @@
 #include "Components/AnnotationComponent.h"
 #include "Engine/StaticMeshActor.h"
 #include "Kismet/GameplayStatics.h"
-#include "auto_scene_gen_logging.h"
+#include "AutoSceneGenLogging.h"
 
 AStructuralSceneActor::AStructuralSceneActor()
 {

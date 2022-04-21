@@ -13,6 +13,12 @@ namespace ROSMessages{
                 _MessageType = "auto_scene_gen_msgs/SceneDescription";
 			}
 
+			// The angle the sunlight makes with the horizontal [deg]
+			float sunlight_inclination;
+
+			// The yaw angle the sunlight is pointing in (i.e., the angle the shadow will be cast in) [deg]
+			float sunlight_yaw_angle;
+			
 			// The mesh's scale (applies to all 3 axes)
 			TArray<auto_scene_gen_msgs::StructuralSceneActorLayout> ssa_array;
 		};

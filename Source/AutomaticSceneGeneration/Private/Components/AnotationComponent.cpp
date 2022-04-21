@@ -3,7 +3,7 @@
 
 #include "Components/AnnotationComponent.h"
 #include "Components/MeshComponent.h"
-#include "auto_scene_gen_logging.h"
+#include "AutoSceneGenLogging.h"
 
 // Sets default values for this component's properties
 UAnnotationComponent::UAnnotationComponent()

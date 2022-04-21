@@ -23,6 +23,9 @@ public:
 	{
 		bool KeyFound = false;
 
+		msg->sunlight_inclination = GetDoubleFromBSON(key + ".sunlight_inclination", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->sunlight_yaw_angle = GetDoubleFromBSON(key + ".sunlight_yaw_angle", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		
 		msg->ssa_array = GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout>(key + ".ssa_array", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
 		{
 			ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout elem;
@@ -44,6 +47,8 @@ public:
 
 	static void _bson_append_msg(bson_t *b, const ROSMessages::auto_scene_gen_msgs::SceneDescription *msg)
 	{
+		BSON_APPEND_DOUBLE(b, "sunlight_inclination", msg->sunlight_inclination);
+		BSON_APPEND_DOUBLE(b, "sunlight_yaw_angle", msg->sunlight_yaw_angle);
 		_bson_append_tarray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout>(b, "ssa_array", msg->ssa_array, [](bson_t* msg, const char* key, const ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout &ssa_layout)
 		{
 			UASGMsgsStructuralSceneActorLayoutConverter::_bson_append_child_msg(msg, key, &ssa_layout);

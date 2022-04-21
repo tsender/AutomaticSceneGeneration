@@ -4,12 +4,14 @@
 #include "Actors/AutoSceneGenWorker.h"
 #include "Objects/StructuralSceneActorMaintainer.h"
 #include "Actors/StructuralSceneActor.h"
+#include "Vehicles/AutoSceneGenVehicle.h"
+#include "AutoSceneGenLogging.h"
+
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMeshActor.h"
-#include "Vehicles/AutoSceneGenVehicle.h"
+#include "Engine/DirectionalLight.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "auto_scene_gen_logging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
@@ -66,12 +68,27 @@ void AAutoSceneGenWorker::BeginPlay()
 		}
 	}
 
+	// Get light source actor (for sunlight)
+	TempArray.Empty();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ADirectionalLight::StaticClass(), TempArray);
+	if (!TempArray.Num())
+	{
+		UE_LOG(LogASG, Error, TEXT("There must be a DirectionalLight actor in the world to act as sunlight."));
+		return;
+	}
+	LightSource = Cast<ADirectionalLight>(TempArray[0]);
+	if (!LightSource)
+	{
+		UE_LOG(LogASG, Error, TEXT("Failed to cast DirectionalLight actor."));
+		return;
+	}
+
 	// Find ASG vehicle
 	VehicleStartRotation = FRotator(0.f, VehicleStartYaw, 0.f);
 	ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
 	if (!ASGVehicle)
 	{
-		UE_LOG(LogASG, Error, TEXT("Could not get AAutoSceneGenVehicle from first player controller."));
+		UE_LOG(LogASG, Error, TEXT("Could not get AutoSceneGenVehicle from first player controller."));
 	}
 	else
 	{
@@ -137,7 +154,7 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 
 	DebugSSASubclasses.Empty();
 	SSAMaintainerMap.Empty();
-	RequestedSSAArray.Empty();
+	SceneDescription.ssa_array.Empty();
 
 	if (ROSInst)
 	{
@@ -287,15 +304,17 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 
 void AAutoSceneGenWorker::ProcessRunScenarioRequest() 
 {
-	if (!ROSInst || !ASGVehicle || !bASGClientOnline || bProcessedScenarioRequest) return;
+	if (!ROSInst || !bASGClientOnline || !ASGVehicle || !LightSource || bProcessedScenarioRequest) return;
 
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
+
+	LightSource->SetActorRotation(FRotator(-SceneDescription.sunlight_inclination, SceneDescription.sunlight_yaw_angle, 0.));
 
 	// Store requested SSA subclasses in array of TSubclassOf<AStructuralSceneActor> so we can access them later
 	TArray<TSubclassOf<AStructuralSceneActor>> RequestedSSASubclasses;
 
 	// Verify path_names to SSA subclasses (can only be done in game thread)
-	for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : RequestedSSAArray)
+	for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : SceneDescription.ssa_array)
 	{
 		UBlueprintGeneratedClass* CastBP = LoadObject<UBlueprintGeneratedClass>(nullptr, *Layout.path_name, nullptr, LOAD_None, nullptr);
 
@@ -329,7 +348,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 		}
 
 		// Find corresponding element in SSA array
-		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : RequestedSSAArray)
+		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : SceneDescription.ssa_array)
 		{
 			if (Subclass->GetPathName().Equals(Layout.path_name))
 			{
@@ -491,12 +510,11 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);
 	GoalRadius = CastRequest->goal_radius;
 
-	RequestedSSAArray.Empty();
-	RequestedSSAArray = CastRequest->scene_description.ssa_array;
-	if (RequestedSSAArray.Num() == 0)
-	{
-		UE_LOG(LogASG, Error, TEXT("RunScenario request field 'ssa_array' is empty"));
-	}
+	SceneDescription = CastRequest->scene_description;
+	// if (SceneDescription.ssa_array.Num() == 0)
+	// {
+	// 	UE_LOG(LogASG, Error, TEXT("RunScenario Request: 'ssa_array' is empty"));
+	// }
 
 	bWaitingForScenarioRequest = false;
 	bProcessedScenarioRequest = false;

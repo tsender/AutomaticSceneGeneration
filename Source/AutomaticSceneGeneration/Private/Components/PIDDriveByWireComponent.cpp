@@ -8,7 +8,7 @@
 #include "WheeledVehicleMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "Kismet/GameplayStatics.h"
-#include "auto_scene_gen_logging.h"
+#include "AutoSceneGenLogging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
@@ -40,7 +40,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	Vehicle = Cast<AAutoSceneGenVehicle>(GetOwner());
 	if (!Vehicle)
 	{
-		UE_LOG(LogASG, Error, TEXT("Drive-by-wire component owner must be an AAutoSceneGenVehicle."));
+		UE_LOG(LogASG, Error, TEXT("Drive-by-wire component owner must be an AutoSceneGenVehicle."));
 		return;
 	}
 

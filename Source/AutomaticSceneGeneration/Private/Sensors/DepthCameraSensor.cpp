@@ -5,7 +5,6 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "RHICommandList.h"
 #include "Kismet/GameplayStatics.h"
-#include "auto_scene_gen_logging.h"
 
 UDepthCameraSensor::UDepthCameraSensor() 
 {

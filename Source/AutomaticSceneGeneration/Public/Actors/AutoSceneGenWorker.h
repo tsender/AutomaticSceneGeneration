@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "auto_scene_gen_msgs/msg/StructuralSceneActorLayout.h"
+#include "auto_scene_gen_msgs/msg/SceneDescription.h"
 #include <chrono>
 #include "AutoSceneGenWorker.generated.h"
 
@@ -42,8 +42,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY(EditAnywhere)
 	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
 
-	// Keeps track of the incoming requested SSA array
-	TArray<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout> RequestedSSAArray;
+	// Keeps track of the requested scene description
+	ROSMessages::auto_scene_gen_msgs::SceneDescription SceneDescription;
 
 	// Keeps track of the SSA maintainers
 	UPROPERTY()
@@ -51,6 +51,9 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	UPROPERTY()
 	class AStaticMeshActor* GroundPlaneActor;
+
+	UPROPERTY()
+	class ADirectionalLight* LightSource;
 
 	// Number of structural scene actor instances allowed per type
 	UPROPERTY(EditAnywhere)

@@ -5,7 +5,7 @@
 #include "Vehicles/AutoSceneGenVehicle.h"
 #include "Actors/AutoSceneGenWorker.h"
 #include "Kismet/GameplayStatics.h"
-#include "auto_scene_gen_logging.h"
+#include "AutoSceneGenLogging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"

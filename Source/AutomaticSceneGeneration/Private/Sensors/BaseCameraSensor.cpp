@@ -9,7 +9,7 @@
 #include "ImageWrapper/Public/IImageWrapper.h"
 #include "Modules/ModuleManager.h"
 #include "Kismet/GameplayStatics.h"
-#include "auto_scene_gen_logging.h"
+#include "AutoSceneGenLogging.h"
 
 UBaseCameraSensor::UBaseCameraSensor() 
 {
