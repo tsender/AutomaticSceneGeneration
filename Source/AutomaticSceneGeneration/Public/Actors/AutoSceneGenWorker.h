@@ -63,25 +63,48 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY(EditAnywhere)
 	bool bDebugSSACastShadow = true;
 
-	bool bSSAInit = false; // Remove?
-
 	// For now, we assume the ground plane is flat
 	float GroundPlaneZHeight = 0.f;
 
+	// Maximum amount of time [s] to let the simulation run before terminating. Set to -1 to disable feature.
+	UPROPERTY(EditAnywhere)
+	float SimTimeoutPeriod = -1.;
+	
+	/**
+	 * Maximum amount of time [s] the vehicle can idle (once it began moving) before terminating the simulation. Set to -1 to disable feature.
+	 * Idling is defined as being at/near rest while also commanding zero velocity.
+	 */
+	UPROPERTY(EditAnywhere)
+	float VehicleIdlingTimeoutPeriod = -1.;
+	
+	/**
+	 * Maximum amount of time [s] the vehicle can be "stuck", like on an obstacle, before terminating the simulation. Set to -t to disable feature.
+	 * We define the vehicle as being stuck if it is not moving, has not flipped over, but is still being sent non-zero control commands.
+	 */
+	UPROPERTY(EditAnywhere)
+	float VehicleStuckTimeoutPeriod = -1.;
+	
+	/**
+	 * If true, then the simulator will not terminate the simulation if the vehicle touches a non-traversable obstacle.
+	 * If false, then the simulation will terminate with reason REASON_VEHICLE_COLLISION (see auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h) if the vehicle touches a non-traversable obstacle.
+	 */
+	UPROPERTY(EditAnywhere)
+	bool bAllowCollisions = true;
+	
 	// The dimensions of the landscape in [cm]
 	UPROPERTY(EditAnywhere)
 	FVector LandscapeSize = FVector(50000., 50000., 0.);
 
 	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.
 	UPROPERTY(EditAnywhere)
-	float DebugSafetyRadius = 500.f; // [cm]
+	float DebugSafetyRadius = 500.f;
 
 	/**
 	 * If vehicle is within this distance in [cm] from the goal point, then the vehicle has reached its destination. 
 	 * This distance accounts for the turning radius of the vehicle. Without this, then the vehicle may end up circling the goal point for a really long time, which we don't want.
 	 */
 	UPROPERTY(EditAnywhere)
-	float GoalRadius = 500.f; // [cm]
+	float GoalRadius = 500.f;
 	
 	// The starting point for the vehicle in [cm]
 	UPROPERTY(EditAnywhere)
@@ -151,15 +174,17 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	bool bReadyToTick = false;
 
-	void InitDebugStructuralSceneActors();
-
 	void RandomizeDebugStructuralSceneActors();
 
 	void ProcessRunScenarioRequest();
 
-	bool CheckIfVehicleCrashed();
+	/**
+	 * Reset vehicle send an AnalyzeScenario request for the given termination reason
+	 * @param TerminationReason Reason for terminating the simulation
+	 */
+	void ResetVehicleAndSendAnalyzeScenarioRequest(uint8 TerminationReason);
 
-	bool CheckIfVehicleFlipped();
+	bool CheckForVehicleReset();
 
 	bool CheckGoalLocation();
 

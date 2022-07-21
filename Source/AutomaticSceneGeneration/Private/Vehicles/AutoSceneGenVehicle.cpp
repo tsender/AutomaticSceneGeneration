@@ -45,6 +45,9 @@ void AAutoSceneGenVehicle::BeginPlay()
     bWorldIsReady = false;
     TickNumber = 0;
     ResetTime = 0.f;
+    IdleTime = 0.f;
+    StuckTime = 0.f;
+    TimeSinceFirstControl = 0.f;
     NominalVehicleZLocation = 0.f;
     HeaderSequence = 1;
     PathSequence = 0; // Gets incremented when enabled
@@ -110,6 +113,22 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     TickNumber++;
+
+    if (bEnabled)
+    {
+        if (IsVehicleIdling())
+            IdleTime += DeltaTime;
+        else
+            IdleTime = 0.f;
+        
+        if (IsVehicleStuck())
+            StuckTime += DeltaTime;
+        else
+            StuckTime = 0.f;
+
+        if (DriveByWireComponent->ReceivedFirstControlInput())
+            TimeSinceFirstControl += DeltaTime;
+    }
     CheckIfReadyForEnable(DeltaTime);
 
     if (ROSInst)
@@ -119,6 +138,7 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
         if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
+            
             ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance Odometry;
             
             Odometry.header.seq = HeaderSequence;
@@ -183,6 +203,51 @@ bool AAutoSceneGenVehicle::IsEnabled() const
     return bEnabled;
 }
 
+bool AAutoSceneGenVehicle::IsVehicleIdling()
+{
+    if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
+
+    float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
+    if (FMath::Abs(TransVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) <= LinearMotionThreshold)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool AAutoSceneGenVehicle::IsVehicleStuck()
+{
+    if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
+
+    float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
+    if (FMath::Abs(TransVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) > LinearMotionThreshold)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+float AAutoSceneGenVehicle::GetIdleTime() const
+{
+    return IdleTime;
+}
+
+float AAutoSceneGenVehicle::GetStuckTime() const
+{
+    return StuckTime;
+}
+
+float AAutoSceneGenVehicle::GetTimeSinceFirstControl() const
+{
+    return TimeSinceFirstControl;
+}
+
 void AAutoSceneGenVehicle::SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation)
 {
     ResetLocation = DefaultLocation;
@@ -208,6 +273,9 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     DriveByWireComponent->EnableDriveByWire(false);
     TickNumber = 0;
     ResetTime = 0.f;
+    IdleTime = 0.f;
+    StuckTime = 0.f;
+    TimeSinceFirstControl = 0.f;
     NumSSAHit = 0;
 
     UE_LOG(LogASG, Display, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
@@ -285,7 +353,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
         // If vehicle roll/pitch is too large after reset (e.g. from being thrown out of bounds), then reset the vehicle to try again
         if (FMath::Abs(GetActorRotation().Euler().X) > 30.f || FMath::Abs(GetActorRotation().Euler().Y) > 30.f)
         {
-            UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large after reset, trying again."));
+            UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large after reset (thrown out of bound?), trying again."));
             ResetVehicle(ResetLocation, ResetRotation);
             bWorldIsReady = true;
             return;

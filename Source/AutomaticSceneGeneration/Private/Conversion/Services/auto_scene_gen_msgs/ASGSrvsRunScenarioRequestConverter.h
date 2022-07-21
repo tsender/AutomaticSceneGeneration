@@ -29,6 +29,11 @@ public:
 
 		request->scenario_number = UBaseMessageConverter::GetInt32FromBSON(key + ".scenario_number", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
+		request->sim_timeout_period = UBaseMessageConverter::GetDoubleFromBSON(key + ".sim_timeout_period", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->vehicle_idling_timeout_period = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_idling_timeout_period", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->vehicle_stuck_timeout_period = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_stuck_timeout_period", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->allow_collisions = UBaseMessageConverter::GetBoolFromBSON(key + ".allow_collisions", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+
 		if (!UGeometryMsgsPointConverter::_bson_extract_child_point(b, key + ".vehicle_start_location", &request->vehicle_start_location, LogOnErrors)) return false;
 		request->vehicle_start_yaw = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_start_yaw", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		
@@ -43,6 +48,11 @@ public:
 	static void _bson_append_request(bson_t *b, const ROSMessages::auto_scene_gen_msgs::FRunScenarioRequest *request)
 	{
 		BSON_APPEND_INT32(b, "scenario_number", request->scenario_number);
+
+		BSON_APPEND_DOUBLE(b, "sim_timeout_period", request->sim_timeout_period);
+		BSON_APPEND_DOUBLE(b, "vehicle_idling_timeout_period", request->vehicle_idling_timeout_period);
+		BSON_APPEND_DOUBLE(b, "vehicle_stuck_timeout_period", request->vehicle_stuck_timeout_period);
+		BSON_APPEND_BOOL(b, "allow_collisions", request->allow_collisions);
 
 		UGeometryMsgsPointConverter::_bson_append_child_point(b, "vehicle_start_location", &request->vehicle_start_location);
 		BSON_APPEND_DOUBLE(b, "vehicle_start_yaw", request->vehicle_start_yaw);

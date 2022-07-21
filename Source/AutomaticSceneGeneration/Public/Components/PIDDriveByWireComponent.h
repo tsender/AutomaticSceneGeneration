@@ -40,6 +40,10 @@ public: /****************************** UPIDDriveByWireComponent ***************
 
 	float GetMaxSteeringAngle() const;
 
+	float GetDesiredVelocity() const;
+
+	float GetDesiredSteeringAngle() const;
+
 	void EnableDriveByWire(bool bEnable);
 
 	void SetDesiredForwardVelocity(float NewVelocity);

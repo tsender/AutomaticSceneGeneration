@@ -200,8 +200,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 
 	if (bProcessedScenarioRequest && !bWaitingForScenarioRequest)
 	{
-		CheckIfVehicleCrashed();
-		CheckIfVehicleFlipped();
+		CheckForVehicleReset();
 		CheckGoalLocation();
 	}
 
@@ -238,32 +237,6 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 uint8 AAutoSceneGenWorker::GetWorkerID() const
 {
 	return WorkerID;
-}
-
-void AAutoSceneGenWorker::InitDebugStructuralSceneActors()  // Remove?
-{
-	TArray<bool> Visibilities;
-	TArray<bool> CastShadows;
-	TArray<FVector> Locations;
-	TArray<FRotator> Rotations;
-	TArray<float> Scales;
-
-	// For the debug SSAs, we use the same number of instances of each subclass
-	for (int32 i = 0; i < DebugNumSSAInstances; i++)
-	{
-		Visibilities.Emplace(true);
-		CastShadows.Emplace(bDebugSSACastShadow);
-		Locations.Emplace(FVector(0,0,GroundPlaneZHeight));
-		Rotations.Emplace(FRotator(0,0,0));
-		Scales.Emplace(1.f);
-	}
-
-	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
-	{
-		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, CastShadows, Locations, Rotations, Scales);
-	}
-	
-	bSSAInit = true;
 }
 
 void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
@@ -373,52 +346,79 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i"), ScenarioNumber);
 }
 
-bool AAutoSceneGenWorker::CheckIfVehicleFlipped()
+void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 TerminationReason)
+{
+	TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
+	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_trajectory);
+	
+	bWaitingForScenarioRequest = true;
+	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
+	Req->worker_id = WorkerID;
+	Req->scenario_number = ScenarioNumber;
+	Req->termination_reason = TerminationReason;
+
+	UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
+	AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
+}
+
+bool AAutoSceneGenWorker::CheckForVehicleReset()
 {
 	if (!ASGVehicle || !ASGVehicle->IsEnabled()) return false;
 
-	if (FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > MaxVehicleRoll)
+	// Did vehicle crash?
+	if (ROSInst && !bAllowCollisions && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Vehicle roll %i degrees exceeds %i degree maximum. Resetting vehicle."), ASGVehicle->GetActorRotation().Euler().X, MaxVehicleRoll);
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, true);
-		ASGVehicle->SetWorldIsReadyFlag(true);
+		UE_LOG(LogASG, Display, TEXT("Vehicle collided with obstacle. Vehicle has failed."));
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_COLLISION);
 		return true;
 	}
-	if ( FMath::Abs(ASGVehicle->GetActorRotation().Euler().Y) > MaxVehiclePitch)
-	{
-		UE_LOG(LogASG, Warning, TEXT("Vehicle pitch %i degrees exceeds %i degree maximum. Resetting vehicle."), ASGVehicle->GetActorRotation().Euler().Y, MaxVehiclePitch);
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, true);
-		ASGVehicle->SetWorldIsReadyFlag(true);
-		return true;
-	}
-	return false;
-}
 
-bool AAutoSceneGenWorker::CheckIfVehicleCrashed()
-{
-	if (ROSInst && ASGVehicle && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
+	// Did vehicle roll over?
+	if (ROSInst && FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > MaxVehicleRoll)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle has crashed. Vehicle has failed."));
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
-		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_trajectory);
-		
-		bWaitingForScenarioRequest = true;
-		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
-		Req->worker_id = WorkerID;
-		Req->scenario_number = ScenarioNumber;
-		Req->crashed = true;
-		Req->succeeded = false;
-
-		UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
-		AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
+		UE_LOG(LogASG, Display, TEXT("Vehicle roll %f degrees exceeds %f degree maximum. Vehicle has failed."), ASGVehicle->GetActorRotation().Euler().X, MaxVehicleRoll);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
 		return true;
 	}
+
+	// Did vehicle flip over?
+	if (ROSInst && FMath::Abs(ASGVehicle->GetActorRotation().Euler().Y) > MaxVehiclePitch)
+	{
+		UE_LOG(LogASG, Display, TEXT("Vehicle pitch %f degrees exceeds %f degree maximum. Vehicle has failed."), ASGVehicle->GetActorRotation().Euler().Y, MaxVehiclePitch);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
+		return true;
+	}
+
+	// Did simulation timer expire?
+	if (ROSInst && SimTimeoutPeriod > 0. && ASGVehicle->GetTimeSinceFirstControl() >= SimTimeoutPeriod)
+	{
+		UE_LOG(LogASG, Display, TEXT("Simulation timer expired. Vehicle has failed."));
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_SIM_TIMEOUT);
+		return true;
+	}
+
+	// Is vehicle idling too long?
+	if (ROSInst && VehicleIdlingTimeoutPeriod > 0. && ASGVehicle->GetIdleTime() >= VehicleIdlingTimeoutPeriod)
+	{
+		UE_LOG(LogASG, Display, TEXT("Vehicle idling for too long. Vehicle has failed."));
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_IDLING_TIMEOUT);
+		return true;
+	}
+
+	// Is vehicle stuck for too long?
+	if (ROSInst && VehicleStuckTimeoutPeriod > 0. && ASGVehicle->GetStuckTime() >= VehicleStuckTimeoutPeriod)
+	{
+		UE_LOG(LogASG, Display, TEXT("Vehicle stuck for too long. Vehicle has failed."));
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_STUCK_TIMEOUT);
+		return true;
+	}
+
 	return false;
 }
 
 bool AAutoSceneGenWorker::CheckGoalLocation() 
 {
-	if (!ASGVehicle) return false;
+	if (!ASGVehicle || !ASGVehicle->IsEnabled()) return false;
 
 	FVector DistanceToGoal = ASGVehicle->GetActorLocation() - VehicleGoalLocation;
 	DistanceToGoal.Z = 0;
@@ -435,8 +435,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 
 			Req->worker_id = WorkerID;
 			Req->scenario_number = ScenarioNumber;
-			Req->crashed = false;
-			Req->succeeded = true;
+			Req->termination_reason = Req->REASON_SUCCESS;
 
 			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
@@ -448,6 +447,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 			UE_LOG(LogASG, Display, TEXT("No ROSIntegration game instance. Generating new random scene."));
 		}
 	}
+
 	return false;
 }
 
@@ -505,6 +505,12 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	UE_LOG(LogASG, Display, TEXT("Received RunScenario request %i"), CastRequest->scenario_number);
 
 	ScenarioNumber = CastRequest->scenario_number;
+
+	SimTimeoutPeriod = CastRequest->sim_timeout_period;
+	VehicleIdlingTimeoutPeriod = CastRequest->vehicle_idling_timeout_period;
+	VehicleStuckTimeoutPeriod = CastRequest->vehicle_stuck_timeout_period;
+	bAllowCollisions = CastRequest->allow_collisions;
+
 	VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
 	VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);
 	VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);

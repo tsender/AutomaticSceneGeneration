@@ -17,12 +17,27 @@ namespace ROSMessages {
 			// Mainly just used to check on progress
 			int32 scenario_number;
 
+			// Maximum amount of time [s] to let the simulation run before terminating. Set to -1 to disable feature.
+			float sim_timeout_period;
+
+			// Maximum amount of time [s] the vehicle can idle (once it began moving) before terminating the simulation. Set to -1 to disable feature.
+			// Idling is defined as being at/near rest while also commanding zero velocity.
+			float vehicle_idling_timeout_period;
+
+			// Maximum amount of time [s] the vehicle can be "stuck", like on an obstacle, before terminating the simulation. Set to -t to disable feature.
+			// We define the vehicle as being stuck if it is not moving, has not flipped over, but is still being sent non-zero control commands.
+			float vehicle_stuck_timeout_period;
+
+			// If true, then the simulator will not terminate the simulation if the vehicle touches a non-traversable obstacle.
+			// If false, then the simulation will terminate with reason REASON_VEHICLE_COLLISION (see AnalyzeScenario.srv) if the vehicle touches a non-traversable obstacle.
+			bool allow_collisions;
+			
 			// The Z location is ignored and will populated automatically by the ASG
 			geometry_msgs::Point vehicle_start_location;
 			
 			float vehicle_start_yaw;
 			
-			// The Z location is ignored and will populated automatically by the ASG
+			// The Z location is ignored and will be populated automatically by the ASG
 			geometry_msgs::Point vehicle_goal_location;
 
 			// If vehicle is within this distance in [cm] of the goal location, then we assume the vehicle succeeded.

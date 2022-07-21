@@ -40,10 +40,37 @@ public: /****************************** AAutoSceneGenVehicle *******************
 
 	bool IsEnabled() const;
 
+	// Indicates if the vehicle is idling. Better to use GetIdleTime() to see how long the vehicle has been idling.
+	bool IsVehicleIdling();
+
+	// Indicates if the vehicle is stuck. Better to use GetStuckTime() to see how long the vehicle has been stuck, as this may return true as a vehicle begins to accelerate.
+	bool IsVehicleStuck();
+
+	// Returns the most recent consecutive amount of time the vehicle is found idling (near-zero motion with near-zero commanded velocity)
+	float GetIdleTime() const;
+
+	// Returns the most recent consecutive amount of time the vehicle is found stuck (near-zero motion but non-zero commanded velocity)
+	float GetStuckTime() const;
+
+	// Returns the amount of time that has passed since the vehicle received its first control command
+	float GetTimeSinceFirstControl() const;
+
 	void SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation);
 
+	/**
+	 * Resets the vehicle
+	 * @param NewLocation New reset location
+	 * @param NewRotation New reset rotation
+	 * @param bPreemptedDisable Indicates if vehicle was disabled preemptively (e.g., due to a forced reset by the AutoSceneGen worker)
+	 */
 	void ResetVehicle(FVector NewLocation, FRotator NewRotation, bool bPreemptedDisable = false);
 	
+	/**
+	 * Resets the vehicle and writes the vehicle's trajectory into the appropriate field
+	 * @param NewLocation New reset location
+	 * @param NewRotation New reset rotation
+	 * @param Trajectory Field to write the vehicle's last trajectory to
+	 */
 	void ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory);
 
 	float GetNominalVehicleZLocation();
@@ -80,6 +107,18 @@ private: /****************************** AEvaluationVehicle ********************
 	FRotator ResetRotation;
 
 	float ResetTime = 0.f;
+
+	// Motion under this linear speed [cm/s] is considered "not moving"
+	UPROPERTY(EditAnywhere)
+	float LinearMotionThreshold = 1.f;
+
+	// Most recent consecutive amount of time the vehicle is found idling (near-zero motion with near-zero commanded velocity)
+	float IdleTime = 0.f;
+
+	// Most recent consecutive amount of time the vehicle is found stuck (near-zero motion but non-zero commanded velocity)
+	float StuckTime = 0.f;
+
+	float TimeSinceFirstControl = 0.f;
 
 	// We currently assume we are on a flat ground plane
 	float NominalVehicleZLocation = 0.f;

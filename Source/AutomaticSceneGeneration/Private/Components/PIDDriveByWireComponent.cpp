@@ -146,6 +146,16 @@ float UPIDDriveByWireComponent::GetMaxSteeringAngle() const
 	return MaxSteeringAngle;
 }
 
+float UPIDDriveByWireComponent::GetDesiredVelocity() const
+{
+	return DesiredVelocity;
+}
+
+float UPIDDriveByWireComponent::GetDesiredSteeringAngle() const
+{
+	return DesiredSteeringAngle;
+}
+
 void UPIDDriveByWireComponent::EnableDriveByWire(bool bEnable) 
 {
 	bEnabled = bEnable;
@@ -155,7 +165,7 @@ void UPIDDriveByWireComponent::EnableDriveByWire(bool bEnable)
 	if (bEnabled && bManualDrive && !bReceivedFirstControlInput)
 	{
 		bReceivedFirstControlInput = true;
-		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first control input."));
+		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first manual control input."));
 	}
 
 	SetDesiredForwardVelocity(0.f);
@@ -234,10 +244,11 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	SetDesiredSteeringAngle(CastMsg->steering_angle);
 	SetHandbrakeInput(CastMsg->handbrake);
 	bBypassController = false;
+
 	if (bEnabled && !bReceivedFirstControlInput)
 	{
 		bReceivedFirstControlInput = true;
-		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first control input."));
+		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first remote control input."));
 	}
 }
 

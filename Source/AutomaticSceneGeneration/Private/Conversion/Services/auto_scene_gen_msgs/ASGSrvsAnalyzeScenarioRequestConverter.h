@@ -28,8 +28,8 @@ public:
 
 		request->worker_id = UBaseMessageConverter::GetInt32FromBSON(key + ".worker_id", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->scenario_number = UBaseMessageConverter::GetInt32FromBSON(key + ".scenario_number", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		request->crashed = UBaseMessageConverter::GetBoolFromBSON(key + ".crashed", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		request->succeeded = UBaseMessageConverter::GetBoolFromBSON(key + ".succeeded", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->termination_reason = UBaseMessageConverter::GetInt32FromBSON(key + ".termination_reason", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		
 		request->vehicle_trajectory = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(key + ".poses", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
 		{
 			ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance ret;
@@ -45,8 +45,8 @@ public:
 	{
 		BSON_APPEND_INT32(b, "worker_id", request->worker_id);
 		BSON_APPEND_INT32(b, "scenario_number", request->scenario_number);
-		BSON_APPEND_BOOL(b, "crashed", request->crashed);
-		BSON_APPEND_BOOL(b, "succeeded", request->succeeded);
+		BSON_APPEND_INT32(b, "termination_reason", request->termination_reason);
+
 		UBaseMessageConverter::_bson_append_tarray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(b, "vehicle_trajectory", request->vehicle_trajectory, [](bson_t* msg, const char* key, const ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance& odometry)
 		{
 			UASGMsgsOdometryWithoutCovarianceConverter::_bson_append_child_msg(msg, key, &odometry);
