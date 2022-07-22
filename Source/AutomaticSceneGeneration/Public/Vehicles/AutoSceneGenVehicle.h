@@ -110,7 +110,7 @@ private: /****************************** AEvaluationVehicle ********************
 
 	// Motion under this linear speed [cm/s] is considered "not moving"
 	UPROPERTY(EditAnywhere)
-	float LinearMotionThreshold = 1.f;
+	float LinearMotionThreshold = 2.f;
 
 	// Most recent consecutive amount of time the vehicle is found idling (near-zero motion with near-zero commanded velocity)
 	float IdleTime = 0.f;

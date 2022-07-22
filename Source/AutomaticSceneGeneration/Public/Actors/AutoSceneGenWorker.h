@@ -31,22 +31,22 @@ public: /****************************** AAutoSceneGenWorker ********************
 	uint8 GetWorkerID() const;
 
 private: /****************************** AAutoSceneGenWorker ******************************/
-	// ASG Worker ID number
 	UPROPERTY(EditAnywhere)
+	// ASG Worker ID number
 	uint8 WorkerID = 0;
 
+	UPROPERTY(EditAnywhere)
 	/**
 	 * Structural scene actor subclasses that will be placed in the scene for debugging purposes. 
 	 * They will get overwritten upon processing the new RunScenario request.
 	 */
-	UPROPERTY(EditAnywhere)
 	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
 
 	// Keeps track of the requested scene description
 	ROSMessages::auto_scene_gen_msgs::SceneDescription SceneDescription;
 
-	// Keeps track of the SSA maintainers
 	UPROPERTY()
+	// Keeps track of the SSA maintainers
 	TMap<FString, class UStructuralSceneActorMaintainer*> SSAMaintainerMap;
 
 	UPROPERTY()
@@ -55,109 +55,109 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	class ADirectionalLight* LightSource;
 
-	// Number of structural scene actor instances allowed per type
 	UPROPERTY(EditAnywhere)
+	// Number of structural scene actor instances allowed per type
 	uint16 DebugNumSSAInstances = 100;
 
-	// Indicates if the debug structural scene actors can cast a shadow
 	UPROPERTY(EditAnywhere)
+	// Indicates if the debug structural scene actors can cast a shadow
 	bool bDebugSSACastShadow = true;
 
 	// For now, we assume the ground plane is flat
 	float GroundPlaneZHeight = 0.f;
 
-	// Maximum amount of time [s] to let the simulation run before terminating. Set to -1 to disable feature.
 	UPROPERTY(EditAnywhere)
+	// Maximum amount of time [s] to let the simulation run before terminating. Set to -1 to disable feature.
 	float SimTimeoutPeriod = -1.;
 	
+	UPROPERTY(EditAnywhere)
 	/**
 	 * Maximum amount of time [s] the vehicle can idle (once it began moving) before terminating the simulation. Set to -1 to disable feature.
 	 * Idling is defined as being at/near rest while also commanding zero velocity.
 	 */
-	UPROPERTY(EditAnywhere)
 	float VehicleIdlingTimeoutPeriod = -1.;
 	
+	UPROPERTY(EditAnywhere)
 	/**
 	 * Maximum amount of time [s] the vehicle can be "stuck", like on an obstacle, before terminating the simulation. Set to -t to disable feature.
 	 * We define the vehicle as being stuck if it is not moving, has not flipped over, but is still being sent non-zero control commands.
 	 */
-	UPROPERTY(EditAnywhere)
 	float VehicleStuckTimeoutPeriod = -1.;
 	
+	UPROPERTY(EditAnywhere)
 	/**
 	 * If true, then the simulator will not terminate the simulation if the vehicle touches a non-traversable obstacle.
 	 * If false, then the simulation will terminate with reason REASON_VEHICLE_COLLISION (see auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h) if the vehicle touches a non-traversable obstacle.
 	 */
-	UPROPERTY(EditAnywhere)
 	bool bAllowCollisions = true;
 	
-	// The dimensions of the landscape in [cm]
 	UPROPERTY(EditAnywhere)
+	// The dimensions of the landscape in [cm]
 	FVector LandscapeSize = FVector(50000., 50000., 0.);
 
-	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.
 	UPROPERTY(EditAnywhere)
+	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.
 	float DebugSafetyRadius = 500.f;
 
+	UPROPERTY(EditAnywhere)
 	/**
 	 * If vehicle is within this distance in [cm] from the goal point, then the vehicle has reached its destination. 
 	 * This distance accounts for the turning radius of the vehicle. Without this, then the vehicle may end up circling the goal point for a really long time, which we don't want.
 	 */
-	UPROPERTY(EditAnywhere)
 	float GoalRadius = 500.f;
 	
-	// The starting point for the vehicle in [cm]
 	UPROPERTY(EditAnywhere)
+	// The starting point for the vehicle in [cm]
 	FVector VehicleStartLocation = FVector(10000., -10000., 200.);
 
-	// The starting yaw angle for the vehicle in [deg]
 	UPROPERTY(EditAnywhere)
+	// The starting yaw angle for the vehicle in [deg]
 	float VehicleStartYaw = -45.f;
 
 	FRotator VehicleStartRotation = FRotator(0.f, 0.f, 0.f);
 
-	// The goal point for the vehicle in [cm]
 	UPROPERTY(EditAnywhere)
+	// The goal point for the vehicle in [cm]
 	FVector VehicleGoalLocation = FVector(30000., -30000., 0.);
 
-	// Maximum allowed vehicle roll angle [deg]
 	UPROPERTY(EditAnywhere)
+	// Maximum allowed vehicle roll angle [deg]
 	float MaxVehicleRoll = 70.f;
 	
-	// Maximum allowed vehicle pitch angle [deg]
 	UPROPERTY(EditAnywhere)
+	// Maximum allowed vehicle pitch angle [deg]
 	float MaxVehiclePitch = 70.f;
 
-	// Evaluation vehicle
 	UPROPERTY()
+	// Evaluation vehicle
 	class AAutoSceneGenVehicle* ASGVehicle;
 
-	// ROSIntegration game instance
 	UPROPERTY()
+	// ROSIntegration game instance
 	class UROSIntegrationGameInstance* ROSInst;
 	
-	// Name of the ROS AutoSceneGenClient
 	UPROPERTY(Editanywhere)
+	// Name of the ROS AutoSceneGenClient
 	FString AutoSceneGenClientName = FString("asg_client");
 
-	// ROS subscriber: Subscribes to the ASG client's status
 	UPROPERTY()
+	// ROS subscriber: Subscribes to the ASG client's status
 	class UTopic* ASGClientStatusSub;
 
-	// ROS publisher: Publishes the status of the ASG worker
 	UPROPERTY()
+	// ROS publisher: Publishes the status of the ASG worker
 	class UTopic* WorkerStatusPub;
 
-	// ROS publisher: Publishes the destination for the vehicle
 	UPROPERTY()
+	// ROS publisher: Publishes the destination for the vehicle
 	class UTopic* VehicleDestinationPub;
 
-	// ROS service: Processes the RunScenario request from the ASG client
 	UPROPERTY()
+	// ROS service: Processes the RunScenario request from the ASG client
 	class UService* RunScenarioService;
 
-	// ROS client: Sends the scenario data to the ASG for its analysis
 	UPROPERTY()
+	// ROS client: Sends the scenario data to the ASG for its analysis
 	class UService* AnalyzeScenarioClient;
 
 	bool bASGClientOnline = false;

@@ -368,7 +368,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	// Did vehicle crash?
 	if (ROSInst && !bAllowCollisions && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle collided with obstacle. Vehicle has failed."));
+		UE_LOG(LogASG, Display, TEXT("Vehicle collided/touched non-traversable obstacle. Vehicle has failed."));
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_COLLISION);
 		return true;
 	}

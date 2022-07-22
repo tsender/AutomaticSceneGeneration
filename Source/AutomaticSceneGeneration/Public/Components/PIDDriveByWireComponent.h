@@ -56,31 +56,31 @@ private: /****************************** UPIDDriveByWireComponent **************
 	UPROPERTY()
 	class AAutoSceneGenVehicle* Vehicle;
 	
-	// Indicates if we will be driving the vehicle via the keyboard
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
+	// Indicates if we will be driving the vehicle via the keyboard
 	bool bManualDrive = false;
 
-	// Desired max manual speed [cm/s]
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
+	// Desired max manual speed [cm/s]
 	float MaxManualDriveSpeed = 500.;
 	
-	// Kp coefficient for PID throttle control. NOTE: Control velocity is in [cm/s]
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
+	// Kp coefficient for PID throttle control. NOTE: Control velocity is in [cm/s]
 	float KpThrottle = 0.0002;
 
-	// Kd coefficient for PID throttle control. NOTE: Control velocity is in [cm/s]
 	UPROPERTY(EditAnywhere, Category = "PID Drive By Wire")
+	// Kd coefficient for PID throttle control. NOTE: Control velocity is in [cm/s]
 	float KdThrottle = 0.0007;
 
 	UPROPERTY()
 	class UROSIntegrationGameInstance* ROSInst;
 
-	// ROS subscriber for vehicle pose (if we want to bypass physics calculations)
 	UPROPERTY()
+	// ROS subscriber for vehicle pose (if we want to bypass physics calculations)
 	class UTopic* BypassSub;
 
-	// ROS subscriber for PhysX control inputs (longitudinal speed [m/s], steering angle [deg], and handbrake [true/false])
 	UPROPERTY()
+	// ROS subscriber for PhysX control inputs (longitudinal speed [m/s], steering angle [deg], and handbrake [true/false])
 	class UTopic* PhysxControllerSub;
 
 	UPROPERTY()

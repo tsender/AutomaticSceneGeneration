@@ -207,30 +207,22 @@ bool AAutoSceneGenVehicle::IsVehicleIdling()
 {
     if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
 
-    float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
-    if (FMath::Abs(TransVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) <= LinearMotionThreshold)
-    {
+    float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal speed [cm/s]
+    if (FMath::Abs(LongitudinalVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) <= LinearMotionThreshold)
         return true;
-    }
     else
-    {
         return false;
-    }
 }
 
 bool AAutoSceneGenVehicle::IsVehicleStuck()
 {
     if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
 
-    float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
-    if (FMath::Abs(TransVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) > LinearMotionThreshold)
-    {
+    float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal speed [cm/s]
+    if (FMath::Abs(LongitudinalVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) > LinearMotionThreshold)
         return true;
-    }
     else
-    {
         return false;
-    }
 }
 
 float AAutoSceneGenVehicle::GetIdleTime() const
@@ -271,6 +263,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     bPreempted = bPreemptedDisable;
     bWorldIsReady = false;
     DriveByWireComponent->EnableDriveByWire(false);
+
     TickNumber = 0;
     ResetTime = 0.f;
     IdleTime = 0.f;
@@ -351,7 +344,7 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
         }
 
         // If vehicle roll/pitch is too large after reset (e.g. from being thrown out of bounds), then reset the vehicle to try again
-        if (FMath::Abs(GetActorRotation().Euler().X) > 30.f || FMath::Abs(GetActorRotation().Euler().Y) > 30.f)
+        if (FMath::Abs(GetActorRotation().Euler().X) > 45.f || FMath::Abs(GetActorRotation().Euler().Y) > 45.f)
         {
             UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large after reset (thrown out of bound?), trying again."));
             ResetVehicle(ResetLocation, ResetRotation);
