@@ -114,8 +114,10 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
     TickNumber++;
 
-    if (bEnabled)
+    if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
     {
+        TimeSinceFirstControl += DeltaTime;
+
         if (IsVehicleIdling())
             IdleTime += DeltaTime;
         else
@@ -125,10 +127,8 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
             StuckTime += DeltaTime;
         else
             StuckTime = 0.f;
-
-        if (DriveByWireComponent->ReceivedFirstControlInput())
-            TimeSinceFirstControl += DeltaTime;
     }
+    
     CheckIfReadyForEnable(DeltaTime);
 
     if (ROSInst)
