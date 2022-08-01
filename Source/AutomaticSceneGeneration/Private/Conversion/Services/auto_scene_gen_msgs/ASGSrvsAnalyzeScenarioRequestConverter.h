@@ -30,7 +30,7 @@ public:
 		request->scenario_number = UBaseMessageConverter::GetInt32FromBSON(key + ".scenario_number", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->termination_reason = UBaseMessageConverter::GetInt32FromBSON(key + ".termination_reason", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		
-		request->vehicle_trajectory = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(key + ".poses", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
+		request->vehicle_trajectory = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(key + ".vehicle_trajectory", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
 		{
 			ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance ret;
 			subKeyFound = UASGMsgsOdometryWithoutCovarianceConverter::_bson_extract_child_msg(subMsg, subKey, &ret, LogOnErrors);

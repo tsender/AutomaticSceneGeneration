@@ -128,7 +128,7 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
         else
             StuckTime = 0.f;
     }
-    
+
     CheckIfReadyForEnable(DeltaTime);
 
     if (ROSInst)
@@ -409,7 +409,7 @@ void AAutoSceneGenVehicle::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActo
     if (SSAActor && !SSAActor->IsTraversable())
     {
         NumSSAHit++;
-        UE_LOG(LogASG, Warning, TEXT("Vehicle hit AStructuralSceneActor %s."), *SSAActor->GetName());
+        // UE_LOG(LogASG, Warning, TEXT("Vehicle hit AStructuralSceneActor %s."), *SSAActor->GetName());
     }
 }
 
