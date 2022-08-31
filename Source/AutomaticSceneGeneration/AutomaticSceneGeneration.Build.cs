@@ -38,7 +38,9 @@ public class AutomaticSceneGeneration : ModuleRules
 				"InputCore", 
 				"RenderCore", 
 				"RHI",
-				"ROSIntegration"
+				"ROSIntegration",
+				"Landscape",
+				"ProceduralMeshComponent"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

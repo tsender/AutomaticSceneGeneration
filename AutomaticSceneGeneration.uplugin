@@ -29,6 +29,10 @@
 		{
 		"Name": "ROSIntegration",
 		"Enabled": true
+		},
+		{
+		"Name": "ProceduralMeshComponent",
+		"Enabled": true
 		}
    ]
 }
