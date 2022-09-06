@@ -1,6 +1,7 @@
-#include "Actors/Triangle.h"
+#include "Actors/Terrain.h"
+#include "KismetProceduralMeshLibrary.h"
 
-ATriangle::ATriangle()
+ATerrain::ATerrain()
 {
     PrimaryActorTick.bCanEverTick = true;
 
@@ -9,7 +10,7 @@ ATriangle::ATriangle()
     TerrainMesh->AttachTo(RootComponent);
 }
 
-void ATriangle::BeginPlay()
+void ATerrain::BeginPlay()
 {
     Super::BeginPlay();
 
@@ -19,12 +20,12 @@ void ATriangle::BeginPlay()
     GenerateMesh();
 }
 
-void ATriangle::Tick(float DeltaTime)
+void ATerrain::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
 }
 
-void ATriangle::GenerateMesh()
+void ATerrain::GenerateMesh()
 {
     // Vertices.Emplace(FVector(0,0,0));
     // Vertices.Emplace(FVector(0,500,0));
@@ -68,9 +69,16 @@ void ATriangle::GenerateMesh()
 
         TerrainMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, VertexColors, Tangents, true);
     }
+
+    // Calculate and update normals
+    TArray<FVector2D> EmptyUVs;
+    TArray<FLinearColor> EmptyFLinearColor;
+    TArray<FProcMeshTangent> EmptyTangents;
+    UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, EmptyUVs, Normals, Tangents);
+    TerrainMesh->UpdateMeshSection_LinearColor(0, Vertices, Normals, EmptyUVs, EmptyFLinearColor, EmptyTangents);
 }
 
-void ATriangle::Subdivide(int a, int b, int c)
+void ATerrain::Subdivide(int a, int b, int c)
 {
     // Get endpoints
     FVector va = Vertices[a];
@@ -157,4 +165,16 @@ void ATriangle::Subdivide(int a, int b, int c)
     IdxA += 3;
     IdxB += 3;
     IdxC += 3;
+}
+
+void ATerrain::AlterTerrain(FVector ImpactPoint)
+{
+    for (int i=0; i < Vertices.Num(); i++)
+    {
+        if (FVector(Vertices[i] - ImpactPoint).Size() < 800.)
+        {
+            Vertices[i] = Vertices[i] - FVector(0,0,150);
+            TerrainMesh->UpdateMeshSection(0, Vertices, Normals, UV0, UpVertexColors, Tangents);
+        }
+    }
 }

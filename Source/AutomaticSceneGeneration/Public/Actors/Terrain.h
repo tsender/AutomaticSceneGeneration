@@ -5,27 +5,31 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "ProceduralMeshComponent.h"
-#include "Triangle.generated.h"
+#include "Terrain.generated.h"
 
-// NOTE: Set World Settings --> world --> navigation system config --> NullNavSysConfig to disable 
+// NOTE: 
+// 1) Set World Settings --> world --> navigation system config --> NullNavSysConfig to disable 
 // "LogNavigationDirtyArea: Warning: Skipping dirty area creation because of empty bounds" warning (only affects nav system used by AI)
+// 2) Set World Settings --> Lightmass --> check Force No Precomputed Lighting
 
-/**
- * This class serves as a template for working with the ProceduralMeshComponent
- */
+
 UCLASS()
-class AUTOMATICSCENEGENERATION_API ATriangle : public AActor
+class AUTOMATICSCENEGENERATION_API ATerrain : public AActor
 {
 	GENERATED_BODY()
 	
 public:
-    ATriangle();
+    ATerrain();
 
-protected: /****************************** AActor Overrides ******************************/
+protected:
 	virtual void BeginPlay() override;
 
-public:	/****************************** AActor Overrides ******************************/
+public:
 	virtual void Tick(float DeltaTime) override;
+
+    // Manipulate the vertices that are close to the impact point vector parameter
+    UFUNCTION(BlueprintCallable)
+    void AlterTerrain(FVector ImpactPoint);
 
 private:
     UPROPERTY(EditAnywhere)
@@ -75,5 +79,4 @@ private:
     void GenerateMesh();
 
     void Subdivide(int a, int b, int c);
-
 };
