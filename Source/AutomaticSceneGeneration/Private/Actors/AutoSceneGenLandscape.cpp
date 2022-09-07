@@ -1,5 +1,6 @@
 #include "Actors/AutoSceneGenLandscape.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "AutoSceneGenLogging.h"
 
 AAutoSceneGenLandscape::AAutoSceneGenLandscape()
@@ -218,9 +219,21 @@ float AAutoSceneGenLandscape::CalculateLinearBrushStrength(float BrushRadius, fl
 float AAutoSceneGenLandscape::CalculateSmoothBrushStrength(float BrushRadius, float EffectiveRadius, float Distance)
 {
     float x = CalculateLinearBrushStrength(BrushRadius, EffectiveRadius, Distance);
-    return x*x*(3. - 2.*x);
+    // return x*x*(3. - 2.*x);
+    return 0.5 * FMath::Cos(PI * (x - 1.)) + 0.5;
 }
 
+float AAutoSceneGenLandscape::CalculateBrushStrength(float BrushRadius, float EffectiveRadius, float Distance, uint8 FalloffType)
+{
+    if (FalloffType == LandscapeFalloff::Linear)
+        return CalculateLinearBrushStrength(BrushRadius, EffectiveRadius, Distance);
+    else if (FalloffType == LandscapeFalloff::Smooth)
+        return CalculateSmoothBrushStrength(BrushRadius, EffectiveRadius, Distance);
+    else
+        return CalculateSmoothBrushStrength(BrushRadius, EffectiveRadius, Distance);
+}
+
+// NOTE: KEEP FOR REFERENCE   
 // void AAutoSceneGenLandscape::AlterTerrain(FVector ImpactPoint)
 // {
 //     for (int i=0; i < Vertices.Num(); i++)
@@ -233,9 +246,8 @@ float AAutoSceneGenLandscape::CalculateSmoothBrushStrength(float BrushRadius, fl
 //     }
 // }
 
-void AAutoSceneGenLandscape::GetVertexIndicesWithinRadius(FVector P, float Radius, TArray<int32> &Indices)
-{    
-    // Compute range of (x,y) candidate vertices for the VertexGridMap
+FIntRect AAutoSceneGenLandscape::GetVertexGridBoundsWithinRadius(FVector P, float Radius)
+{
     FVector v = P - LowerLeftCorner;
     int32 xmin = FMath::CeilToInt((v.X - Radius)/VertexSeparation);
     int32 xmax = FMath::FloorToInt((v.X + Radius)/VertexSeparation);
@@ -247,58 +259,213 @@ void AAutoSceneGenLandscape::GetVertexIndicesWithinRadius(FVector P, float Radiu
     ymin = FMath::Clamp<int32>(ymin, 0, FMath::Pow(2, NumSubdivisions));
     ymax = FMath::Clamp<int32>(ymax, 0, FMath::Pow(2, NumSubdivisions));
 
-    // Search through candidate vertices
-    P.Z = 0;
-    for (int32 i = xmin; i <= xmax; i++)
+    return FIntRect(xmin, ymin, xmax, ymax);
+}
+
+FIntRect AAutoSceneGenLandscape::GetVertexGridBounds(FVector P)
+{
+    FVector v = P - LowerLeftCorner;
+    int32 xmin = FMath::FloorToInt(v.X/VertexSeparation);
+    int32 xmax = FMath::CeilToInt(v.X/VertexSeparation);
+    int32 ymin = FMath::FloorToInt(v.Y/VertexSeparation);
+    int32 ymax = FMath::CeilToInt(v.Y/VertexSeparation);
+
+    xmin = FMath::Clamp<int32>(xmin, 0, FMath::Pow(2, NumSubdivisions));
+    xmax = FMath::Clamp<int32>(xmax, 0, FMath::Pow(2, NumSubdivisions));
+    ymin = FMath::Clamp<int32>(ymin, 0, FMath::Pow(2, NumSubdivisions));
+    ymax = FMath::Clamp<int32>(ymax, 0, FMath::Pow(2, NumSubdivisions));
+
+    return FIntRect(xmin, ymin, xmax, ymax);
+}
+
+FIntRect AAutoSceneGenLandscape::GetVertexGridBounds(TArray<FVector> Points)
+{
+    int32 xmin = FMath::Pow(2, NumSubdivisions), ymin = FMath::Pow(2, NumSubdivisions);
+    int32 xmax = 0, ymax = 0;
+    for (FVector P : Points)
     {
-        for (int32 j = ymin; j <= ymax; j++)
+        FIntRect Bounds = GetVertexGridBounds(P);
+        xmin = FMath::Min<int32>(Bounds.Min.X, xmin);
+        ymin = FMath::Min<int32>(Bounds.Min.Y, ymin);
+        xmax = FMath::Max<int32>(Bounds.Max.X, xmax);
+        ymax = FMath::Max<int32>(Bounds.Max.Y, ymax);
+    }
+    return FIntRect(xmin, ymin, xmax, ymax);
+}
+
+void AAutoSceneGenLandscape::GetVertexIndicesWithinRadius(FVector P, float Radius, TArray<int32> &Indices)
+{    
+    FIntRect Bounds = GetVertexGridBoundsWithinRadius(P, Radius);
+
+    // Search through candidate vertices
+    for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
+    {
+        for (int32 j = Bounds.Min.Y; j <= Bounds.Max.Y; j++)
         {
             FVector Vertex = Vertices[VertexGridMap[i][j]];
-            Vertex.Z = 0;
-            if ((Vertex - P).Size() <= Radius)
+            if ((Vertex - P).Size2D() <= Radius)
                 Indices.Emplace(VertexGridMap[i][j]);
         }
     }
 }
 
-void AAutoSceneGenLandscape::GetVertexMapCoordinatesWithinRadius(FVector P, float Radius, TArray<FIntPoint> &VertexMapCoords)
+void AAutoSceneGenLandscape::GetVertexGridCoordinatesWithinRadius(FVector P, float Radius, TArray<FIntPoint> &VertexGridCoords)
 {
-    // Compute range of (x,y) candidate vertices for the VertexGridMap
-    FVector v = P - LowerLeftCorner;
-    int32 xmin = FMath::CeilToInt((v.X - Radius)/VertexSeparation);
-    int32 xmax = FMath::FloorToInt((v.X + Radius)/VertexSeparation);
-    int32 ymin = FMath::CeilToInt((v.Y - Radius)/VertexSeparation);
-    int32 ymax = FMath::FloorToInt((v.Y + Radius)/VertexSeparation);
-
-    xmin = FMath::Clamp<int32>(xmin, 0, FMath::Pow(2, NumSubdivisions));
-    xmax = FMath::Clamp<int32>(xmax, 0, FMath::Pow(2, NumSubdivisions));
-    ymin = FMath::Clamp<int32>(ymin, 0, FMath::Pow(2, NumSubdivisions));
-    ymax = FMath::Clamp<int32>(ymax, 0, FMath::Pow(2, NumSubdivisions));
+    FIntRect Bounds = GetVertexGridBoundsWithinRadius(P, Radius);
 
     // Search through candidate vertices
-    P.Z = 0;
-    for (int32 i = xmin; i <= xmax; i++)
+    for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
     {
-        for (int32 j = ymin; j <= ymax; j++)
+        for (int32 j = Bounds.Min.Y; j <= Bounds.Max.Y; j++)
         {
             FVector Vertex = Vertices[VertexGridMap[i][j]];
-            Vertex.Z = 0;
-            if ((Vertex - P).Size() <= Radius)
-                VertexMapCoords.Emplace(FIntPoint(i,j));
+            if ((Vertex - P).Size2D() <= Radius)
+                VertexGridCoords.Emplace(FIntPoint(i,j));
         }
     }
 }
 
-void AAutoSceneGenLandscape::LandscapeEditSculptGaussian(FVector Mean, float Stddev, float Height)
+void AAutoSceneGenLandscape::GetSurroundingVertexIndices(FVector P, TArray<int32> &Indices)
+{
+    FIntRect Bounds = GetVertexGridBounds(P);
+
+    for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
+        for (int32 j = Bounds.Min.Y; j <= Bounds.Max.Y; j++)
+            Indices.Emplace(VertexGridMap[i][j]);
+}
+
+void AAutoSceneGenLandscape::GetSurroundingVertexGridCoordinates(FVector P, TArray<FIntPoint> &VertexGridCoords)
+{
+    FIntRect Bounds = GetVertexGridBounds(P);
+
+    for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
+        for (int32 j = Bounds.Min.Y; j <= Bounds.Max.Y; j++)
+            VertexGridCoords.Emplace(FIntPoint(i,j));
+}
+
+void AAutoSceneGenLandscape::GetVertexIndicesWithinDistanceToLine(FVector A, FVector B, float MaxPerpDistance, TArray<int32> &Indices, bool bIncludeEndCaps)
+{
+    FVector ABNorm = (B-A).GetSafeNormal2D();
+
+    // Find vector perpendicular to AB and normalize. ABPerp will be rotated clockwise from AB.
+    FVector ABPerp = FVector(0.);
+    ABPerp.X = -ABNorm.Y;
+    ABPerp.Y = ABNorm.X;
+
+    TArray<FVector> Points;
+    Points.Emplace(A + ABPerp * MaxPerpDistance); // Right of A (when look in direction of AB)
+    Points.Emplace(A - ABPerp * MaxPerpDistance); // Left of A (when look in direction of AB)
+    Points.Emplace(B + ABPerp * MaxPerpDistance); // Right of B (when look in direction of AB)
+    Points.Emplace(B - ABPerp * MaxPerpDistance); // Left of B (when look in direction of AB)
+
+    if (bIncludeEndCaps)
+    {
+        Points.Emplace(A + ABPerp * MaxPerpDistance - ABNorm * MaxPerpDistance);
+        Points.Emplace(A - ABPerp * MaxPerpDistance - ABNorm * MaxPerpDistance);
+        Points.Emplace(B + ABPerp * MaxPerpDistance + ABNorm * MaxPerpDistance);
+        Points.Emplace(B - ABPerp * MaxPerpDistance + ABNorm * MaxPerpDistance);
+    }
+
+    FIntRect Bounds = GetVertexGridBounds(Points);
+
+    // Search through candidate vertices
+    for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
+    {
+        for (int32 j = Bounds.Min.Y; j <= Bounds.Max.Y; j++)
+        {
+            FVector C = Vertices[VertexGridMap[i][j]];
+            FVector AC = (C - A).GetSafeNormal2D(); // Norm vector from A to C
+            FVector AB = (B - A).GetSafeNormal2D(); // Norm vector from A to B
+            FVector BC = (C - B).GetSafeNormal2D(); // Norm vector from B to C
+
+            float AngleBAC = FMath::Acos(AB | AC);
+            float AngleABC = FMath::Acos((-AB) | BC);
+
+            if (AngleBAC <= 90. && AngleABC <= 90. && (C-A).Size2D()*FMath::Sin(AngleBAC) <= MaxPerpDistance)
+                Indices.Emplace(VertexGridMap[i][j]);
+
+            if (bIncludeEndCaps)
+            {
+                // Check if in A endcap
+                if ((C-A).Size2D() <= MaxPerpDistance)
+                // if (AngleBAC > 90. && (C-A).Size2D()*FMath::Sin(AngleBAC) <= MaxPerpDistance && (C-A).Size2D()*FMath::Cos(PI - AngleBAC) <= MaxPerpDistance)
+                    Indices.Emplace(VertexGridMap[i][j]);
+
+                // Check if in B endcap
+                if ((C-B).Size2D() <= MaxPerpDistance)
+                // if (AngleABC > 90. && (C-B).Size2D()*FMath::Sin(AngleABC) <= MaxPerpDistance && (C-B).Size2D()*FMath::Cos(PI - AngleABC) <= MaxPerpDistance)
+                    Indices.Emplace(VertexGridMap[i][j]);
+            }
+        }
+    }
+}
+
+float AAutoSceneGenLandscape::GetLandscapeHeight(FVector P)
+{
+    TArray<int32> SurroundingVertices;
+    GetSurroundingVertexIndices(P, SurroundingVertices);
+
+    float MinZ = Vertices[SurroundingVertices[0]].Z;
+    float MaxZ = MinZ;
+
+    float AvgSurroundingHeight = 0.;
+    for (int32 idx : SurroundingVertices)
+    {
+        if (Vertices[idx].Z < MinZ)
+            MinZ = Vertices[idx].Z;
+
+        if (Vertices[idx].Z > MaxZ)
+            MaxZ = Vertices[idx].Z;
+
+        AvgSurroundingHeight += Vertices[idx].Z;
+    }
+
+    AvgSurroundingHeight /= SurroundingVertices.Num();
+
+    FVector StartTrace = FVector(P.X, P.Y, MaxZ + 10.);
+    FVector EndTrace = FVector(P.X, P.Y, MinZ - 10.);
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+	bool bSuccess = GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECollisionChannel::ECC_Visibility, Params);
+
+    if (bSuccess)
+        return Hit.ImpactPoint.Z;
+    else
+        return AvgSurroundingHeight;
+}
+
+void AAutoSceneGenLandscape::LandscapeEditSculptGaussian(FVector Mean, float Stddev, float DeltaZ)
 {
     TArray<int32> AffectedVertices;
     GetVertexIndicesWithinRadius(Mean, 5*Stddev, AffectedVertices);
 
-    Mean.Z =  0;
     for (int32 idx : AffectedVertices)
     {
         FVector v = Vertices[idx];
-        v.Z = 0;
-        Vertices[idx].Z += Height * FMath::Exp(-1/(2*Stddev) * FMath::Pow((Mean - v).Size(), 2));
+        Vertices[idx].Z += DeltaZ * FMath::Exp(-1/(2*Stddev) * FMath::Pow((Mean - v).Size2D(), 2));
     }
+}
+
+void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, float Radius, float DeltaZ, bool bRelative, float BrushFalloff, uint8 FalloffType)
+{
+    TArray<int32> AffectedVertices;
+    GetVertexIndicesWithinRadius(Center, Radius, AffectedVertices);
+
+    for (int32 idx : AffectedVertices)
+    {
+        FVector v = Vertices[idx];
+        float BrushStrength = CalculateBrushStrength(Radius, BrushFalloff * Radius, (Center - v).Size2D(), FalloffType);
+
+        if (bRelative)
+            Vertices[idx].Z += FMath::Lerp<float>(0., DeltaZ, BrushStrength);
+        else
+            Vertices[idx].Z = FMath::Lerp<float>(Vertices[idx].Z, DeltaZ, BrushStrength);
+
+    }
+}
+
+void AAutoSceneGenLandscape::LandscapeEditFlattenCircularPatch(FVector Center, float Radius, float BrushFalloff, uint8 FalloffType)
+{
+    LandscapeEditSculptCircularPatch(Center, Radius, GetLandscapeHeight(Center), false, BrushFalloff, FalloffType);
 }
