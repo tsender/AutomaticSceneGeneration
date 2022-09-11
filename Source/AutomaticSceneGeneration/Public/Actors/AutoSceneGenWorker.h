@@ -53,6 +53,17 @@ private: /****************************** AAutoSceneGenWorker *******************
 	class AStaticMeshActor* GroundPlaneActor;
 
 	UPROPERTY()
+	class AAutoSceneGenLandscape* LandscapeMesh;
+
+	UPROPERTY(EditAnywhere)
+	UMaterialInterface* LandscapeMaterial;
+
+	UPROPERTY(EditAnywhere)
+	int32 DebugLandscapeSubdivisions = 1;
+
+	FBox LandscapeBox;
+
+	UPROPERTY()
 	class ADirectionalLight* LightSource;
 
 	UPROPERTY(EditAnywhere)
@@ -93,7 +104,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	
 	UPROPERTY(EditAnywhere)
 	// The dimensions of the landscape in [cm]
-	FVector LandscapeSize = FVector(50000., 50000., 0.);
+	float LandscapeSize = 500. * 100.;
 
 	UPROPERTY(EditAnywhere)
 	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.

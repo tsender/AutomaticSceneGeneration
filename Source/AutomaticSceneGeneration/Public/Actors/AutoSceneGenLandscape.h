@@ -12,13 +12,15 @@
 // "LogNavigationDirtyArea: Warning: Skipping dirty area creation because of empty bounds" warning (only affects nav system used by AI)
 // 2) Set World Settings --> Lightmass --> check Force No Precomputed Lighting
 
-// TODO: Split landscape into sections so that sculpt functions can more quickly search through vertices within a section rather than the entire landscape
+// TODO: Separate landscape into power of 2 number of sections to speed up calculation of new normals
 
-enum LandscapeFalloff
+// Types of landscape falloffs
+enum ELandscapeFalloff
 {
     Linear,
     Smooth
 };
+
 
 UCLASS()
 class AUTOMATICSCENEGENERATION_API AAutoSceneGenLandscape : public AActor
@@ -31,41 +33,41 @@ public:
 protected: /****************************** AActor Overrides ******************************/
 	virtual void BeginPlay() override;
 
+    virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 public: /****************************** AActor Overrides ******************************/
 	virtual void Tick(float DeltaTime) override;
 
 public: /****************************** AAutoSceneGenLandscape ******************************/
     /**
      * Create the base (flat) square mesh with the specified parameters
-     * @param Location The center of the landscape
+     * @param Location The lower-left corner of the landscape
      * @param Size The side-length in [cm] of the landscape along the X and Y dimensions (this is a square landscape)
      * @param NumSubdivisions The number of times the two base triangles should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
      *      Each vertex in the mesh will be spaced Size/(2^NumSubdivisions) [cm] apart in a grid.
      */
     bool CreateBaseMesh(FVector Location, float Size, int Subdivisions);
-    
-    // UFUNCTION(BlueprintCallable)
-    // // Manipulate the vertices that are close to the impact point vector parameter
-    // void AlterTerrain(FVector ImpactPoint);
+
+    FBox GetLandscapeBoundingBox() const;
 
     /**
-     * Return the smallest bounding box of vertex grid indices that contain a circle of radius R centered at P
+     * Return the smallest bounding box of vertex grid indices surrounding the point P
+     * @param P Point of interest (Z value is irrelevant)
+     */
+    FIntRect GetVertexGridBounds(FVector P) const;
+
+    /**
+     * Return the smallest bounding box of vertex grid indices containing all points in the input array
+     * @param P Array of points to find bounding box for (Z values are irrelevant)
+     */
+    FIntRect GetVertexGridBounds(TArray<FVector> Points) const;
+
+    /**
+     * Return the smallest bounding box of vertex grid indices that are within radius R [cm] of P
      * @param P Center point (Z value is irrelevant)
      * @param Radius Radius of circle
      */
-    FIntRect GetVertexGridBoundsWithinRadius(FVector P, float Radius);
-
-    /**
-     * Return the smallest bounding box of grid indices surrounding the point P
-     * @param P Point of interest (Z value is irrelevant)
-     */
-    FIntRect GetVertexGridBounds(FVector P);
-
-    /**
-     * Return the smallest bounding box of grid indices surrounding all points in the input array
-     * @param P Array of points to find bounding box for (Z values are irrelevant)
-     */
-    FIntRect GetVertexGridBounds(TArray<FVector> Points);
+    FIntRect GetVertexGridBoundsWithinRadius(FVector P, float Radius) const;
 
     /**
      * Finds the vertex buffer indices that are within the radius of the specified point
@@ -73,7 +75,7 @@ public: /****************************** AAutoSceneGenLandscape *****************
      * @param Radius Search radius
      * @param Indices Array to write vertex buffer indices to
      */
-    void GetVertexIndicesWithinRadius(FVector P, float Radius, TArray<int32> &Indices);
+    void GetVertexIndicesWithinRadius(FVector P, float Radius, TArray<int32> &Indices) const;
 
     /**
      * Finds the vertex grid coordinates that are within the radius of the specified point
@@ -81,44 +83,40 @@ public: /****************************** AAutoSceneGenLandscape *****************
      * @param Radius Search radius
      * @param VertexGridCoords Array to write XY coordinates to
      */
-    void GetVertexGridCoordinatesWithinRadius(FVector P, float Radius, TArray<FIntPoint> &VertexGridCoords);
+    void GetVertexGridCoordinatesWithinRadius(FVector P, float Radius, TArray<FIntPoint> &VertexGridCoords) const;
 
     /**
      * Finds the four vertex buffer indices that surround the specified point
      * @param P Point to find the surrounding vertex buffer indices for
      * @param Indices Array to write vertex buffer indices to
      */
-    void GetSurroundingVertexIndices(FVector P, TArray<int32> &Indices);
+    void GetSurroundingVertexIndices(FVector P, TArray<int32> &Indices) const;
 
     /**
      * Finds the four vertex grid coordinates that surround the specified point
      * @param P Point to find the surrounding vertex grid coordinates for
      * @param VertexGridCoords Array to write XY coordinates to
      */
-    void GetSurroundingVertexGridCoordinates(FVector P, TArray<FIntPoint> &VertexGridCoords);
+    void GetSurroundingVertexGridCoordinates(FVector P, TArray<FIntPoint> &VertexGridCoords) const;
 
     /**
-     * Finds all vertiex buffer indices for vertices that are at most MaxPerpDistance away (in the XY plane) from the segment A to B.
-     * @param A First segment endpoint
-     * @param B Second segmnet endpoint
+     * Finds all vertiex buffer indices for vertices that lie within the rectangle defined by its middle axis and width.
+     * The middle axis is defined by the segment AB, which runs down the middle of the rectangle from bottom (A) to top (B).
+     * Effectively, if we move the segment AB perpendicularly to the left and right by a distance of Width/2, we will have defined this rectangle.
+     * @param A First segment endpoint (bottom point)
+     * @param B Second segmnet endpoint (top point)
+     * @param Width Width of the rectangle in [cm]
+     * @param bIncludeEndCaps If true, then Indices will also contain all vertices within a radius of Width/2 from A and B in the XY plane creating a planar capsule of vertices
      * @param Indices Array to write vertex buffer indices to
-     * @param bIncludeEndCaps If true, then Indices will also contain all vertices within an a distance of MaxPerpDistance from A and B in the XY plane
      */
-    void GetVertexIndicesWithinDistanceToLine(FVector A, FVector B, float MaxPerpDistance, TArray<int32> &Indices, bool bIncludeEndCaps = false);
+    void GetVertexIndicesWithinRectangle(FVector A, FVector B, float Width, bool bIncludeEndCaps, TArray<int32> &Indices) const;
 
     /**
      * Return the landscape's height at the specified point using line-tracing. If line-tracing is unsuccessful (unlikely), then it will return the
      * average height of the vertex's four surrounding vertices.
+     * @param P Point to find landscape's Z coordinate at
      */
-    float GetLandscapeHeight(FVector P);
-
-    /**
-     * Add a 2D bell-shaped curve to the existing landscape (can be up- or downward facing)
-     * @param Mean The center of the gaussian (only the XY coordinates are used)
-     * @param Stddev The standard deviation in [cm], applies to all directions (we will only modify vertices within 5 stddev of the center)
-     * @param DeltaZ The maximum amount of change in the Z direction in [cm]
-     */
-    void LandscapeEditSculptGaussian(FVector Mean, float Stddev, float DeltaZ);
+    float GetLandscapeHeight(FVector P) const;
 
     /**
      * Change the Z height of the landscape within the specified circular region
@@ -126,30 +124,54 @@ public: /****************************** AAutoSceneGenLandscape *****************
      * @param Radius Radius of region to be modified
      * @param DeltaZ The maximum amount of change in the Z direction in [cm]
      * @param bRelative If true, then landscape Z height is modified relative to the original value. Otherwise, DeltaZ indicates the actual Z position to use (at full brush strength).
-     * @param BrushFalloff Indicates the distance from the center point (as a fraction from 0 to 1) at which the brush looses strength and falloff begins
+     * @param BrushFalloff Indicates the distance from the center point (as a fraction from 0 to 1) at which the brush looses strength and falloff begins. 0 = falloff begins immediately, 1 = no falloff.
      * @param FalloffType Type of falloff to use
      */
     void LandscapeEditSculptCircularPatch(FVector Center, float Radius, float DeltaZ, bool bRelative, float BrushFalloff, uint8 FalloffType);
 
     /**
-     * Flatten the landscape within the specified circular region. Uses a line trace to determine the Z location of the landscape at the specified point.
+     * Flatten the landscape within the specified circular region to the height at the center point. Uses a line trace to determine the Z location of the landscape at the specified point.
      * If line trace is unsuccessful, will use the average Z height of the four surrounding vertices.
-     * @param Center Center of desired region
+     * @param Center Center of desired flat region, also used to determine the height to flatten to
      * @param Radius Radius of region to be modified
-     * @param BrushFalloff Indicates the distance from the center point (as a fraction from 0 to 1) at which the brush looses strength and falloff begins
+     * @param BrushFalloff Indicates the distance from the center point (as a fraction from 0 to 1) at which the brush looses strength and falloff begins. 0 = falloff begins immediately, 1 = no falloff.
      * @param FalloffType Type of falloff to use
      */
     void LandscapeEditFlattenCircularPatch(FVector Center, float Radius, float BrushFalloff, uint8 FalloffType);
 
-    // void LandscapeEditSculptRamp(FVector );
+    /**
+     * Add or remove a ramp (prism-shpaped object) from A to B. The region affected is based on the rectangle defined by the middle axis AB and the width (see GetVertexIndicesWithinRectangle()).
+     * If the height of A and B are different, then the end result is actually a ramp (one end higher than the other) with the specified width.
+     * If the height of A and B are the same, then the end result is a raised/lowered piece of land over the specified rectangle.
+     * @param A First segment endpoint of the rectangle's middle axis (bottom point)
+     * @param B Second segmnet endpoint of the rectangle's middle axis (top point)
+     * @param Width Width of the rectangle in [cm]
+     * @param bIncludeEndCaps If true, then Indices will also contain all vertices within a radius of Width/2 from A and B in the XY plane creating a planar capsule of vertices
+     * @param bRelative If false, then the landscape Z height of the ramp at any point is equal to the interpolated between A and B. If true, then the Z height is modified relative to that interpolated value.
+     * @param BrushFalloff Indicates the perpendicular distance from the segment AB (as a fraction from 0 to 1) at which the brush looses strength and falloff begins. 0 = falloff begins immediately, 1 = no falloff.
+     * @param FalloffType Type of falloff to use
+     */
+    void LandscapeEditSculptRamp(FVector A, FVector B, float Width, bool bIncludeEndCaps, bool bRelative, float BrushFalloff, uint8 FalloffType);
 
-    // void LandscapeEditAddRamp();
+    /**
+     * Recomputes normal vectors and updates the actual landscape mesh. Should be called after editing/sculpting the landscape.
+     */
+    void PostSculptUpdate();
 
-    // void LandscapeEditFlatten();
+    /**
+     * Reset the landscape back to the base mesh (i.e. a flat plane with many vertices)
+     */
+    void ResetToBaseMesh();
+
+    /**
+     * Set the material for the landscpae
+     * @param NewMaterial The new landscape material
+     */
+    void SetMaterial(UMaterialInterface* NewMaterial);
 
 private: /****************************** AAutoSceneGenLandscape ******************************/    
     UPROPERTY(EditAnywhere)
-    class UProceduralMeshComponent* TerrainMesh;
+    class UProceduralMeshComponent* LandscapeMesh;
 
     TArray<FVector> Vertices;
 
@@ -161,26 +183,36 @@ private: /****************************** AAutoSceneGenLandscape ****************
 
     TArray<FLinearColor> VertexColors;
 
-    TArray<FColor> UpVertexColors;
-
     TArray<FProcMeshTangent> Tangents;
 
+    bool bCreatedBaseMesh = false;
+
     // The side-length in [cm] of the landscape along the X and Y dimensions
-    int LandscapeSize;
+    float LandscapeSize = 100.;
 
     // Horizontal distance in [cm] between adjacent vertices in the landscape mesh
     float VertexSeparation;
     
+    // Position of lower left corner in XY plane of the landscape (Z coordinate is ignored)
     FVector LowerLeftCorner;
+
+    // Bounding box for entire landscape
+    FBox BoundingBox;
 
     // The number of times the two base triangles should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
     // Each vertex in the mesh will be spaced Size/(2^NumSubdivisions) [cm] apart in a grid.
-    int NumSubdivisions;
+    int NumSubdivisions = 0;
 
     // The vertex grid map is a XY grid that maps a vertex's (x,y) integer coordinate to a normalized grid with 1 unit spacing.
     // The lower left is (0,0) and the upper right is (N,N), following Unreal's left-hand coordinate system (X points up, Y points right).
     // This allows us to more quickly lookup the index in the Vertices buffer that corresponds to a certain coordinate.
     TArray<TArray<int32> > VertexGridMap;
+
+    // Clear all vertex-related arrays
+    void ClearVertexArrays();
+
+    // Update the Z bounds of the landscape bounding box
+    void UpdateZBounds(float NewZ);
 
     /**
      * Subdivide triangle ABC (clockwise order) into 4 smaller triangles

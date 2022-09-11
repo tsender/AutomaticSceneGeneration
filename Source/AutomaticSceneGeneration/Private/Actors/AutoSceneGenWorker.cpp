@@ -2,6 +2,7 @@
 
 
 #include "Actors/AutoSceneGenWorker.h"
+#include "Actors/AutoSceneGenLandscape.h"
 #include "Objects/StructuralSceneActorMaintainer.h"
 #include "Actors/StructuralSceneActor.h"
 #include "Vehicles/AutoSceneGenVehicle.h"
@@ -48,25 +49,50 @@ void AAutoSceneGenWorker::BeginPlay()
 	bReadyToTick = false;
 
 	// Find ground plane actor
+	// TArray<AActor*> TempArray;
+	// UGameplayStatics::GetAllActorsOfClass(GetWorld(), AStaticMeshActor::StaticClass(), TempArray);
+	// if (!TempArray.Num())
+	// {
+	// 	UE_LOG(LogASG, Error, TEXT("The ground plane must be a StaticMeshActors with tag 'ground_plane', but could not find any StaticMeshActors in the scene."));
+	// 	return;
+	// }
+	// for (AActor* Actor: TempArray)
+	// {
+	// 	if (Actor->ActorHasTag("ground_plane"))
+	// 	{
+	// 		FVector Origin;
+	// 		FVector BoxExtent;
+	// 		Actor->GetActorBounds(true, Origin, BoxExtent);
+	// 		GroundPlaneZHeight = Origin.Z + BoxExtent.Z;
+	// 		// LandscapeSize = 2*BoxExtent;
+	// 		break;
+	// 	}
+	// }
+
+	// Get landscape actor
 	TArray<AActor*> TempArray;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AStaticMeshActor::StaticClass(), TempArray);
+	TempArray.Empty();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAutoSceneGenLandscape::StaticClass(), TempArray);
 	if (!TempArray.Num())
 	{
-		UE_LOG(LogASG, Error, TEXT("The ground plane must be a StaticMeshActors with tag 'ground_plane', but could not find any StaticMeshActors in the scene."));
+		UE_LOG(LogASG, Error, TEXT("There must exist an AutoSceneGenLandcape actor in the world."));
 		return;
 	}
-	for (AActor* Actor: TempArray)
+	LandscapeMesh = Cast<AAutoSceneGenLandscape>(TempArray[0]);
+	if (!LandscapeMesh)
 	{
-		if (Actor->ActorHasTag("ground_plane"))
-		{
-			FVector Origin;
-			FVector BoxExtent;
-			Actor->GetActorBounds(true, Origin, BoxExtent);
-			GroundPlaneZHeight = Origin.Z + BoxExtent.Z;
-			// LandscapeSize = 2*BoxExtent;
-			break;
-		}
+		UE_LOG(LogASG, Error, TEXT("Failed to cast AutoSceneGenLandcape actor."));
+		return;
 	}
+	if (!LandscapeMaterial)
+	{
+		UE_LOG(LogASG, Error, TEXT("Landscape material is nullptr. Cannot create landscape."));
+		return;
+	}
+	LandscapeMesh->CreateBaseMesh(FVector(0.,0.,500.), 128.*100., DebugLandscapeSubdivisions);
+	// LandscapeMesh->SetMaterial(LandscapeMaterial);
+	LandscapeMesh->LandscapeEditSculptCircularPatch(FVector(60.*100, 60.*100, 0.), 10.*100, 5.*100, true, 0, ELandscapeFalloff::Smooth);
+	LandscapeMesh->PostSculptUpdate();
 
 	// Get light source actor (for sunlight)
 	TempArray.Empty();
@@ -85,15 +111,25 @@ void AAutoSceneGenWorker::BeginPlay()
 
 	// Find ASG vehicle
 	VehicleStartRotation = FRotator(0.f, VehicleStartYaw, 0.f);
-	ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
+	TempArray.Empty();
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), AAutoSceneGenVehicle::StaticClass(), TempArray);
+	if (!TempArray.Num())
+	{
+		UE_LOG(LogASG, Error, TEXT("There must be an AutoSceneGenVehicle actor (either from first player controller or manually added)."));
+		return;
+	}
+	// ASGVehicle = Cast<AAutoSceneGenVehicle>(GetWorld()->GetFirstPlayerController()->GetPawn());
+	ASGVehicle = Cast<AAutoSceneGenVehicle>(TempArray[0]);
 	if (!ASGVehicle)
 	{
-		UE_LOG(LogASG, Error, TEXT("Could not get AutoSceneGenVehicle from first player controller."));
+		// UE_LOG(LogASG, Error, TEXT("Could not get AutoSceneGenVehicle from first player controller."));
+		UE_LOG(LogASG, Error, TEXT("Failed to cast AutoSceneGenVehicle."));
+		return;
 	}
-	else
-	{
-		ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
-	}
+	// else
+	// {
+	// 	ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
+	// }
 
 	// Add debug structural scene actors to SSA maintainer map
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
@@ -155,6 +191,7 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	DebugSSASubclasses.Empty();
 	SSAMaintainerMap.Empty();
 	SceneDescription.ssa_array.Empty();
+	LandscapeMesh->Destroy();
 
 	if (ROSInst)
 	{
@@ -253,7 +290,7 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 		for (int32 i = 0; i < DebugNumSSAInstances; i++)
 		{
 			CastShadows.Emplace(bDebugSSACastShadow);
-			FVector Location = FVector(FMath::RandRange(0.f, 1.f) * LandscapeSize.X, -FMath::RandRange(0.f, 1.f) * LandscapeSize.Y, GroundPlaneZHeight);
+			FVector Location = FVector(FMath::RandRange(0.f, 1.f) * LandscapeSize, -FMath::RandRange(0.f, 1.f) * LandscapeSize, GroundPlaneZHeight);
 			Locations.Emplace(Location);
 			Rotations.Emplace(FRotator(0, FMath::RandRange(0.f, 1.f) * 360.f, 0));
 			Scales.Emplace(1.f);
