@@ -2,6 +2,7 @@
 #include "KismetProceduralMeshLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "AutoSceneGenLogging.h"
+#include <chrono>
 
 AAutoSceneGenLandscape::AAutoSceneGenLandscape()
 {
@@ -37,6 +38,12 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
         ResetToBaseMesh();
         return true;
     }
+    if (Subdivisions < 0)
+    {
+        UE_LOG(LogASG, Warning, TEXT("Cannot request landscape with negative subdivisions."));
+        bCreatedBaseMesh = false;
+        return false;
+    }
     
     SetActorLocation(Location);
     SetActorRotation(FRotator(0));
@@ -50,47 +57,38 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
     BoundingBox.Min = Location;
     BoundingBox.Max = Location + FVector(LandscapeSize, LandscapeSize, 0.);
 
-    Vertices.Emplace(LowerLeftCorner);                          // 0 - Lower left
-    Vertices.Emplace(LowerLeftCorner + FVector(0.,Size,0.));    // 1 - Lower right
-    Vertices.Emplace(LowerLeftCorner + FVector(Size,0.,0.));    // 2 - Upper left
-    Vertices.Emplace(LowerLeftCorner + FVector(Size,Size,0.));  // 3 - Upper right
-
-    // Triangle vertices should be added in CCW order to ensure the triangle faces outwards
-    // Lower left base triangle
-    Triangles.Emplace(0);
-    Triangles.Emplace(1);
-    Triangles.Emplace(2);
-
-    // Upper right base triangle
-    Triangles.Emplace(3);
-    Triangles.Emplace(2);
-    Triangles.Emplace(1);
-
-    SubdivideMesh(NumSubdivisions, Vertices, Triangles);
-
     int32 NumSideVertices = FMath::Pow(2, NumSubdivisions) + 1; // Number of vertices per landscape edge
-    if (Vertices.Num() != NumSideVertices * NumSideVertices)
-    {
-        UE_LOG(LogASG, Error, TEXT("Created landscape has %i vertices instead of %i"), Vertices.Num(),  NumSideVertices * NumSideVertices);
-        return false;
-    }
 
     TArray<int32> ZeroArray;
     ZeroArray.Init(0, NumSideVertices);
     VertexGridMap.Init(ZeroArray, NumSideVertices);
 
+    // Create vertices array and fill in vertex grid map
     // VertexGridMap: imagine a grid with Y- pointing right and X- pointing up, with vertices spaced 1 unit apart
     // The (x,y) element is the mesh vertex index for the corresponding unnormalized (x,y) location
     for (int32 i = 0; i < NumSideVertices; i++)
     {
         for (int32 j = 0; j < NumSideVertices; j++)
         {
-            int32 idx = i*NumSideVertices + j;
-            FVector v = Vertices[idx] - LowerLeftCorner;
+            Vertices.Emplace(LowerLeftCorner + i*FVector(VertexSeparation, 0., 0.) + j*FVector(0., VertexSeparation, 0.));
+            VertexGridMap[i][j] = i*NumSideVertices + j;
+        }
+    }
 
-            int32 x = FMath::RoundToInt(FMath::Abs(v.X/VertexSeparation));
-            int32 y = FMath::RoundToInt(FMath::Abs(v.Y/VertexSeparation));
-            VertexGridMap[x][y] = idx;
+    for (int32 i = 0; i < NumSideVertices-1; i++)
+    {
+        for (int32 j = 0; j < NumSideVertices-1; j++)
+        {
+            // Triangle vertices should be added in CCW order to ensure the triangle faces outwards
+            // Lower triangle
+            Triangles.Emplace(VertexGridMap[i][j]);
+            Triangles.Emplace(VertexGridMap[i][j+1]);
+            Triangles.Emplace(VertexGridMap[i+1][j]);
+
+            // Upper triangle
+            Triangles.Emplace(VertexGridMap[i+1][j+1]);
+            Triangles.Emplace(VertexGridMap[i+1][j]);
+            Triangles.Emplace(VertexGridMap[i][j+1]);
         }
     }
 
@@ -155,6 +153,33 @@ FIntRect AAutoSceneGenLandscape::GetVertexGridBoundsWithinRadius(FVector P, floa
     return FIntRect(xmin, ymin, xmax, ymax);
 }
 
+FIntRect AAutoSceneGenLandscape::GetVertexGridBoundsWithinRectangle(FVector A, FVector B, float Width, bool bIncludeEndCaps) const
+{
+    float HalfWidth = Width/2.;
+    FVector ABNorm = (B-A).GetSafeNormal2D();
+
+    // Find vector perpendicular to AB and normalize. ABPerp will be rotated clockwise from AB.
+    FVector ABPerp = FVector(0.);
+    ABPerp.X = -ABNorm.Y;
+    ABPerp.Y = ABNorm.X;
+
+    TArray<FVector> Points;
+    Points.Emplace(A + ABPerp * HalfWidth); // Right of A (when look in direction of AB)
+    Points.Emplace(A - ABPerp * HalfWidth); // Left of A (when look in direction of AB)
+    Points.Emplace(B + ABPerp * HalfWidth); // Right of B (when look in direction of AB)
+    Points.Emplace(B - ABPerp * HalfWidth); // Left of B (when look in direction of AB)
+
+    if (bIncludeEndCaps)
+    {
+        Points.Emplace(A + ABPerp * HalfWidth - ABNorm * HalfWidth);
+        Points.Emplace(A - ABPerp * HalfWidth - ABNorm * HalfWidth);
+        Points.Emplace(B + ABPerp * HalfWidth + ABNorm * HalfWidth);
+        Points.Emplace(B - ABPerp * HalfWidth + ABNorm * HalfWidth);
+    }
+
+    return GetVertexGridBounds(Points);
+}
+
 void AAutoSceneGenLandscape::GetVertexIndicesWithinRadius(FVector P, float Radius, TArray<int32> &Indices) const
 {    
     FIntRect Bounds = GetVertexGridBoundsWithinRadius(P, Radius);
@@ -208,28 +233,7 @@ void AAutoSceneGenLandscape::GetSurroundingVertexGridCoordinates(FVector P, TArr
 void AAutoSceneGenLandscape::GetVertexIndicesWithinRectangle(FVector A, FVector B, float Width,  bool bIncludeEndCaps, TArray<int32> &Indices) const
 {
     float HalfWidth = Width/2.;
-    FVector ABNorm = (B-A).GetSafeNormal2D();
-
-    // Find vector perpendicular to AB and normalize. ABPerp will be rotated clockwise from AB.
-    FVector ABPerp = FVector(0.);
-    ABPerp.X = -ABNorm.Y;
-    ABPerp.Y = ABNorm.X;
-
-    TArray<FVector> Points;
-    Points.Emplace(A + ABPerp * HalfWidth); // Right of A (when look in direction of AB)
-    Points.Emplace(A - ABPerp * HalfWidth); // Left of A (when look in direction of AB)
-    Points.Emplace(B + ABPerp * HalfWidth); // Right of B (when look in direction of AB)
-    Points.Emplace(B - ABPerp * HalfWidth); // Left of B (when look in direction of AB)
-
-    if (bIncludeEndCaps)
-    {
-        Points.Emplace(A + ABPerp * HalfWidth - ABNorm * HalfWidth);
-        Points.Emplace(A - ABPerp * HalfWidth - ABNorm * HalfWidth);
-        Points.Emplace(B + ABPerp * HalfWidth + ABNorm * HalfWidth);
-        Points.Emplace(B - ABPerp * HalfWidth + ABNorm * HalfWidth);
-    }
-
-    FIntRect Bounds = GetVertexGridBounds(Points);
+    FIntRect Bounds = GetVertexGridBoundsWithinRectangle(A, B, Width, bIncludeEndCaps);
 
     // Search through candidate vertices
     for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
@@ -303,21 +307,29 @@ void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, fl
         UE_LOG(LogASG, Warning, TEXT("LandscapeEditSculptCircularPatch() - Radius must be positive. Cannot sculpt circular patch."));
         return;
     }
-    
-    TArray<int32> AffectedVertices;
-    GetVertexIndicesWithinRadius(Center, Radius, AffectedVertices);
 
-    for (int32 idx : AffectedVertices)
+    FIntRect Bounds = GetVertexGridBoundsWithinRadius(Center, Radius);
+
+    // Search through candidate vertices
+    for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
     {
-        FVector v = Vertices[idx];
-        float BrushStrength = CalculateBrushStrength(Radius, FMath::Clamp<float>(BrushFalloff, 0., 1.) * Radius, (Center - v).Size2D(), FalloffType);
+        for (int32 j = Bounds.Min.Y; j <= Bounds.Max.Y; j++)
+        {
+            int32 idx = VertexGridMap[i][j];
+            FVector Vertex = Vertices[idx];
+            if ((Vertex - Center).Size2D() <= Radius)
+            {
+                float BrushStrength = CalculateBrushStrength(Radius, FMath::Clamp<float>(BrushFalloff, 0., 1.) * Radius, (Center - Vertex).Size2D(), FalloffType);
 
-        if (bRelative)
-            Vertices[idx].Z += FMath::Lerp<float>(0., DeltaZ, BrushStrength);
-        else
-            Vertices[idx].Z = FMath::Lerp<float>(Vertices[idx].Z, DeltaZ, BrushStrength);
-        UpdateZBounds(Vertices[idx].Z);
+                if (bRelative)
+                    Vertices[idx].Z += FMath::Lerp<float>(0., DeltaZ, BrushStrength);
+                else
+                    Vertices[idx].Z = FMath::Lerp<float>(Vertices[idx].Z, DeltaZ, BrushStrength);
+                UpdateZBounds(Vertices[idx].Z);
+            }
+        }
     }
+    UpdateNormals(Bounds);
 }
 
 void AAutoSceneGenLandscape::LandscapeEditFlattenCircularPatch(FVector Center, float Radius, float BrushFalloff, uint8 FalloffType)
@@ -339,56 +351,60 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
         LandscapeEditSculptCircularPatch(A, Width/2., A.Z, false, BrushFalloff, FalloffType);
         return;
     }
-    
-    TArray<int32> AffectedVertices;
-    GetVertexIndicesWithinRectangle(A, B, Width, bIncludeEndCaps, AffectedVertices);
 
-    for (int32 idx : AffectedVertices)
+    float HalfWidth = Width/2.;
+    FIntRect Bounds = GetVertexGridBoundsWithinRectangle(A, B, Width, bIncludeEndCaps);
+
+    // Search through candidate vertices
+    for (int32 i = Bounds.Min.X; i <= Bounds.Max.X; i++)
     {
-        FVector C = Vertices[idx];
-        FVector AC = (C - A).GetSafeNormal2D(); // Norm vector from A to C
-        FVector AB = (B - A).GetSafeNormal2D(); // Norm vector from A to B
-        FVector BC = (C - B).GetSafeNormal2D(); // Norm vector from B to C
-
-        float AngleBAC = FMath::Acos(AB | AC);
-        float AngleABC = FMath::Acos((-AB) | BC);
-
-        if (AngleBAC <= 90. && AngleABC <= 90.)
+        for (int32 j = Bounds.Min.Y; j <= Bounds.Max.Y; j++)
         {
-            float BrushStrength = CalculateBrushStrength(Width/2., FMath::Clamp<float>(BrushFalloff, 0., 1.) * Width/2., (C-A).Size2D()*FMath::Sin(AngleBAC), FalloffType);
-            float MaxDeltaZAtC = FMath::Lerp<float>(A.Z, B.Z, (C-A).Size2D()*FMath::Cos(AngleBAC) / (B-A).Size2D());
+            int32 idx = VertexGridMap[i][j];
+            FVector C = Vertices[idx];
+            FVector AC = (C - A).GetSafeNormal2D(); // Norm vector from A to C
+            FVector AB = (B - A).GetSafeNormal2D(); // Norm vector from A to B
+            FVector BC = (C - B).GetSafeNormal2D(); // Norm vector from B to C
 
-            if (bRelative)
-                Vertices[idx].Z += FMath::Lerp<float>(0., MaxDeltaZAtC, BrushStrength);
-            else
-                Vertices[idx].Z = FMath::Lerp<float>(0., MaxDeltaZAtC, BrushStrength);
-        }
+            float AngleBAC = FMath::Acos(AB | AC);
+            float AngleABC = FMath::Acos((-AB) | BC);
 
-        if (bIncludeEndCaps) // Outer if not really needed, but helps for safety
-        {
-            // Check if in A endcap
-            if (AngleBAC > 90. && (C-A).Size2D() <= Width/2.)
+            if (AngleBAC <= 90. && AngleABC <= 90. && (C-A).Size2D()*FMath::Sin(AngleBAC) <= HalfWidth) // Check if inside rectangle
             {
-                float BrushStrength = CalculateBrushStrength(Width/2., FMath::Clamp<float>(BrushFalloff, 0., 1.) * Width/2., (C-A).Size2D(), FalloffType);
-                
-                if (bRelative)
-                    Vertices[idx].Z += FMath::Lerp<float>(0., A.Z, BrushStrength);
-                else
-                    Vertices[idx].Z = FMath::Lerp<float>(0., A.Z, BrushStrength);
-            }
+                float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(BrushFalloff, 0., 1.) * HalfWidth, (C-A).Size2D()*FMath::Sin(AngleBAC), FalloffType);
+                float MaxDeltaZAtC = FMath::Lerp<float>(A.Z, B.Z, (C-A).Size2D()*FMath::Cos(AngleBAC) / (B-A).Size2D());
 
-            // Check if in B endcap
-            if (AngleABC > 90. && (C-B).Size2D() <= Width/2.)
-            {
-                float BrushStrength = CalculateBrushStrength(Width/2., FMath::Clamp<float>(BrushFalloff, 0., 1.) * Width/2., (C-B).Size2D(), FalloffType);
                 if (bRelative)
-                    Vertices[idx].Z += FMath::Lerp<float>(0., B.Z, BrushStrength);
+                    Vertices[idx].Z += FMath::Lerp<float>(0., MaxDeltaZAtC, BrushStrength);
                 else
-                    Vertices[idx].Z = FMath::Lerp<float>(0., B.Z, BrushStrength);
+                    Vertices[idx].Z = FMath::Lerp<float>(0., MaxDeltaZAtC, BrushStrength);
+                UpdateZBounds(Vertices[idx].Z);
+            }
+            else if (bIncludeEndCaps)
+            {
+                if (AngleBAC > 90. && (C-A).Size2D() <= HalfWidth) // Check if in A endcap
+                {
+                    float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(BrushFalloff, 0., 1.) * HalfWidth, (C-A).Size2D(), FalloffType);
+                    
+                    if (bRelative)
+                        Vertices[idx].Z += FMath::Lerp<float>(0., A.Z, BrushStrength);
+                    else
+                        Vertices[idx].Z = FMath::Lerp<float>(0., A.Z, BrushStrength);
+                    UpdateZBounds(Vertices[idx].Z);
+                }
+                else if (AngleABC > 90. && (C-B).Size2D() <= HalfWidth) // Check if in B endcap
+                {
+                    float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(BrushFalloff, 0., 1.) * HalfWidth, (C-B).Size2D(), FalloffType);
+                    if (bRelative)
+                        Vertices[idx].Z += FMath::Lerp<float>(0., B.Z, BrushStrength);
+                    else
+                        Vertices[idx].Z = FMath::Lerp<float>(0., B.Z, BrushStrength);
+                    UpdateZBounds(Vertices[idx].Z);
+                }
             }
         }
-        UpdateZBounds(Vertices[idx].Z);
     }
+    UpdateNormals(Bounds);
 }
 
 void AAutoSceneGenLandscape::PostSculptUpdate()
@@ -396,8 +412,9 @@ void AAutoSceneGenLandscape::PostSculptUpdate()
     // Calculate and update normals
     // TArray<FVector2D> EmptyUVs;
     // TArray<FLinearColor> EmptyLinearColor;
-    TArray<FProcMeshTangent> EmptyTangents;
-    UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, TArray<FVector2D>(), Normals, EmptyTangents);
+    // TArray<FProcMeshTangent> EmptyTangents;
+    // UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, TArray<FVector2D>(), Normals, EmptyTangents);
+
     LandscapeMesh->UpdateMeshSection_LinearColor(0, Vertices, Normals, TArray<FVector2D>(), TArray<FLinearColor>(), TArray<FProcMeshTangent>());
     UE_LOG(LogASG, Display, TEXT("Performed post-sculpt update on landscape."));
 }
@@ -408,9 +425,7 @@ void AAutoSceneGenLandscape::ResetToBaseMesh()
     for (int32 i = 0; i < Vertices.Num(); i++)
     {
         Vertices[i].Z = GetActorLocation().Z;
-        Normals[i].X = 0.;
-        Normals[i].Y = 0.;
-        Normals[i].Z = 1.;
+        Normals[i] = FVector(0., 0., 1.);
     }
     LowerLeftCorner = GetActorLocation();
     BoundingBox.Min = GetActorLocation();
@@ -518,9 +533,9 @@ void AAutoSceneGenLandscape::SubdivideTriangle(int32 i_a, int32 i_b, int32 i_c, 
     NewTriangles.Emplace(i_bc);
 
     // 4th triangle (middle triangle)
-    NewTriangles.Emplace(i_ab);
     NewTriangles.Emplace(i_bc);
     NewTriangles.Emplace(i_ca);
+    NewTriangles.Emplace(i_ab);
 }
 
 void AAutoSceneGenLandscape::SubdivideMesh(int32 Subdivisions, TArray<FVector> &MeshVertices, TArray<int32> &MeshTriangles)
@@ -569,8 +584,8 @@ float AAutoSceneGenLandscape::CalculateLinearBrushStrength(float BrushRadius, fl
 float AAutoSceneGenLandscape::CalculateSmoothBrushStrength(float BrushRadius, float EffectiveRadius, float Distance)
 {
     float x = CalculateLinearBrushStrength(BrushRadius, EffectiveRadius, Distance);
-    // return x*x*(3. - 2.*x);
-    return 0.5 * FMath::Cos(PI * (x - 1.)) + 0.5;
+    // return x*x*(3. - 2.*x); // This is what Unreal uses
+    return 0.5 * FMath::Cos(PI * (x - 1.)) + 0.5; // Is one period of cosine smoother?
 }
 
 float AAutoSceneGenLandscape::CalculateBrushStrength(float BrushRadius, float EffectiveRadius, float Distance, uint8 FalloffType)
@@ -581,4 +596,187 @@ float AAutoSceneGenLandscape::CalculateBrushStrength(float BrushRadius, float Ef
         return CalculateSmoothBrushStrength(BrushRadius, EffectiveRadius, Distance);
     else
         return CalculateSmoothBrushStrength(BrushRadius, EffectiveRadius, Distance);
+}
+
+FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
+{
+    int32 MaxIdx = (int32)FMath::Pow(2, NumSubdivisions);
+    V.X = FMath::Clamp<int32>(V.X, 0, MaxIdx);
+    V.Y = FMath::Clamp<int32>(V.Y, 0, MaxIdx);
+
+    int32 idx = VertexGridMap[V.X][V.Y];
+    FVector N;
+    if (V.X == 0 && V.Y == 0) // Lower left corner
+    {
+        int32 iU = VertexGridMap[V.X+1][V.Y];
+        int32 iR = VertexGridMap[V.X][V.Y+1];
+        N = (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]);
+    }
+    else if (V.X == MaxIdx && V.Y == 0) // Upper left corner
+    {
+        int32 iR = VertexGridMap[V.X][V.Y+1];
+        int32 iRD = VertexGridMap[V.X-1][V.Y+1];
+        int32 iD = VertexGridMap[V.X-1][V.Y];
+        N = (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
+            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
+    }
+    else if (V.X == 0 && V.Y == MaxIdx) // Lower right corner
+    {
+        int32 iL = VertexGridMap[V.X][V.Y-1];
+        int32 iLU = VertexGridMap[V.X+1][V.Y-1];
+        int32 iU = VertexGridMap[V.X+1][V.Y];
+        N = (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) + 
+            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
+    }
+    else if (V.X == MaxIdx && V.Y == MaxIdx) // Upper right corner
+    {
+        int32 iD = VertexGridMap[V.X-1][V.Y];
+        int32 iL = VertexGridMap[V.X][V.Y-1];
+        N = (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]);
+    }
+    else if (V.X == 0) // Bottom edge
+    {
+        int32 iL = VertexGridMap[V.X][V.Y-1];
+        int32 iLU = VertexGridMap[V.X+1][V.Y-1];
+        int32 iU = VertexGridMap[V.X+1][V.Y];
+        int32 iR = VertexGridMap[V.X][V.Y+1];
+        N = (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) + 
+            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]) +
+            (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]);
+    }
+    else if (V.Y == 0) // Left edge
+    {
+        int32 iU = VertexGridMap[V.X+1][V.Y];
+        int32 iR = VertexGridMap[V.X][V.Y+1];
+        int32 iRD = VertexGridMap[V.X-1][V.Y+1];
+        int32 iD = VertexGridMap[V.X-1][V.Y];
+        N = (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]) +
+            (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
+            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
+    }
+    else if (V.X == MaxIdx) // Upper edge
+    {
+        int32 iR = VertexGridMap[V.X][V.Y+1];
+        int32 iRD = VertexGridMap[V.X-1][V.Y+1];
+        int32 iD = VertexGridMap[V.X-1][V.Y];
+        int32 iL = VertexGridMap[V.X][V.Y-1];
+        N = (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
+            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]) +
+            (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]);
+    }
+    else if (V.Y == MaxIdx) // Right edge
+    {
+        int32 iD = VertexGridMap[V.X-1][V.Y];
+        int32 iL = VertexGridMap[V.X][V.Y-1];
+        int32 iLU = VertexGridMap[V.X+1][V.Y-1];
+        int32 iU = VertexGridMap[V.X+1][V.Y];
+        N = (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]) +
+            (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) + 
+            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
+    }
+    else // Interior grid point
+    {
+        int32 iU = VertexGridMap[V.X+1][V.Y];
+        int32 iR = VertexGridMap[V.X][V.Y+1];
+        int32 iRD = VertexGridMap[V.X-1][V.Y+1];
+        int32 iD = VertexGridMap[V.X-1][V.Y];
+        int32 iL = VertexGridMap[V.X][V.Y-1];
+        int32 iLU = VertexGridMap[V.X+1][V.Y-1];
+        N = (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]) +
+            (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
+            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]) +
+            (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]) +
+            (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) +
+            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
+    }
+    return N.GetSafeNormal();
+}
+
+void AAutoSceneGenLandscape::UpdateNormals(FIntRect Bounds)
+{
+    int32 MaxIdx = (int32)FMath::Pow(2, NumSubdivisions);
+    FIntRect NormalBounds = Bounds + FIntRect(-1, -1, 1, 1);
+    NormalBounds.Clip(FIntRect(0, 0, MaxIdx, MaxIdx));
+
+    // Zero every vertex normal that needs recalculating
+    for (int32 i = NormalBounds.Min.X; i <= NormalBounds.Max.X; i++)
+        for (int32 j = NormalBounds.Min.Y; j <= NormalBounds.Max.Y; j++)
+            Normals[VertexGridMap[i][j]] = FVector(0.);
+
+    // Compute normal for each face and add normal to each vertex
+    for (int32 i = NormalBounds.Min.X; i < NormalBounds.Max.X; i++)
+    {
+        for (int32 j = NormalBounds.Min.Y; j < NormalBounds.Max.Y; j++)
+        {
+            int32 ia = VertexGridMap[i][j]; // LL
+            int32 ib = VertexGridMap[i][j+1]; // LR
+            int32 ic = VertexGridMap[i+1][j]; // UL
+            int32 id = VertexGridMap[i+1][j+1]; // UR
+
+            // Lower triangle
+            FVector NV = (Vertices[ic] - Vertices[ia]) ^ (Vertices[ib] - Vertices[ia]);
+            Normals[ia] += NV;
+            Normals[ib] += NV;
+            Normals[ic] += NV;
+
+            // Upper triangle
+            NV = (Vertices[ib] - Vertices[id]) ^ (Vertices[ic] - Vertices[id]);
+            Normals[id] += NV;
+            Normals[ic] += NV;
+            Normals[ib] += NV;
+        }
+    }
+
+    // Edges of NormalBounds
+    if (NormalBounds.Min.X > 0) // Compute normals for bottom edge of NormalBounds if not coincident with bottom grid edge
+    {
+        for (int32 j = NormalBounds.Min.Y; j <= NormalBounds.Max.Y; j++)
+        {
+            int32 idx = VertexGridMap[NormalBounds.Min.X][j];
+            Normals[idx] = GetVertexNormal(FIntPoint(NormalBounds.Min.X, j));
+        }
+    }
+    if (NormalBounds.Max.X < MaxIdx) // Compute normals for upper edge of NormalBounds if not coincident with upper grid edge
+    {
+        for (int32 j = NormalBounds.Min.Y; j <= NormalBounds.Max.Y; j++)
+        {
+            int32 idx = VertexGridMap[NormalBounds.Max.X][j];
+            Normals[idx] = GetVertexNormal(FIntPoint(NormalBounds.Max.X, j));
+        }
+    }
+    if (NormalBounds.Min.Y > 0) // Compute normals for left edge of NormalBounds if not coincident with left grid edge
+    {
+        for (int32 i = NormalBounds.Min.X; i <= NormalBounds.Max.X; i++)
+        {
+            int32 idx = VertexGridMap[i][NormalBounds.Min.Y];
+            Normals[idx] = GetVertexNormal(FIntPoint(i, NormalBounds.Min.Y));
+        }
+    }
+    if (NormalBounds.Max.Y < MaxIdx) // Compute normals for left edge of NormalBounds if not coincident with left grid edge
+    {
+        for (int32 i = NormalBounds.Min.X; i <= NormalBounds.Max.X; i++)
+        {
+            int32 idx = VertexGridMap[i][NormalBounds.Max.Y];
+            Normals[idx] = GetVertexNormal(FIntPoint(i, NormalBounds.Max.Y));
+        }
+    }
+
+    // Corners of NormalBounds
+    int32 idx;
+    idx = VertexGridMap[NormalBounds.Min.X][NormalBounds.Min.Y];
+    Normals[idx] = GetVertexNormal(NormalBounds.Min); // Lower left corner
+
+    idx = VertexGridMap[NormalBounds.Max.X][NormalBounds.Min.Y];
+    Normals[idx] = GetVertexNormal(FIntPoint(NormalBounds.Max.X, NormalBounds.Min.Y)); // Upper left corner
+
+    idx = VertexGridMap[NormalBounds.Max.X][NormalBounds.Max.Y];
+    Normals[idx] = GetVertexNormal(NormalBounds.Max); // Upper right corner
+
+    idx = VertexGridMap[NormalBounds.Min.X][NormalBounds.Max.Y];
+    Normals[idx] = GetVertexNormal(FIntPoint(NormalBounds.Min.X, NormalBounds.Max.Y)); // Lower right corner
+
+    // Normalize all newly calculated vectors
+    for (int32 i = NormalBounds.Min.X; i <= NormalBounds.Max.X; i++)
+        for (int32 j = NormalBounds.Min.Y; j <= NormalBounds.Max.Y; j++)
+            Normals[VertexGridMap[i][j]] = Normals[VertexGridMap[i][j]].GetSafeNormal();
 }

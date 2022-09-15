@@ -70,6 +70,17 @@ public: /****************************** AAutoSceneGenLandscape *****************
     FIntRect GetVertexGridBoundsWithinRadius(FVector P, float Radius) const;
 
     /**
+     * Finds the smallest bounding box for the rectangle defined by its middle axis and width.
+     * The middle axis is defined by the segment AB, which runs down the middle of the rectangle from bottom (A) to top (B).
+     * Effectively, if we move the segment AB perpendicularly to the left and right by a distance of Width/2, we will have defined this rectangle.
+     * @param A First segment endpoint (bottom point)
+     * @param B Second segmnet endpoint (top point)
+     * @param Width Width of the rectangle in [cm]
+     * @param bIncludeEndCaps If true, then the bounding box will also contain all vertices within a radius of Width/2 from A and B in the XY plane creating a planar capsule of vertices
+     */
+    FIntRect GetVertexGridBoundsWithinRectangle(FVector A, FVector B, float Width, bool bIncludeEndCaps) const;
+
+    /**
      * Finds the vertex buffer indices that are within the radius of the specified point
      * @param P Center point to search from (does not have to be coicident with a vertex), only the XY coordinates will be used
      * @param Radius Search radius
@@ -259,4 +270,16 @@ private: /****************************** AAutoSceneGenLandscape ****************
      * @param Distance The distance from the center of the brush in [cm]
      */
     float CalculateBrushStrength(float BrushRadius, float EffectiveRadius, float Distance, uint8 FalloffType);
+
+    /**
+     * Computes the normals for the specified vertex (based on grid index)
+     * @param V Vertex grid index of desired point
+     */
+    FVector GetVertexNormal(FIntPoint V);
+
+    /**
+     * Recalculates normals for the appropriate vertices based on the region that was modiifed
+     * @param Bounds Indicates the smallest bounding box of vertex grid indices containing all vertices that were modified 
+     */
+    void UpdateNormals(FIntRect Bounds);
 };
