@@ -1,5 +1,5 @@
 #include "Actors/AutoSceneGenLandscape.h"
-#include "KismetProceduralMeshLibrary.h"
+#include "Components/AnnotationComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "AutoSceneGenLogging.h"
 #include <chrono>
@@ -11,6 +11,8 @@ AAutoSceneGenLandscape::AAutoSceneGenLandscape()
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root Component"));
     LandscapeMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("Terrain Mesh"));
     LandscapeMesh->SetupAttachment(RootComponent);
+
+    AnnotationComponent = CreateDefaultSubobject<UAnnotationComponent>(TEXT("Annotation Component"));
 }
 
 void AAutoSceneGenLandscape::BeginPlay()
@@ -19,6 +21,11 @@ void AAutoSceneGenLandscape::BeginPlay()
 
     bCreatedBaseMesh = false;
     ClearVertexArrays();
+
+    // TODO: Set annotation colors from details panel
+    // TODO: Need custom traversability material (flat regions are traversable, high slopes are not, etc.)
+    AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(255, 255, 255, 255)); // White
+    AnnotationComponent->AddAnnotationColor(EAnnotationColor::SemanticSegmentation, FColor(0, 255, 0, 255)); // Green
 }
 
 void AAutoSceneGenLandscape::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -57,7 +64,8 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
     BoundingBox.Min = Location;
     BoundingBox.Max = Location + FVector(LandscapeSize, LandscapeSize, 0.);
 
-    int32 NumSideVertices = FMath::Pow(2, NumSubdivisions) + 1; // Number of vertices per landscape edge
+    int32 MaxIdx = FMath::Pow(2, NumSubdivisions);
+    int32 NumSideVertices = MaxIdx + 1; // Number of vertices per landscape edge
 
     TArray<int32> ZeroArray;
     ZeroArray.Init(0, NumSideVertices);
@@ -70,16 +78,18 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
     {
         for (int32 j = 0; j < NumSideVertices; j++)
         {
-            Vertices.Emplace(LowerLeftCorner + i*FVector(VertexSeparation, 0., 0.) + j*FVector(0., VertexSeparation, 0.));
+            Vertices.Emplace(i*FVector(VertexSeparation, 0., 0.) + j*FVector(0., VertexSeparation, 0.)); // Position is relative to root component
+            UV0.Emplace(FVector2D(j/(NumSideVertices-1.), i/(NumSideVertices-1.)));
             VertexGridMap[i][j] = i*NumSideVertices + j;
         }
     }
 
+    // Create triangles
     for (int32 i = 0; i < NumSideVertices-1; i++)
     {
         for (int32 j = 0; j < NumSideVertices-1; j++)
         {
-            // Triangle vertices should be added in CCW order to ensure the triangle faces outwards
+            // Triangle vertices should be added in CCW order to ensure the texture faces towards us (upwards in our case)
             // Lower triangle
             Triangles.Emplace(VertexGridMap[i][j]);
             Triangles.Emplace(VertexGridMap[i][j+1]);
@@ -94,9 +104,9 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
 
     Normals.Init(FVector(0., 0., 1.), Vertices.Num());
 
-    // LandscapeMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, VertexColors, Tangents, true);
-    LandscapeMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, TArray<FVector2D>(), TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
+    LandscapeMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
     UE_LOG(LogASG, Display, TEXT("Created base landscape mesh of size %f x %f [cm] with %i x %i Vertices"), LandscapeSize, LandscapeSize, NumSideVertices, NumSideVertices);
+    UE_LOG(LogASG, Warning, TEXT("Landscape bounds %s"), *BoundingBox.ToString());
     bCreatedBaseMesh = true;
     return true;
 }
@@ -108,11 +118,10 @@ FBox AAutoSceneGenLandscape::GetLandscapeBoundingBox() const
 
 FIntRect AAutoSceneGenLandscape::GetVertexGridBounds(FVector P) const
 {
-    FVector v = P - LowerLeftCorner;
-    int32 xmin = FMath::FloorToInt(v.X/VertexSeparation);
-    int32 xmax = FMath::CeilToInt(v.X/VertexSeparation);
-    int32 ymin = FMath::FloorToInt(v.Y/VertexSeparation);
-    int32 ymax = FMath::CeilToInt(v.Y/VertexSeparation);
+    int32 xmin = FMath::FloorToInt(P.X/VertexSeparation);
+    int32 xmax = FMath::CeilToInt(P.X/VertexSeparation);
+    int32 ymin = FMath::FloorToInt(P.Y/VertexSeparation);
+    int32 ymax = FMath::CeilToInt(P.Y/VertexSeparation);
 
     xmin = FMath::Clamp<int32>(xmin, 0, FMath::Pow(2, NumSubdivisions));
     xmax = FMath::Clamp<int32>(xmax, 0, FMath::Pow(2, NumSubdivisions));
@@ -139,11 +148,10 @@ FIntRect AAutoSceneGenLandscape::GetVertexGridBounds(TArray<FVector> Points) con
 
 FIntRect AAutoSceneGenLandscape::GetVertexGridBoundsWithinRadius(FVector P, float Radius) const
 {
-    FVector v = P - LowerLeftCorner;
-    int32 xmin = FMath::CeilToInt((v.X - Radius)/VertexSeparation);
-    int32 xmax = FMath::FloorToInt((v.X + Radius)/VertexSeparation);
-    int32 ymin = FMath::CeilToInt((v.Y - Radius)/VertexSeparation);
-    int32 ymax = FMath::FloorToInt((v.Y + Radius)/VertexSeparation);
+    int32 xmin = FMath::CeilToInt((P.X - Radius)/VertexSeparation);
+    int32 xmax = FMath::FloorToInt((P.X + Radius)/VertexSeparation);
+    int32 ymin = FMath::CeilToInt((P.Y - Radius)/VertexSeparation);
+    int32 ymax = FMath::FloorToInt((P.Y + Radius)/VertexSeparation);
 
     xmin = FMath::Clamp<int32>(xmin, 0, FMath::Pow(2, NumSubdivisions));
     xmax = FMath::Clamp<int32>(xmax, 0, FMath::Pow(2, NumSubdivisions));
@@ -164,10 +172,10 @@ FIntRect AAutoSceneGenLandscape::GetVertexGridBoundsWithinRectangle(FVector A, F
     ABPerp.Y = ABNorm.X;
 
     TArray<FVector> Points;
-    Points.Emplace(A + ABPerp * HalfWidth); // Right of A (when look in direction of AB)
-    Points.Emplace(A - ABPerp * HalfWidth); // Left of A (when look in direction of AB)
-    Points.Emplace(B + ABPerp * HalfWidth); // Right of B (when look in direction of AB)
-    Points.Emplace(B - ABPerp * HalfWidth); // Left of B (when look in direction of AB)
+    Points.Emplace(A + ABPerp * HalfWidth); // Right of A (when looking in direction of AB)
+    Points.Emplace(A - ABPerp * HalfWidth); // Left of A (when looking in direction of AB)
+    Points.Emplace(B + ABPerp * HalfWidth); // Right of B (when looking in direction of AB)
+    Points.Emplace(B - ABPerp * HalfWidth); // Left of B (when looking in direction of AB)
 
     if (bIncludeEndCaps)
     {
@@ -265,7 +273,7 @@ void AAutoSceneGenLandscape::GetVertexIndicesWithinRectangle(FVector A, FVector 
     }
 }
 
-float AAutoSceneGenLandscape::GetLandscapeHeight(FVector P) const
+float AAutoSceneGenLandscape::GetLandscapeElevation(FVector P) const
 {
     TArray<int32> SurroundingVertices;
     GetSurroundingVertexIndices(P, SurroundingVertices);
@@ -273,7 +281,7 @@ float AAutoSceneGenLandscape::GetLandscapeHeight(FVector P) const
     float MinZ = Vertices[SurroundingVertices[0]].Z;
     float MaxZ = MinZ;
 
-    float AvgSurroundingHeight = 0.;
+    float AvgSurroundingElevation = 0.;
     for (int32 idx : SurroundingVertices)
     {
         if (Vertices[idx].Z < MinZ)
@@ -282,10 +290,10 @@ float AAutoSceneGenLandscape::GetLandscapeHeight(FVector P) const
         if (Vertices[idx].Z > MaxZ)
             MaxZ = Vertices[idx].Z;
 
-        AvgSurroundingHeight += Vertices[idx].Z;
+        AvgSurroundingElevation += Vertices[idx].Z;
     }
 
-    AvgSurroundingHeight /= SurroundingVertices.Num();
+    AvgSurroundingElevation /= SurroundingVertices.Num();
 
     FVector StartTrace = FVector(P.X, P.Y, MaxZ + 10.);
     FVector EndTrace = FVector(P.X, P.Y, MinZ - 10.);
@@ -295,12 +303,12 @@ float AAutoSceneGenLandscape::GetLandscapeHeight(FVector P) const
 	bool bSuccess = GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECollisionChannel::ECC_Visibility, Params);
 
     if (bSuccess)
-        return Hit.ImpactPoint.Z;
+        return Hit.ImpactPoint.Z - GetActorLocation().Z; // ImpactPoint is in world coordinates, so subtract landscape Z position
     else
-        return AvgSurroundingHeight;
+        return AvgSurroundingElevation;
 }
 
-void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, float Radius, float DeltaZ, bool bRelative, float BrushFalloff, uint8 FalloffType)
+void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, float Radius, float DeltaZ, bool bRelative, float RadialStrength, uint8 FalloffType)
 {
     if (Radius <= 0.)
     {
@@ -319,7 +327,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, fl
             FVector Vertex = Vertices[idx];
             if ((Vertex - Center).Size2D() <= Radius)
             {
-                float BrushStrength = CalculateBrushStrength(Radius, FMath::Clamp<float>(BrushFalloff, 0., 1.) * Radius, (Center - Vertex).Size2D(), FalloffType);
+                float BrushStrength = CalculateBrushStrength(Radius, FMath::Clamp<float>(RadialStrength, 0., 1.) * Radius, (Center - Vertex).Size2D(), FalloffType);
 
                 if (bRelative)
                     Vertices[idx].Z += FMath::Lerp<float>(0., DeltaZ, BrushStrength);
@@ -332,12 +340,12 @@ void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, fl
     UpdateNormals(Bounds);
 }
 
-void AAutoSceneGenLandscape::LandscapeEditFlattenCircularPatch(FVector Center, float Radius, float BrushFalloff, uint8 FalloffType)
+void AAutoSceneGenLandscape::LandscapeEditFlattenCircularPatch(FVector Center, float Radius, float RadialStrength, uint8 FalloffType)
 {
-    LandscapeEditSculptCircularPatch(Center, Radius, GetLandscapeHeight(Center), false, BrushFalloff, FalloffType);
+    LandscapeEditSculptCircularPatch(Center, Radius, GetLandscapeElevation(Center), false, RadialStrength, FalloffType);
 }
 
-void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float Width, bool bIncludeEndCaps, bool bRelative, float BrushFalloff, uint8 FalloffType)
+void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float Width, bool bIncludeEndCaps, bool bRelative, float RadialStrength, uint8 FalloffType)
 {
     if (Width <= 0.)
     {
@@ -348,7 +356,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
     if ((B-A).Size2D() == 0. && bIncludeEndCaps)
     {
         UE_LOG(LogASG, Display, TEXT("LandscapeEditSculptRamp() - A and B are coincident in XY plane, using LandscapeEditSculptCircularPatch() instead"));
-        LandscapeEditSculptCircularPatch(A, Width/2., A.Z, false, BrushFalloff, FalloffType);
+        LandscapeEditSculptCircularPatch(A, Width/2., A.Z, false, RadialStrength, FalloffType);
         return;
     }
 
@@ -371,7 +379,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
 
             if (AngleBAC <= 90. && AngleABC <= 90. && (C-A).Size2D()*FMath::Sin(AngleBAC) <= HalfWidth) // Check if inside rectangle
             {
-                float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(BrushFalloff, 0., 1.) * HalfWidth, (C-A).Size2D()*FMath::Sin(AngleBAC), FalloffType);
+                float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(RadialStrength, 0., 1.) * HalfWidth, (C-A).Size2D()*FMath::Sin(AngleBAC), FalloffType);
                 float MaxDeltaZAtC = FMath::Lerp<float>(A.Z, B.Z, (C-A).Size2D()*FMath::Cos(AngleBAC) / (B-A).Size2D());
 
                 if (bRelative)
@@ -384,7 +392,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
             {
                 if (AngleBAC > 90. && (C-A).Size2D() <= HalfWidth) // Check if in A endcap
                 {
-                    float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(BrushFalloff, 0., 1.) * HalfWidth, (C-A).Size2D(), FalloffType);
+                    float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(RadialStrength, 0., 1.) * HalfWidth, (C-A).Size2D(), FalloffType);
                     
                     if (bRelative)
                         Vertices[idx].Z += FMath::Lerp<float>(0., A.Z, BrushStrength);
@@ -394,7 +402,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
                 }
                 else if (AngleABC > 90. && (C-B).Size2D() <= HalfWidth) // Check if in B endcap
                 {
-                    float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(BrushFalloff, 0., 1.) * HalfWidth, (C-B).Size2D(), FalloffType);
+                    float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(RadialStrength, 0., 1.) * HalfWidth, (C-B).Size2D(), FalloffType);
                     if (bRelative)
                         Vertices[idx].Z += FMath::Lerp<float>(0., B.Z, BrushStrength);
                     else
@@ -409,13 +417,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
 
 void AAutoSceneGenLandscape::PostSculptUpdate()
 {
-    // Calculate and update normals
-    // TArray<FVector2D> EmptyUVs;
-    // TArray<FLinearColor> EmptyLinearColor;
-    // TArray<FProcMeshTangent> EmptyTangents;
-    // UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, TArray<FVector2D>(), Normals, EmptyTangents);
-
-    LandscapeMesh->UpdateMeshSection_LinearColor(0, Vertices, Normals, TArray<FVector2D>(), TArray<FLinearColor>(), TArray<FProcMeshTangent>());
+    LandscapeMesh->UpdateMeshSection_LinearColor(0, Vertices, Normals, UV0, TArray<FLinearColor>(), TArray<FProcMeshTangent>());
     UE_LOG(LogASG, Display, TEXT("Performed post-sculpt update on landscape."));
 }
 
@@ -430,12 +432,13 @@ void AAutoSceneGenLandscape::ResetToBaseMesh()
     LowerLeftCorner = GetActorLocation();
     BoundingBox.Min = GetActorLocation();
     BoundingBox.Max = GetActorLocation() + FVector(LandscapeSize, LandscapeSize, 0.);
-    LandscapeMesh->UpdateMeshSection_LinearColor(0, Vertices, Normals, TArray<FVector2D>(), TArray<FLinearColor>(), TArray<FProcMeshTangent>());
+    LandscapeMesh->UpdateMeshSection_LinearColor(0, Vertices, Normals, UV0, TArray<FLinearColor>(), TArray<FProcMeshTangent>());
 }
 
 void AAutoSceneGenLandscape::SetMaterial(UMaterialInterface* NewMaterial)
 {
     LandscapeMesh->SetMaterial(0, NewMaterial);
+    AnnotationComponent->UpdateDefaultMeshMaterials();
 }
 
 void AAutoSceneGenLandscape::ClearVertexArrays()
@@ -606,6 +609,11 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
 
     int32 idx = VertexGridMap[V.X][V.Y];
     FVector N;
+
+    // NOTE: Operator precedence
+    // A^B + C^D is NOT equal to (A^B) + (C^D) becasue + takes precedence over ^
+    // A^B + C^D is equal to A^(B + C)^D
+
     if (V.X == 0 && V.Y == 0) // Lower left corner
     {
         int32 iU = VertexGridMap[V.X+1][V.Y];
@@ -617,16 +625,16 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         int32 iR = VertexGridMap[V.X][V.Y+1];
         int32 iRD = VertexGridMap[V.X-1][V.Y+1];
         int32 iD = VertexGridMap[V.X-1][V.Y];
-        N = (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
-            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
+        N =  (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]);
+        N += (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
     }
     else if (V.X == 0 && V.Y == MaxIdx) // Lower right corner
     {
         int32 iL = VertexGridMap[V.X][V.Y-1];
         int32 iLU = VertexGridMap[V.X+1][V.Y-1];
         int32 iU = VertexGridMap[V.X+1][V.Y];
-        N = (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) + 
-            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
+        N =  (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]);
+        N += (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
     }
     else if (V.X == MaxIdx && V.Y == MaxIdx) // Upper right corner
     {
@@ -640,9 +648,9 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         int32 iLU = VertexGridMap[V.X+1][V.Y-1];
         int32 iU = VertexGridMap[V.X+1][V.Y];
         int32 iR = VertexGridMap[V.X][V.Y+1];
-        N = (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) + 
-            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]) +
-            (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]);
+        N =  (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]);
+        N += (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
+        N += (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]);
     }
     else if (V.Y == 0) // Left edge
     {
@@ -650,9 +658,9 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         int32 iR = VertexGridMap[V.X][V.Y+1];
         int32 iRD = VertexGridMap[V.X-1][V.Y+1];
         int32 iD = VertexGridMap[V.X-1][V.Y];
-        N = (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]) +
-            (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
-            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
+        N =  (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]);
+        N += (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]); 
+        N += (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
     }
     else if (V.X == MaxIdx) // Upper edge
     {
@@ -660,9 +668,9 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         int32 iRD = VertexGridMap[V.X-1][V.Y+1];
         int32 iD = VertexGridMap[V.X-1][V.Y];
         int32 iL = VertexGridMap[V.X][V.Y-1];
-        N = (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
-            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]) +
-            (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]);
+        N =  (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]); 
+        N += (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
+        N += (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]);
     }
     else if (V.Y == MaxIdx) // Right edge
     {
@@ -670,9 +678,9 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         int32 iL = VertexGridMap[V.X][V.Y-1];
         int32 iLU = VertexGridMap[V.X+1][V.Y-1];
         int32 iU = VertexGridMap[V.X+1][V.Y];
-        N = (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]) +
-            (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) + 
-            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
+        N =  (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]);
+        N += (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]);
+        N += (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
     }
     else // Interior grid point
     {
@@ -682,12 +690,12 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         int32 iD = VertexGridMap[V.X-1][V.Y];
         int32 iL = VertexGridMap[V.X][V.Y-1];
         int32 iLU = VertexGridMap[V.X+1][V.Y-1];
-        N = (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]) +
-            (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]) + 
-            (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]) +
-            (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]) +
-            (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]) +
-            (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
+        N =  (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]);
+        N += (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]);
+        N += (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
+        N += (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]);
+        N += (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]);
+        N += (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
     }
     return N.GetSafeNormal();
 }

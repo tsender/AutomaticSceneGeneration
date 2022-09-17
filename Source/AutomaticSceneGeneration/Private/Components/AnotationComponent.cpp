@@ -47,12 +47,7 @@ void UAnnotationComponent::InitializeComponent()
 	
 	// Assume only one mesh component
 	MeshComponent = Cast<UMeshComponent>(this->GetOwner()->GetComponentByClass(UMeshComponent::StaticClass()));
-	if (!MeshComponent)
-	{
-		UE_LOG(LogASG, Warning, TEXT("Actor %s does not have a mesh component."), *this->GetOwner()->GetName());
-		return;
-	}
-	DefaultMeshMaterials = MeshComponent->GetMaterials();
+	UpdateDefaultMeshMaterials();
 }
 
 // Called when the game starts
@@ -81,6 +76,16 @@ void UAnnotationComponent::BeginPlay()
 void UAnnotationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+}
+
+void UAnnotationComponent::UpdateDefaultMeshMaterials()
+{
+	if (!MeshComponent)
+	{
+		UE_LOG(LogASG, Warning, TEXT("Actor %s does not have a mesh component. Cannot update default mesh materials."), *this->GetOwner()->GetName());
+		return;
+	}
+	DefaultMeshMaterials = MeshComponent->GetMaterials();
 }
 
 void UAnnotationComponent::AddAnnotationColor(uint8 ColorID, FColor Color)

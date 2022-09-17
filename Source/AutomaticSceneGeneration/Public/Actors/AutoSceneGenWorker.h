@@ -53,7 +53,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	class AStaticMeshActor* GroundPlaneActor;
 
 	UPROPERTY()
-	class AAutoSceneGenLandscape* LandscapeMesh;
+	class AAutoSceneGenLandscape* ASGLandscape;
 
 	UPROPERTY(EditAnywhere)
 	UMaterialInterface* LandscapeMaterial;

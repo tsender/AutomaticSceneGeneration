@@ -34,7 +34,10 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	void UpdateDefaultMeshMaterials();
+
 	void AddAnnotationColor(uint8 ColorID, FColor Color);
+	
 	void SetActiveMaterial(bool bAnnotation, uint8 ColorID);
 
 private:	

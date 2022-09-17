@@ -78,21 +78,23 @@ void AAutoSceneGenWorker::BeginPlay()
 		UE_LOG(LogASG, Error, TEXT("There must exist an AutoSceneGenLandcape actor in the world."));
 		return;
 	}
-	LandscapeMesh = Cast<AAutoSceneGenLandscape>(TempArray[0]);
-	if (!LandscapeMesh)
+	ASGLandscape = Cast<AAutoSceneGenLandscape>(TempArray[0]);
+	if (!ASGLandscape)
 	{
 		UE_LOG(LogASG, Error, TEXT("Failed to cast AutoSceneGenLandcape actor."));
 		return;
 	}
 	if (!LandscapeMaterial)
 	{
-		UE_LOG(LogASG, Error, TEXT("Landscape material is nullptr. Cannot create landscape."));
+		UE_LOG(LogASG, Error, TEXT("Landscape material is nullptr. Cannot create landscape without material."));
 		return;
 	}
-	LandscapeMesh->CreateBaseMesh(FVector(0.,0.,500.), 128.*100., DebugLandscapeSubdivisions);
-	// LandscapeMesh->SetMaterial(LandscapeMaterial);
-	LandscapeMesh->LandscapeEditSculptCircularPatch(FVector(60.*100, 60.*100, 0.), 10.*100, 5.*100, true, 0, ELandscapeFalloff::Smooth);
-	LandscapeMesh->PostSculptUpdate();
+	float BaseSize = 512.*100.;
+	ASGLandscape->CreateBaseMesh(FVector(0.,-BaseSize,0.), BaseSize, DebugLandscapeSubdivisions);
+	ASGLandscape->SetMaterial(LandscapeMaterial);
+	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(60.*100, 60.*100, 0.), 10.*100, 5.*100, true, 0, ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(80.*100, 20.*100, 0.), 9.3*100, 3.*100, true, 0.7, ELandscapeFalloff::Smooth);
+	// ASGLandscape->PostSculptUpdate();
 
 	// Get light source actor (for sunlight)
 	TempArray.Empty();
@@ -126,10 +128,7 @@ void AAutoSceneGenWorker::BeginPlay()
 		UE_LOG(LogASG, Error, TEXT("Failed to cast AutoSceneGenVehicle."));
 		return;
 	}
-	// else
-	// {
-	// 	ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
-	// }
+	ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
 
 	// Add debug structural scene actors to SSA maintainer map
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
@@ -191,7 +190,6 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	DebugSSASubclasses.Empty();
 	SSAMaintainerMap.Empty();
 	SceneDescription.ssa_array.Empty();
-	LandscapeMesh->Destroy();
 
 	if (ROSInst)
 	{
