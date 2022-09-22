@@ -21,11 +21,41 @@ public: /****************************** UObject Overrides **********************
 	virtual void BeginDestroy() override;
 
 public: /****************************** UStructuralSceneActorMaintainer ******************************/
+	/**
+	 * Initialize the maintainer
+	 * @param InWorld Pointer to the world context
+	 * @param InSSASubclass The specific subclass of AStructuralSceneActors that this maintainer will manage
+	 */
 	void Init(class UWorld* InWorld, TSubclassOf<class AStructuralSceneActor> InSSASubclass);
 
+	// Destroy all managed structural scene actors
 	void DestroyActors();
 
+	/**
+	 * Update the structural attributes for all managed actors. All arrays must be of the same length, or nothing will be updated
+	 * @param NewVisibilities Array of bools indicating which actors are visible
+	 * @param NewCastShadows Array of bools indicating which actors can cast shadows
+	 * @param NewLocations Array of new locations for each actor
+	 * @param NewRotations Array of new rotations for each actor
+	 * @param NewScales Array of new scale factors for each actor
+	 */
 	void UpdateAttributes(TArray<bool> &NewVisibilities, TArray<bool> &NewCastShadows, TArray<FVector> &NewLocations, TArray<FRotator> &NewRotations, TArray<float> &NewScales);
+
+	/**
+	 * Set the number of actors to maintain
+	 * @param NumActorsToMaintain The number of actors to maintain
+	 * @param bMakeNewActorsVisible Indicate if newly added actors should be visible
+	 */
+	void SetNumActors(int32 NumActorsToMaintain, bool bMakeNewActorsVisible);
+
+	// Set all maintained actors to be invisible
+	void SetAllActorsInvisible();
+
+	/**
+	 * Get a pointer to the AStructuralSceneActor at the specified index
+	 * @param Idx Index of actor to get a pointer to
+	 */
+	AStructuralSceneActor* GetActor(int32 Idx) const;
 
 private: /****************************** UStructuralSceneActorMaintainer ******************************/
 	// Array of pointers to all maintained SSAs

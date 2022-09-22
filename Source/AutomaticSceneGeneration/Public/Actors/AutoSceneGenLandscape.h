@@ -46,6 +46,10 @@ public: /****************************** AAutoSceneGenLandscape *****************
      */
     bool CreateBaseMesh(FVector Location, float Size, int Subdivisions);
 
+    /**
+     * Return the bounding box for the entire landscape. Both the min and max components are relative to the origin (whose global position is set when creating the mesh).
+     * The Min component coincides with the origin, except for the Z value.
+     */
     FBox GetLandscapeBoundingBox() const;
 
     /**
@@ -125,7 +129,16 @@ public: /****************************** AAutoSceneGenLandscape *****************
      * If line-tracing is unsuccessful (unlikely), then it will return the average height of the vertex's four surrounding vertices.
      * @param P Point to find landscape's Z coordinate at
      */
-    float GetLandscapeElevation(FVector P) const;
+    float GetLandscapeElevation(FVector P, const TArray<AActor*> &ActorsToIgnore) const;
+
+    /**
+     * Return the landscape's surface data at the specified point using line-tracing. 
+     * If line-tracing is unsuccessful (unlikely), then it will return the average height of the vertex's four surrounding vertices.
+     * @param P Point to find landscape's Z coordinate at
+     * @param Hit Struct to write hit data to
+     * @return True if hit is successful, false otherwise
+     */
+    bool GetLandscapeSurfaceData(FVector P, const TArray<AActor*> &ActorsToIgnore, FHitResult &Hit) const;
 
     /**
      * Change the Z height of the landscape within the specified circular region
@@ -179,10 +192,10 @@ public: /****************************** AAutoSceneGenLandscape *****************
     void SetMaterial(UMaterialInterface* NewMaterial);
 
 private: /****************************** AAutoSceneGenLandscape ******************************/    
-    UPROPERTY(EditAnywhere)
+    UPROPERTY()
 	class UAnnotationComponent* AnnotationComponent;
     
-    UPROPERTY(EditAnywhere)
+    UPROPERTY()
     class UProceduralMeshComponent* LandscapeMesh;
 
     TArray<FVector> Vertices;
@@ -219,6 +232,9 @@ private: /****************************** AAutoSceneGenLandscape ****************
     // The lower left is (0,0) and the upper right is (N,N), following Unreal's left-hand coordinate system (X points up, Y points right).
     // This allows us to more quickly lookup the index in the Vertices buffer that corresponds to a certain coordinate.
     TArray<TArray<int32> > VertexGridMap;
+
+    UPROPERTY()
+    TArray<AActor*> LineTraceIgnoreActors;
 
     // Clear all vertex-related arrays
     void ClearVertexArrays();

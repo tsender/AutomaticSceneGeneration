@@ -35,13 +35,25 @@ public: /****************************** AStructuralSceneActor ******************
 
 	uint16 GetIDNumber() const;
 
-	void SetStructuralAttributes(bool bVisibile,  bool bNewCastShadow, FVector NewLocation, FRotator NewRotation, float NewScale);
+	/**
+	 * Set/modify the actor's structural attributes all at once
+	 * @param bVisible Indicates if the mesh is visible (traversability settings will be handled appropriately)
+	 * @param bNewCastShadow Indicates if the mesh should cast a shadow
+	 * @param Newlocation The new location
+	 * @param NewRotation The new rotation
+	 * @param NewScale The new scale factor (to be applied to each axis)
+	 */
+	void SetStructuralAttributes(bool bVisibile, bool bNewCastShadow, FVector NewLocation, FRotator NewRotation, float NewScale);
 
 	// Use this to set if an actor is visible. We use the term "active" because several settings get modified.
 	void SetActive(bool bNewActive);
 
 	// Indicates if an actor is active/visible
 	bool IsActive() const;
+
+	void SetCastShadow(bool bNewCastShadow);
+
+	void SetScale(float NewScale);
 
 	bool IsTraversable() const;
 
@@ -64,5 +76,8 @@ private: /****************************** AStructuralSceneActor *****************
 
 	bool bTraversable = false;
 
+	float DefaultHeight;
+
+	// Updates the actor's traversability annotation color and its collision settings
 	void UpdateTraversabilitySettings();
 };

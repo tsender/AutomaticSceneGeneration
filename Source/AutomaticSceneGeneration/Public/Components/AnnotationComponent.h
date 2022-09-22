@@ -14,7 +14,7 @@ enum EAnnotationColor
 	InstanceSegmentation
 };
 
-// This component can be used to change the color of the owning actor's static mesh at runtime
+// This component can be used to change the color of the owning actor's mesh at runtime
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class AUTOMATICSCENEGENERATION_API UAnnotationComponent : public UActorComponent
 {
@@ -34,10 +34,21 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	// Grab the latest default materials from the owning actor's mesh
 	void UpdateDefaultMeshMaterials();
 
+	/**
+	 * Add an annotation color
+	 * @param ColorID An ID for the color
+	 * @param Color The annotation color to add
+	 */
 	void AddAnnotationColor(uint8 ColorID, FColor Color);
 	
+	/**
+	 * Set which material is active in owning actor's mesh
+	 * @param bAnnotation Indicates if the material to activate is one of the annotation colors
+	 * @param ColorID The annotation color ID. Only used if bAnnotation is true
+	 */
 	void SetActiveMaterial(bool bAnnotation, uint8 ColorID);
 
 private:	

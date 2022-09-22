@@ -13,6 +13,7 @@
 #include "Engine/DirectionalLight.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/KismetMathLibrary.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
@@ -89,11 +90,16 @@ void AAutoSceneGenWorker::BeginPlay()
 		UE_LOG(LogASG, Error, TEXT("Landscape material is nullptr. Cannot create landscape without material."));
 		return;
 	}
-	float BaseSize = 512.*100.;
-	ASGLandscape->CreateBaseMesh(FVector(0.,-BaseSize,0.), BaseSize, DebugLandscapeSubdivisions);
+	// float LandscapeSize = 512.*100.;
+	ASGLandscape->CreateBaseMesh(FVector(0.,-LandscapeSize,0.), LandscapeSize, DebugLandscapeSubdivisions);
 	ASGLandscape->SetMaterial(LandscapeMaterial);
-	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(60.*100, 60.*100, 0.), 10.*100, 5.*100, true, 0, ELandscapeFalloff::Smooth);
-	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(80.*100, 20.*100, 0.), 9.3*100, 3.*100, true, 0.7, ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(LandscapeSize/2., LandscapeSize/2, 0.), LandscapeSize/4., 20.*100, true, 0, ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptRamp(FVector(100.*100, 100.*100, 0.), FVector(150.*100, 150*100., 10.*100), 50.*100, false, false, 0.7, ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptRamp(FVector(100.*100, 200.*100, 0.*100.), FVector(100.*100, 300*100., 10.*100), 50.*100, true, false, 0.5, ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(100.*100, 250.*100, 0.), 25.*100, -10.*100, true, 0., ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptRamp(FVector(200.*100, 200.*100, -40.*100.), FVector(300.*100, 300*100., 10.*100), 50.*100, true, false, 0.5, ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptRamp(FVector(100.*100, 250.*100, 0.*100.), FVector(250.*100, 250*100., 10.*100), 60.*100, true, true, 0.2, ELandscapeFalloff::Smooth);
+	// ASGLandscape->LandscapeEditSculptRamp(FVector(350.*100, 350.*100, 10.*100.), FVector(250.*100, 450*100., 10.*100), 60.*100, true, true, 0.0, ELandscapeFalloff::Smooth);
 	// ASGLandscape->PostSculptUpdate();
 
 	// Get light source actor (for sunlight)
@@ -259,7 +265,8 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		// Occasionaly, for some unknown reason, resetting the vehicle (via teleportation) can throw the vehicle out of the bounds of the game.
 		// To account for this phenomena, if the vehicle is ever below the ground plane, then we reset the vehicle and try again.
 		// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
-		if (ASGVehicle && ASGVehicle->GetActorLocation().Z <= GroundPlaneZHeight -100.)
+		// TODO: Adjust for non-flat landscape
+		if (ASGVehicle && ASGVehicle->GetActorLocation().Z <= ASGLandscape->GetActorLocation().Z - 100.)
 		{
 			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
 			bProcessedScenarioRequest = false; // This will reset the run for us
@@ -276,6 +283,9 @@ uint8 AAutoSceneGenWorker::GetWorkerID() const
 
 void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 {
+	TMap<FString, TArray<FHitResult>> SurfaceData;
+	
+	// Make SSAs invisible initially so we can get landscape surface data
 	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
 	{
 		TArray<bool> Visibilities;
@@ -284,29 +294,45 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 		TArray<FRotator> Rotations;
 		TArray<float> Scales;
 
+		Visibilities.Init(false, DebugNumSSAInstances);
+		CastShadows.Init(bDebugSSACastShadow, DebugNumSSAInstances);
+		Rotations.Init(FRotator(0.), DebugNumSSAInstances);
+		Scales.Init(1., DebugNumSSAInstances);
+
 		// For the debug SSAs, we use the same number of instances of each subclass
+		TArray<FHitResult> Hits;
 		for (int32 i = 0; i < DebugNumSSAInstances; i++)
 		{
-			CastShadows.Emplace(bDebugSSACastShadow);
-			FVector Location = FVector(FMath::RandRange(0.f, 1.f) * LandscapeSize, -FMath::RandRange(0.f, 1.f) * LandscapeSize, GroundPlaneZHeight);
+			FVector Location = FVector(FMath::RandRange(0.f, 1.f) * LandscapeSize, -FMath::RandRange(0.f, 1.f) * LandscapeSize, 0.);
 			Locations.Emplace(Location);
-			Rotations.Emplace(FRotator(0, FMath::RandRange(0.f, 1.f) * 360.f, 0));
-			Scales.Emplace(1.f);
-
-			// Determine visibility based on SSA placement
-			FVector Loc = Location;
-			Loc.Z = VehicleStartLocation.Z;
-			if ((Loc - VehicleStartLocation).Size() <= DebugSafetyRadius || (Loc - VehicleGoalLocation).Size() <= DebugSafetyRadius)
-			{
-				Visibilities.Emplace(false);
-			}
-			else
-			{
-				Visibilities.Emplace(true);
-			}
+			FHitResult Hit;
+			TArray<AActor*> ActorsToIgnore;
+			ASGLandscape->GetLandscapeSurfaceData(Location - ASGLandscape->GetActorLocation(), ActorsToIgnore, Hit);
+			Hits.Emplace(Hit);
 		}
 		
+		SurfaceData.Add(Subclass->GetPathName(), Hits);
 		SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Visibilities, CastShadows, Locations, Rotations, Scales);
+	}
+	
+	// Now set remaining attributes correctly
+	for (TSubclassOf<AStructuralSceneActor> Subclass : DebugSSASubclasses)
+	{
+		for (int32 i = 0; i < DebugNumSSAInstances; i++)
+		{
+			AStructuralSceneActor* Actor =  SSAMaintainerMap[Subclass->GetPathName()]->GetActor(i);
+			FVector Location = Actor->GetActorLocation();
+			Location.Z = SurfaceData[Subclass->GetPathName()][i].ImpactPoint.Z;
+			Actor->SetActorLocation(Location);
+			Actor->SetActorRotation(UKismetMathLibrary::MakeRotFromZ(SurfaceData[Subclass->GetPathName()][i].ImpactNormal));
+			// Actor->SetActorRotation(SurfaceData[Subclass->GetPathName()][i].ImpactNormal.Rotation());
+
+			// Determine visibility based on SSA placement
+			if ((Location - VehicleStartLocation).Size2D() <= DebugSafetyRadius || (Location - VehicleGoalLocation).Size2D() <= DebugSafetyRadius)
+				Actor->SetActive(false);
+			else
+				Actor->SetActive(true);
+		}
 	}
 }
 
@@ -314,6 +340,12 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 {
 	if (!ROSInst || !bASGClientOnline || !ASGVehicle || !LightSource || bProcessedScenarioRequest) return;
 
+	// TODO: Modify landscape
+
+	FHitResult Hit1;
+	TArray<AActor*> TempArray;
+	ASGLandscape->GetLandscapeSurfaceData(VehicleStartLocation - ASGLandscape->GetActorLocation(), TempArray, Hit1);
+	VehicleStartLocation.Z = Hit1.ImpactPoint.Z + 50.;
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
 
 	LightSource->SetActorRotation(FRotator(-SceneDescription.sunlight_inclination, SceneDescription.sunlight_yaw_angle, 0.));
@@ -345,7 +377,12 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 		}
 	}
 
-	// Add SSA subclasses to maintainer map and update attributes
+	// Make everything invisible so we can easily get landscape surface data
+	for (TPair<FString, UStructuralSceneActorMaintainer*> Elem : SSAMaintainerMap)
+		Elem.Value->SetAllActorsInvisible();
+
+	// Make sure we have the correct number of SSAs per requested subclass
+	TMap<FString, TArray<FHitResult>> SurfaceData;
 	for (TSubclassOf<AStructuralSceneActor> Subclass : RequestedSSASubclasses)
 	{
 		// It is more efficient to only add a new subclass to the TMap if the key does not already exist, otherwise the old objects will not get gc'd immediately.
@@ -355,6 +392,31 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 			SSAMaintainerMap[Subclass->GetPathName()]->Init(GetWorld(), Subclass);
 		}
 
+		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : SceneDescription.ssa_array)
+		{
+			if (Subclass->GetPathName().Equals(Layout.path_name))
+			{
+				SSAMaintainerMap[Subclass->GetPathName()]->SetNumActors(Layout.num_instances, false);
+
+				// Get surface data
+				TArray<FHitResult> Hits;
+				for (int32 i = 0; i < Layout.num_instances; i++)
+				{
+					FVector Location = FVector(Layout.x[i], Layout.y[i], 0.);
+					FHitResult Hit;
+					TArray<AActor*> ActorsToIgnore;
+					ASGLandscape->GetLandscapeSurfaceData(Location - ASGLandscape->GetActorLocation(), ActorsToIgnore, Hit);
+					Hits.Emplace(Hit);
+				}
+				SurfaceData.Add(Subclass->GetPathName(), Hits);
+				break;
+			}
+		}
+	}
+
+	// Set attributes for all requested SSA subclasses
+	for (TSubclassOf<AStructuralSceneActor> Subclass : RequestedSSASubclasses)
+	{
 		// Find corresponding element in SSA array
 		for (ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout Layout : SceneDescription.ssa_array)
 		{
@@ -365,11 +427,16 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 
 				for (int32 i = 0; i < Layout.num_instances; i++)
 				{
-					Locations.Emplace(FVector(Layout.x[i], Layout.y[i], GroundPlaneZHeight));
-					Rotations.Emplace(FRotator(0, Layout.yaw[i], 0));
+					AStructuralSceneActor* Actor =  SSAMaintainerMap[Subclass->GetPathName()]->GetActor(i);
+					FVector Location = FVector(Layout.x[i], Layout.y[i], 0.);
+					Location.Z = SurfaceData[Subclass->GetPathName()][i].ImpactPoint.Z;
+					Actor->SetActorLocation(Location);
+					// Actor->SetActorRotation(UKismetMathLibrary::MakeRotFromZ(Hit.ImpactNormal));
+					Actor->SetActorRotation(SurfaceData[Subclass->GetPathName()][i].ImpactNormal.Rotation());
+					Actor->AddActorLocalRotation(FRotator(0., Layout.yaw[i], 0.));
+					Actor->SetCastShadow(Layout.cast_shadow[i]);
+					Actor->SetScale(Layout.scale[i]);
 				}
-				
-				SSAMaintainerMap[Subclass->GetPathName()]->UpdateAttributes(Layout.visible, Layout.cast_shadow, Locations, Rotations, Layout.scale);
 				break;
 			}
 		}
@@ -546,9 +613,11 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	VehicleStuckTimeoutPeriod = CastRequest->vehicle_stuck_timeout_period;
 	bAllowCollisions = CastRequest->allow_collisions;
 
-	VehicleStartLocation = FVector(CastRequest->vehicle_start_location.x, CastRequest->vehicle_start_location.y, GroundPlaneZHeight);
+	VehicleStartLocation.X = CastRequest->vehicle_start_location.x;
+	VehicleStartLocation.Y = CastRequest->vehicle_start_location.y;
 	VehicleStartRotation = FRotator(0, CastRequest->vehicle_start_yaw, 0);
-	VehicleGoalLocation = FVector(CastRequest->vehicle_goal_location.x, CastRequest->vehicle_goal_location.y, GroundPlaneZHeight);
+	VehicleGoalLocation.X = CastRequest->vehicle_goal_location.x;
+	VehicleGoalLocation.Y = CastRequest->vehicle_goal_location.y;
 	GoalRadius = CastRequest->goal_radius;
 
 	SceneDescription = CastRequest->scene_description;

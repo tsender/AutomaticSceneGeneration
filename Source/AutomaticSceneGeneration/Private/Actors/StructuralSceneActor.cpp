@@ -41,6 +41,7 @@ void AStructuralSceneActor::BeginPlay()
 		FVector Origin;
 		FVector BoxExtent;
 		GetActorBounds(true, Origin, BoxExtent);
+		DefaultHeight = (2*BoxExtent.Z) / Scale.Z; 
 		bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
 	}
 	UpdateTraversabilitySettings();
@@ -67,36 +68,31 @@ void AStructuralSceneActor::SetStructuralAttributes(bool bVisibile, bool bNewCas
 	StaticMeshComponent->SetCastShadow(bNewCastShadow);
 	SetActorLocation(NewLocation);
 	SetActorRotation(NewRotation);
+	SetScale(NewScale);
+}
 
-	// Due to a bug with the engine, if an actor's scale is too small, then the engine gets "confused" and cannot accurately compute the actor bounds.
-	// We require that scale >= 0.1
-	if (NewScale < 0.1f)
-	{
-		NewScale = 0.1f;
-	}
+void AStructuralSceneActor::SetCastShadow(bool bNewCastShadow)
+{
+	StaticMeshComponent->SetCastShadow(bNewCastShadow);
+}
+
+void AStructuralSceneActor::SetScale(float NewScale)
+{
 	SetActorScale3D(FVector(NewScale, NewScale, NewScale));
 
+	// Due to a bug with the engine, if an actor's scale is too small, then the engine gets "confused" and cannot accurately compute the actor bounds.
+	// Hence why we need to get the DefaultHeight in BeginPlay()
 	// Update traversability status and annotation color
 	if (bAlwaysTraversable)
-	{
 		bTraversable = true;
-	}
 	else
-	{
-		FVector Origin;
-		FVector BoxExtent;
-		GetActorBounds(true, Origin, BoxExtent);
-		bTraversable = 2*BoxExtent.Z <= TraversableHeightThreshold;
-	}
+		bTraversable = DefaultHeight * NewScale <= TraversableHeightThreshold; // Use DefaultHeight to determine actor's new height
 	UpdateTraversabilitySettings();
 }
 
 void AStructuralSceneActor::SetActive(bool bNewActive)
 {
-	if (bActive == bNewActive)
-	{
-		return;
-	}
+	if (bActive == bNewActive) return;
 
 	bActive = bNewActive;
 	SetActorHiddenInGame(!bActive);

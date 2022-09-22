@@ -61,8 +61,8 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
     ClearVertexArrays();
 
     LowerLeftCorner = Location;
-    BoundingBox.Min = Location;
-    BoundingBox.Max = Location + FVector(LandscapeSize, LandscapeSize, 0.);
+    BoundingBox.Min = FVector(0.);
+    BoundingBox.Max = FVector(LandscapeSize, LandscapeSize, 0.);
 
     int32 MaxIdx = FMath::Pow(2, NumSubdivisions);
     int32 NumSideVertices = MaxIdx + 1; // Number of vertices per landscape edge
@@ -273,7 +273,7 @@ void AAutoSceneGenLandscape::GetVertexIndicesWithinRectangle(FVector A, FVector 
     }
 }
 
-float AAutoSceneGenLandscape::GetLandscapeElevation(FVector P) const
+float AAutoSceneGenLandscape::GetLandscapeElevation(FVector P, const TArray<AActor*> &ActorsToIgnore) const
 {
     TArray<int32> SurroundingVertices;
     GetSurroundingVertexIndices(P, SurroundingVertices);
@@ -295,17 +295,45 @@ float AAutoSceneGenLandscape::GetLandscapeElevation(FVector P) const
 
     AvgSurroundingElevation /= SurroundingVertices.Num();
 
-    FVector StartTrace = FVector(P.X, P.Y, MaxZ + 10.);
-    FVector EndTrace = FVector(P.X, P.Y, MinZ - 10.);
+    FVector StartTrace = GetActorLocation() + FVector(P.X, P.Y, MaxZ + 1.);
+    FVector EndTrace = GetActorLocation() + FVector(P.X, P.Y, MinZ - 1.);
     FHitResult Hit;
     FCollisionQueryParams Params;
-	// Params.AddIgnoredActor(this);
+	if (ActorsToIgnore.Num())
+        Params.AddIgnoredActors(ActorsToIgnore);
 	bool bSuccess = GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECollisionChannel::ECC_Visibility, Params);
 
     if (bSuccess)
         return Hit.ImpactPoint.Z - GetActorLocation().Z; // ImpactPoint is in world coordinates, so subtract landscape Z position
     else
         return AvgSurroundingElevation;
+}
+
+bool AAutoSceneGenLandscape::GetLandscapeSurfaceData(FVector P, const TArray<AActor*> &ActorsToIgnore, FHitResult &Hit) const
+{
+    TArray<int32> SurroundingVertices;
+    GetSurroundingVertexIndices(P, SurroundingVertices);
+
+    float MinZ = Vertices[SurroundingVertices[0]].Z;
+    float MaxZ = MinZ;
+
+    for (int32 idx : SurroundingVertices)
+    {
+        if (Vertices[idx].Z < MinZ)
+            MinZ = Vertices[idx].Z;
+
+        if (Vertices[idx].Z > MaxZ)
+            MaxZ = Vertices[idx].Z;
+
+    }
+
+    // For now let's assume zero rotation
+    FVector StartTrace = GetActorLocation() + FVector(P.X, P.Y, MaxZ + 1.); // Start above landscape
+    FVector EndTrace = GetActorLocation() + FVector(P.X, P.Y, MinZ - 1.); // End below landscape
+    FCollisionQueryParams Params;
+    if (ActorsToIgnore.Num())
+        Params.AddIgnoredActors(ActorsToIgnore);
+	return GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECollisionChannel::ECC_Visibility, Params);
 }
 
 void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, float Radius, float DeltaZ, bool bRelative, float RadialStrength, uint8 FalloffType)
@@ -342,7 +370,8 @@ void AAutoSceneGenLandscape::LandscapeEditSculptCircularPatch(FVector Center, fl
 
 void AAutoSceneGenLandscape::LandscapeEditFlattenCircularPatch(FVector Center, float Radius, float RadialStrength, uint8 FalloffType)
 {
-    LandscapeEditSculptCircularPatch(Center, Radius, GetLandscapeElevation(Center), false, RadialStrength, FalloffType);
+    TArray<AActor*> ActorsToIgnore;
+    LandscapeEditSculptCircularPatch(Center, Radius, GetLandscapeElevation(Center, ActorsToIgnore), false, RadialStrength, FalloffType);
 }
 
 void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float Width, bool bIncludeEndCaps, bool bRelative, float RadialStrength, uint8 FalloffType)
@@ -377,7 +406,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
             float AngleBAC = FMath::Acos(AB | AC);
             float AngleABC = FMath::Acos((-AB) | BC);
 
-            if (AngleBAC <= 90. && AngleABC <= 90. && (C-A).Size2D()*FMath::Sin(AngleBAC) <= HalfWidth) // Check if inside rectangle
+            if (AngleBAC <= PI/2. && AngleABC <= PI/2. && (C-A).Size2D()*FMath::Sin(AngleBAC) <= HalfWidth) // Check if inside rectangle
             {
                 float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(RadialStrength, 0., 1.) * HalfWidth, (C-A).Size2D()*FMath::Sin(AngleBAC), FalloffType);
                 float MaxDeltaZAtC = FMath::Lerp<float>(A.Z, B.Z, (C-A).Size2D()*FMath::Cos(AngleBAC) / (B-A).Size2D());
@@ -390,7 +419,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
             }
             else if (bIncludeEndCaps)
             {
-                if (AngleBAC > 90. && (C-A).Size2D() <= HalfWidth) // Check if in A endcap
+                if (AngleBAC > PI/2. && (C-A).Size2D() <= HalfWidth) // Check if in A endcap
                 {
                     float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(RadialStrength, 0., 1.) * HalfWidth, (C-A).Size2D(), FalloffType);
                     
@@ -400,7 +429,7 @@ void AAutoSceneGenLandscape::LandscapeEditSculptRamp(FVector A, FVector B, float
                         Vertices[idx].Z = FMath::Lerp<float>(0., A.Z, BrushStrength);
                     UpdateZBounds(Vertices[idx].Z);
                 }
-                else if (AngleABC > 90. && (C-B).Size2D() <= HalfWidth) // Check if in B endcap
+                else if (AngleABC > PI/2. && (C-B).Size2D() <= HalfWidth) // Check if in B endcap
                 {
                     float BrushStrength = CalculateBrushStrength(HalfWidth, FMath::Clamp<float>(RadialStrength, 0., 1.) * HalfWidth, (C-B).Size2D(), FalloffType);
                     if (bRelative)
