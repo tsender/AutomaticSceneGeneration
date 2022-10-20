@@ -38,19 +38,24 @@ public: /****************************** AActor Overrides ***********************
 
 public: /****************************** AAutoSceneGenLandscape ******************************/
     /**
-     * Create the base (flat) square mesh with the specified parameters
-     * @param Location The new landscape origin (which is the lower-left corner of the landscape)
-     * @param Size The side-length in [cm] of the landscape along the X and Y dimensions (this is a square landscape)
-     * @param NumSubdivisions The number of times the two base triangles should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
+     * Create the base (flat) square mesh with the specified parameters. 
+     * Every argument, except the last one, pertains to creating the nominal landscape.
+     * An optional border can be added to extend the nominal landscape in the four XY Cartesional directions. 
+     * This option let's the user create a border around some nominal playing field without having to worry the calculations themselves,
+     * @param NomLocation The location for the nominal landscape origin (which is the lower-left corner of the nominal landscape)
+     * @param NomSize The side-length in [cm] of the nominal landscape along the X and Y dimensions (this is a square landscape)
+     * @param Subdivisions The number of times the two base triangles in the nominal landscape should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
      *      Each vertex in the mesh will be spaced Size/(2^NumSubdivisions) [cm] apart in a grid.
+     * @param Border (Optional) Denotes the approximate length to extend the nominal landscape in [cm]. 
+     *      Using this will border the nominal landscape by ceil(Border/VertexSpacing) vertices in the four XY Cartesional directions, where VertexSpacing is discussed above.
      */
-    bool CreateBaseMesh(FVector Location, float Size, int Subdivisions);
+    bool CreateBaseMesh(FVector NomLocation, float NomSize, int Subdivisions, float Border = 0.);
 
     /**
      * Return the bounding box for the entire landscape. Both the min and max components are relative to the origin (whose global position is set when creating the mesh).
-     * The Min component coincides with the origin, except for the Z value.
+     * The Min component coincides with the actor origin, except for the Z value.
      */
-    FBox GetLandscapeBoundingBox() const;
+    FBox GetBoundingBox() const;
 
     /**
      * Return the smallest bounding box in the XY plane surrounding the point P
@@ -125,16 +130,17 @@ public: /****************************** AAutoSceneGenLandscape *****************
     void GetVertexIndicesWithinRectangle(FVector A, FVector B, float Width, bool bIncludeEndCaps, TArray<int32> &Indices) const;
 
     /**
-     * Return the landscape's elevation (relative to the landscape origin) at the specified point using line-tracing. 
-     * If line-tracing is unsuccessful (unlikely), then it will return the average height of the vertex's four surrounding vertices.
-     * @param P Point to find landscape's Z coordinate at
+     * Return the landscape's Z coordinate in global coordinates at the specified point using line-tracing. 
+     * If line-tracing is unsuccessful (unlikely), then it will return the average height of the four surrounding vertices directly surrounding P.
+     * @param P Point to find landscape's Z coordinate at relative to landscape origin (P.Z is irrelevant)
+     * @param ActorsToIgnore Array of actors to ignore (gets passed to the line trace function)
      */
     float GetLandscapeElevation(FVector P, const TArray<AActor*> &ActorsToIgnore) const;
 
     /**
      * Return the landscape's surface data at the specified point using line-tracing. 
-     * If line-tracing is unsuccessful (unlikely), then it will return the average height of the vertex's four surrounding vertices.
-     * @param P Point to find landscape's Z coordinate at
+     * @param P Point to find landscape's surface data at relative to landscape origin (P.Z is irrelevant)
+     * @param ActorsToIgnore Array of actors to ignore (gets passed to the line trace function)
      * @param Hit Struct to write hit data to
      * @return True if hit is successful, false otherwise
      */
@@ -211,17 +217,22 @@ private: /****************************** AAutoSceneGenLandscape ****************
     TArray<FProcMeshTangent> Tangents;
 
     bool bCreatedBaseMesh = false;
+    
+    // Position of lower left corner in XY plane of the nominal landscape (Z coordinate is ignored)
+    FVector NominalLocation = FVector(0.);
 
-    // The side-length in [cm] of the landscape along the X and Y dimensions
-    float LandscapeSize = 100.;
+    // The nominal side-length in [cm] of the landscape along the X and Y dimensions
+    float NominalSize = 100.;
+
+    // An optional border used to extend the nominal landscape
+    float LandscapeBorder = 0.;
 
     // Horizontal distance in [cm] between adjacent vertices in the landscape mesh
     float VertexSeparation;
-    
-    // Position of lower left corner in XY plane of the landscape (Z coordinate is ignored)
-    FVector LowerLeftCorner;
 
-    // Bounding box for entire landscape
+    int32 MaxVertexIdx;
+
+    // Bounding box for entire landscape. Coordinates are relative to the actor origin. Min component coincides with the actor origin.
     FBox BoundingBox;
 
     // The number of times the two base triangles should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.

@@ -35,13 +35,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// ASG Worker ID number
 	uint8 WorkerID = 0;
 
-	UPROPERTY(EditAnywhere)
-	/**
-	 * Structural scene actor subclasses that will be placed in the scene for debugging purposes. 
-	 * They will get overwritten upon processing the new RunScenario request.
-	 */
-	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
-
 	// Keeps track of the requested scene description
 	ROSMessages::auto_scene_gen_msgs::SceneDescription SceneDescription;
 
@@ -61,10 +54,25 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY(EditAnywhere)
 	int32 DebugLandscapeSubdivisions = 1;
 
+	UPROPERTY(EditAnywhere)
+	// The dimensions of the landscape in [cm]
+	float LandscapeSize = 500. * 100.;
+
+	UPROPERTY(EditAnywhere)
+	// (Optional) landscape border in [cm]
+	float LandscapeBorder = 0.;
+
 	FBox LandscapeBox;
 
 	UPROPERTY()
 	class ADirectionalLight* LightSource;
+
+	UPROPERTY(EditAnywhere)
+	/**
+	 * Structural scene actor subclasses that will be placed in the scene for debugging purposes. 
+	 * They will get overwritten upon processing the new RunScenario request.
+	 */
+	TArray<TSubclassOf<class AStructuralSceneActor>> DebugSSASubclasses;
 
 	UPROPERTY(EditAnywhere)
 	// Number of structural scene actor instances allowed per type
@@ -74,7 +82,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// Indicates if the debug structural scene actors can cast a shadow
 	bool bDebugSSACastShadow = true;
 
-	// For now, we assume the ground plane is flat
+	// REMOVE: For now, we assume the ground plane is flat
 	float GroundPlaneZHeight = 0.f;
 
 	UPROPERTY(EditAnywhere)
@@ -101,10 +109,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 	 * If false, then the simulation will terminate with reason REASON_VEHICLE_COLLISION (see auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h) if the vehicle touches a non-traversable obstacle.
 	 */
 	bool bAllowCollisions = true;
-	
-	UPROPERTY(EditAnywhere)
-	// The dimensions of the landscape in [cm]
-	float LandscapeSize = 500. * 100.;
 
 	UPROPERTY(EditAnywhere)
 	// Radius [cm] around the start/goal points from which no structural scene actors can be placed. This is only used when creating scenes randomly.
@@ -186,6 +190,9 @@ private: /****************************** AAutoSceneGenWorker *******************
 	bool bReadyToTick = false;
 
 	void RandomizeDebugStructuralSceneActors();
+	
+	// Update the vehicle's starting Z location based on the newly generated landscape so that vehicle starts just above it
+	void SetVehicleStartZLocation();
 
 	void ProcessRunScenarioRequest();
 

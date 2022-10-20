@@ -90,8 +90,7 @@ void AAutoSceneGenWorker::BeginPlay()
 		UE_LOG(LogASG, Error, TEXT("Landscape material is nullptr. Cannot create landscape without material."));
 		return;
 	}
-	// float LandscapeSize = 512.*100.;
-	ASGLandscape->CreateBaseMesh(FVector(0.,-LandscapeSize,0.), LandscapeSize, DebugLandscapeSubdivisions);
+	ASGLandscape->CreateBaseMesh(FVector(0.,-LandscapeSize,0.), LandscapeSize, DebugLandscapeSubdivisions, LandscapeBorder);
 	ASGLandscape->SetMaterial(LandscapeMaterial);
 	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(LandscapeSize/2., LandscapeSize/2, 0.), LandscapeSize/4., 20.*100, true, 0, ELandscapeFalloff::Smooth);
 	// ASGLandscape->LandscapeEditSculptRamp(FVector(100.*100, 100.*100, 0.), FVector(150.*100, 150*100., 10.*100), 50.*100, false, false, 0.7, ELandscapeFalloff::Smooth);
@@ -134,6 +133,7 @@ void AAutoSceneGenWorker::BeginPlay()
 		UE_LOG(LogASG, Error, TEXT("Failed to cast AutoSceneGenVehicle."));
 		return;
 	}
+	SetVehicleStartZLocation();
 	ASGVehicle->SetDefaultResetInfo(VehicleStartLocation, VehicleStartRotation);
 
 	// Add debug structural scene actors to SSA maintainer map
@@ -263,10 +263,12 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		VehicleDestinationPub->Publish(DestMsg);
 
 		// Occasionaly, for some unknown reason, resetting the vehicle (via teleportation) can throw the vehicle out of the bounds of the game.
-		// To account for this phenomena, if the vehicle is ever below the ground plane, then we reset the vehicle and try again.
+		// If the vehicle is ever below the landscape's lowest point or is outside the landscape XY bounds, then we reset the vehicle and try again.
 		// NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings, since we do not want UE4 deleting the vehicle from the game
-		// TODO: Adjust for non-flat landscape
-		if (ASGVehicle && ASGVehicle->GetActorLocation().Z <= ASGLandscape->GetActorLocation().Z - 100.)
+		FBox LandscapeBoundingBox = ASGLandscape->GetBoundingBox();
+		if (ASGVehicle && 
+			(ASGVehicle->GetActorLocation().Z <= LandscapeBoundingBox.Min.Z + ASGLandscape->GetActorLocation().Z - 100.
+			|| !LandscapeBoundingBox.IsInsideXY(ASGVehicle->GetActorLocation() - ASGLandscape->GetActorLocation())) )
 		{
 			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
 			bProcessedScenarioRequest = false; // This will reset the run for us
@@ -325,7 +327,6 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 			Location.Z = SurfaceData[Subclass->GetPathName()][i].ImpactPoint.Z;
 			Actor->SetActorLocation(Location);
 			Actor->SetActorRotation(UKismetMathLibrary::MakeRotFromZ(SurfaceData[Subclass->GetPathName()][i].ImpactNormal));
-			// Actor->SetActorRotation(SurfaceData[Subclass->GetPathName()][i].ImpactNormal.Rotation());
 
 			// Determine visibility based on SSA placement
 			if ((Location - VehicleStartLocation).Size2D() <= DebugSafetyRadius || (Location - VehicleGoalLocation).Size2D() <= DebugSafetyRadius)
@@ -336,18 +337,36 @@ void AAutoSceneGenWorker::RandomizeDebugStructuralSceneActors()
 	}
 }
 
+void AAutoSceneGenWorker::SetVehicleStartZLocation()
+{
+	FVector Origin;
+	FVector BoxExtent;
+	ASGVehicle->GetActorBounds(true, Origin, BoxExtent);
+
+	FVector ForwardVec = ASGVehicle->GetActorForwardVector();
+	FVector RightVec = ASGVehicle->GetActorRightVector();
+
+	// Find max Z between current location and 4 points on the edges of the bounding box
+	TArray<AActor*> TempArray;
+	float MaxZ = ASGLandscape->GetLandscapeElevation(VehicleStartLocation - ASGLandscape->GetActorLocation(), TempArray);
+	MaxZ = FMath::Max<float>(MaxZ, ASGLandscape->GetLandscapeElevation(VehicleStartLocation + ForwardVec*BoxExtent.X - ASGLandscape->GetActorLocation(), TempArray));
+	MaxZ = FMath::Max<float>(MaxZ, ASGLandscape->GetLandscapeElevation(VehicleStartLocation - ForwardVec*BoxExtent.X - ASGLandscape->GetActorLocation(), TempArray));
+	MaxZ = FMath::Max<float>(MaxZ, ASGLandscape->GetLandscapeElevation(VehicleStartLocation + RightVec*BoxExtent.Y - ASGLandscape->GetActorLocation(), TempArray));
+	MaxZ = FMath::Max<float>(MaxZ, ASGLandscape->GetLandscapeElevation(VehicleStartLocation - RightVec*BoxExtent.Y - ASGLandscape->GetActorLocation(), TempArray));
+
+	VehicleStartLocation.Z = MaxZ + 100.; // Add 1 meter to max Z for safety
+}
+
 void AAutoSceneGenWorker::ProcessRunScenarioRequest() 
 {
 	if (!ROSInst || !bASGClientOnline || !ASGVehicle || !LightSource || bProcessedScenarioRequest) return;
 
-	// TODO: Modify landscape
+	// TODO: If there are any errors parsing the new scenario request, send a message to the AutoSceneGenClient with the error message
 
-	FHitResult Hit1;
-	TArray<AActor*> TempArray;
-	ASGLandscape->GetLandscapeSurfaceData(VehicleStartLocation - ASGLandscape->GetActorLocation(), TempArray, Hit1);
-	VehicleStartLocation.Z = Hit1.ImpactPoint.Z + 50.;
+	// TODO: Add code to modify landscape from description
+
+	SetVehicleStartZLocation();
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
-
 	LightSource->SetActorRotation(FRotator(-SceneDescription.sunlight_inclination, SceneDescription.sunlight_yaw_angle, 0.));
 
 	// Store requested SSA subclasses in array of TSubclassOf<AStructuralSceneActor> so we can access them later
@@ -428,12 +447,12 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 				for (int32 i = 0; i < Layout.num_instances; i++)
 				{
 					AStructuralSceneActor* Actor =  SSAMaintainerMap[Subclass->GetPathName()]->GetActor(i);
-					FVector Location = FVector(Layout.x[i], Layout.y[i], 0.);
-					Location.Z = SurfaceData[Subclass->GetPathName()][i].ImpactPoint.Z;
-					Actor->SetActorLocation(Location);
-					// Actor->SetActorRotation(UKismetMathLibrary::MakeRotFromZ(Hit.ImpactNormal));
-					Actor->SetActorRotation(SurfaceData[Subclass->GetPathName()][i].ImpactNormal.Rotation());
+					Actor->SetActorLocation(FVector(Layout.x[i], Layout.y[i], SurfaceData[Subclass->GetPathName()][i].ImpactPoint.Z));
+
+					if (!Actor->ActorHasTag(TEXT("tree")))
+						Actor->SetActorRotation(UKismetMathLibrary::MakeRotFromZ(SurfaceData[Subclass->GetPathName()][i].ImpactNormal));
 					Actor->AddActorLocalRotation(FRotator(0., Layout.yaw[i], 0.));
+
 					Actor->SetCastShadow(Layout.cast_shadow[i]);
 					Actor->SetScale(Layout.scale[i]);
 				}
@@ -621,10 +640,6 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	GoalRadius = CastRequest->goal_radius;
 
 	SceneDescription = CastRequest->scene_description;
-	// if (SceneDescription.ssa_array.Num() == 0)
-	// {
-	// 	UE_LOG(LogASG, Error, TEXT("RunScenario Request: 'ssa_array' is empty"));
-	// }
 
 	bWaitingForScenarioRequest = false;
 	bProcessedScenarioRequest = false;

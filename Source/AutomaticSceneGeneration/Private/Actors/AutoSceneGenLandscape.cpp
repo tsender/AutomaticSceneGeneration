@@ -38,34 +38,49 @@ void AAutoSceneGenLandscape::Tick(float DeltaTime)
     Super::Tick(DeltaTime);
 }
 
-bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Subdivisions)
+bool AAutoSceneGenLandscape::CreateBaseMesh(FVector NomLocation, float NomSize, int Subdivisions, float Border)
 {
-    if (bCreatedBaseMesh && GetActorLocation() == Location && LandscapeSize == Size && NumSubdivisions == Subdivisions)
+    if (bCreatedBaseMesh && NominalLocation == NomLocation && NominalSize == NomSize && NumSubdivisions == Subdivisions && LandscapeBorder == Border)
     {
         ResetToBaseMesh();
         return true;
     }
+    if (NomSize <= 0)
+    {
+        UE_LOG(LogASG, Warning, TEXT("AAutoSceneGenLandscape::CreateBaseMesh() - NomSize must be positive."));
+        bCreatedBaseMesh = false;
+        return false;
+    }
     if (Subdivisions < 0)
     {
-        UE_LOG(LogASG, Warning, TEXT("Cannot request landscape with negative subdivisions."));
+        UE_LOG(LogASG, Warning, TEXT("AAutoSceneGenLandscape::CreateBaseMesh() - Subdivisions must be >= 0."));
+        bCreatedBaseMesh = false;
+        return false;
+    }
+    if (Border < 0)
+    {
+        UE_LOG(LogASG, Warning, TEXT("AAutoSceneGenLandscape::CreateBaseMesh() - Border must be >= 0."));
         bCreatedBaseMesh = false;
         return false;
     }
     
-    SetActorLocation(Location);
-    SetActorRotation(FRotator(0));
-    LandscapeSize = Size;
-    NumSubdivisions = Subdivisions;
-    VertexSeparation = Size/FMath::Pow(2, NumSubdivisions);
-
     ClearVertexArrays();
+    NominalLocation = NomLocation;
+    NominalSize = NomSize;
+    NumSubdivisions = Subdivisions;
+    LandscapeBorder = Border;
+    VertexSeparation = NomSize/FMath::Pow(2, NumSubdivisions);
 
-    LowerLeftCorner = Location;
+    int32 NumBorderVertices = FMath::CeilToInt(Border/VertexSeparation); // Number of extra vertices added in each direction
+    float ActualBorderWidth = NumBorderVertices * VertexSeparation;
+    int32 NominalVertices = FMath::Pow(2, NumSubdivisions) + 1;
+    int32 NumSideVertices = NominalVertices + 2*NumBorderVertices; // Number of vertices per landscape edge
+    MaxVertexIdx = NumSideVertices - 1;
+
+    SetActorLocation(NomLocation - FVector(ActualBorderWidth, ActualBorderWidth, 0.));
+    SetActorRotation(FRotator(0));
     BoundingBox.Min = FVector(0.);
-    BoundingBox.Max = FVector(LandscapeSize, LandscapeSize, 0.);
-
-    int32 MaxIdx = FMath::Pow(2, NumSubdivisions);
-    int32 NumSideVertices = MaxIdx + 1; // Number of vertices per landscape edge
+    BoundingBox.Max = FVector(NominalSize + ActualBorderWidth, NominalSize + ActualBorderWidth, 0.);
 
     TArray<int32> ZeroArray;
     ZeroArray.Init(0, NumSideVertices);
@@ -89,7 +104,7 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
     {
         for (int32 j = 0; j < NumSideVertices-1; j++)
         {
-            // Triangle vertices should be added in CCW order to ensure the texture faces towards us (upwards in our case)
+            // NOTE: Triangle vertices should be added in CCW order to ensure the texture faces towards us (upwards in our case)
             // Lower triangle
             Triangles.Emplace(VertexGridMap[i][j]);
             Triangles.Emplace(VertexGridMap[i][j+1]);
@@ -105,13 +120,13 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector Location, float Size, int Su
     Normals.Init(FVector(0., 0., 1.), Vertices.Num());
 
     LandscapeMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
-    UE_LOG(LogASG, Display, TEXT("Created base landscape mesh of size %f x %f [cm] with %i x %i Vertices"), LandscapeSize, LandscapeSize, NumSideVertices, NumSideVertices);
+    UE_LOG(LogASG, Display, TEXT("Created base landscape mesh of size %f x %f [cm] with %i x %i Vertices"), NominalSize, NominalSize, NumSideVertices, NumSideVertices);
     UE_LOG(LogASG, Warning, TEXT("Landscape bounds %s"), *BoundingBox.ToString());
     bCreatedBaseMesh = true;
     return true;
 }
 
-FBox AAutoSceneGenLandscape::GetLandscapeBoundingBox() const
+FBox AAutoSceneGenLandscape::GetBoundingBox() const
 {
     return BoundingBox;
 }
@@ -123,17 +138,17 @@ FIntRect AAutoSceneGenLandscape::GetVertexGridBounds(FVector P) const
     int32 ymin = FMath::FloorToInt(P.Y/VertexSeparation);
     int32 ymax = FMath::CeilToInt(P.Y/VertexSeparation);
 
-    xmin = FMath::Clamp<int32>(xmin, 0, FMath::Pow(2, NumSubdivisions));
-    xmax = FMath::Clamp<int32>(xmax, 0, FMath::Pow(2, NumSubdivisions));
-    ymin = FMath::Clamp<int32>(ymin, 0, FMath::Pow(2, NumSubdivisions));
-    ymax = FMath::Clamp<int32>(ymax, 0, FMath::Pow(2, NumSubdivisions));
+    xmin = FMath::Clamp<int32>(xmin, 0, MaxVertexIdx);
+    xmax = FMath::Clamp<int32>(xmax, 0, MaxVertexIdx);
+    ymin = FMath::Clamp<int32>(ymin, 0, MaxVertexIdx);
+    ymax = FMath::Clamp<int32>(ymax, 0, MaxVertexIdx);
 
     return FIntRect(xmin, ymin, xmax, ymax);
 }
 
 FIntRect AAutoSceneGenLandscape::GetVertexGridBounds(TArray<FVector> Points) const
 {
-    int32 xmin = FMath::Pow(2, NumSubdivisions), ymin = FMath::Pow(2, NumSubdivisions);
+    int32 xmin = MaxVertexIdx, ymin = MaxVertexIdx;
     int32 xmax = 0, ymax = 0;
     for (FVector P : Points)
     {
@@ -153,10 +168,10 @@ FIntRect AAutoSceneGenLandscape::GetVertexGridBoundsWithinRadius(FVector P, floa
     int32 ymin = FMath::CeilToInt((P.Y - Radius)/VertexSeparation);
     int32 ymax = FMath::FloorToInt((P.Y + Radius)/VertexSeparation);
 
-    xmin = FMath::Clamp<int32>(xmin, 0, FMath::Pow(2, NumSubdivisions));
-    xmax = FMath::Clamp<int32>(xmax, 0, FMath::Pow(2, NumSubdivisions));
-    ymin = FMath::Clamp<int32>(ymin, 0, FMath::Pow(2, NumSubdivisions));
-    ymax = FMath::Clamp<int32>(ymax, 0, FMath::Pow(2, NumSubdivisions));
+    xmin = FMath::Clamp<int32>(xmin, 0, MaxVertexIdx);
+    xmax = FMath::Clamp<int32>(xmax, 0, MaxVertexIdx);
+    ymin = FMath::Clamp<int32>(ymin, 0, MaxVertexIdx);
+    ymax = FMath::Clamp<int32>(ymax, 0, MaxVertexIdx);
 
     return FIntRect(xmin, ymin, xmax, ymax);
 }
@@ -304,9 +319,9 @@ float AAutoSceneGenLandscape::GetLandscapeElevation(FVector P, const TArray<AAct
 	bool bSuccess = GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, ECollisionChannel::ECC_Visibility, Params);
 
     if (bSuccess)
-        return Hit.ImpactPoint.Z - GetActorLocation().Z; // ImpactPoint is in world coordinates, so subtract landscape Z position
+        return Hit.ImpactPoint.Z;
     else
-        return AvgSurroundingElevation;
+        return AvgSurroundingElevation + GetActorLocation().Z;
 }
 
 bool AAutoSceneGenLandscape::GetLandscapeSurfaceData(FVector P, const TArray<AActor*> &ActorsToIgnore, FHitResult &Hit) const
@@ -324,7 +339,6 @@ bool AAutoSceneGenLandscape::GetLandscapeSurfaceData(FVector P, const TArray<AAc
 
         if (Vertices[idx].Z > MaxZ)
             MaxZ = Vertices[idx].Z;
-
     }
 
     // For now let's assume zero rotation
@@ -455,12 +469,11 @@ void AAutoSceneGenLandscape::ResetToBaseMesh()
     Tangents.Empty();
     for (int32 i = 0; i < Vertices.Num(); i++)
     {
-        Vertices[i].Z = GetActorLocation().Z;
+        Vertices[i].Z = 0.;
         Normals[i] = FVector(0., 0., 1.);
     }
-    LowerLeftCorner = GetActorLocation();
-    BoundingBox.Min = GetActorLocation();
-    BoundingBox.Max = GetActorLocation() + FVector(LandscapeSize, LandscapeSize, 0.);
+    BoundingBox.Min.Z = 0.;
+    BoundingBox.Max.Z = 0.;
     LandscapeMesh->UpdateMeshSection_LinearColor(0, Vertices, Normals, UV0, TArray<FLinearColor>(), TArray<FProcMeshTangent>());
 }
 
@@ -632,9 +645,8 @@ float AAutoSceneGenLandscape::CalculateBrushStrength(float BrushRadius, float Ef
 
 FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
 {
-    int32 MaxIdx = (int32)FMath::Pow(2, NumSubdivisions);
-    V.X = FMath::Clamp<int32>(V.X, 0, MaxIdx);
-    V.Y = FMath::Clamp<int32>(V.Y, 0, MaxIdx);
+    V.X = FMath::Clamp<int32>(V.X, 0, MaxVertexIdx);
+    V.Y = FMath::Clamp<int32>(V.Y, 0, MaxVertexIdx);
 
     int32 idx = VertexGridMap[V.X][V.Y];
     FVector N;
@@ -649,7 +661,7 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         int32 iR = VertexGridMap[V.X][V.Y+1];
         N = (Vertices[iU] - Vertices[idx])^(Vertices[iR] - Vertices[idx]);
     }
-    else if (V.X == MaxIdx && V.Y == 0) // Upper left corner
+    else if (V.X == MaxVertexIdx && V.Y == 0) // Upper left corner
     {
         int32 iR = VertexGridMap[V.X][V.Y+1];
         int32 iRD = VertexGridMap[V.X-1][V.Y+1];
@@ -657,7 +669,7 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         N =  (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]);
         N += (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
     }
-    else if (V.X == 0 && V.Y == MaxIdx) // Lower right corner
+    else if (V.X == 0 && V.Y == MaxVertexIdx) // Lower right corner
     {
         int32 iL = VertexGridMap[V.X][V.Y-1];
         int32 iLU = VertexGridMap[V.X+1][V.Y-1];
@@ -665,7 +677,7 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         N =  (Vertices[iL] - Vertices[idx])^(Vertices[iLU] - Vertices[idx]);
         N += (Vertices[iLU] - Vertices[idx])^(Vertices[iU] - Vertices[idx]);
     }
-    else if (V.X == MaxIdx && V.Y == MaxIdx) // Upper right corner
+    else if (V.X == MaxVertexIdx && V.Y == MaxVertexIdx) // Upper right corner
     {
         int32 iD = VertexGridMap[V.X-1][V.Y];
         int32 iL = VertexGridMap[V.X][V.Y-1];
@@ -691,7 +703,7 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         N += (Vertices[iR] - Vertices[idx])^(Vertices[iRD] - Vertices[idx]); 
         N += (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
     }
-    else if (V.X == MaxIdx) // Upper edge
+    else if (V.X == MaxVertexIdx) // Upper edge
     {
         int32 iR = VertexGridMap[V.X][V.Y+1];
         int32 iRD = VertexGridMap[V.X-1][V.Y+1];
@@ -701,7 +713,7 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
         N += (Vertices[iRD] - Vertices[idx])^(Vertices[iD] - Vertices[idx]);
         N += (Vertices[iD] - Vertices[idx])^(Vertices[iL] - Vertices[idx]);
     }
-    else if (V.Y == MaxIdx) // Right edge
+    else if (V.Y == MaxVertexIdx) // Right edge
     {
         int32 iD = VertexGridMap[V.X-1][V.Y];
         int32 iL = VertexGridMap[V.X][V.Y-1];
@@ -731,9 +743,8 @@ FVector AAutoSceneGenLandscape::GetVertexNormal(FIntPoint V)
 
 void AAutoSceneGenLandscape::UpdateNormals(FIntRect Bounds)
 {
-    int32 MaxIdx = (int32)FMath::Pow(2, NumSubdivisions);
     FIntRect NormalBounds = Bounds + FIntRect(-1, -1, 1, 1);
-    NormalBounds.Clip(FIntRect(0, 0, MaxIdx, MaxIdx));
+    NormalBounds.Clip(FIntRect(0, 0, MaxVertexIdx, MaxVertexIdx));
 
     // Zero every vertex normal that needs recalculating
     for (int32 i = NormalBounds.Min.X; i <= NormalBounds.Max.X; i++)
@@ -773,7 +784,7 @@ void AAutoSceneGenLandscape::UpdateNormals(FIntRect Bounds)
             Normals[idx] = GetVertexNormal(FIntPoint(NormalBounds.Min.X, j));
         }
     }
-    if (NormalBounds.Max.X < MaxIdx) // Compute normals for upper edge of NormalBounds if not coincident with upper grid edge
+    if (NormalBounds.Max.X < MaxVertexIdx) // Compute normals for upper edge of NormalBounds if not coincident with upper grid edge
     {
         for (int32 j = NormalBounds.Min.Y; j <= NormalBounds.Max.Y; j++)
         {
@@ -789,7 +800,7 @@ void AAutoSceneGenLandscape::UpdateNormals(FIntRect Bounds)
             Normals[idx] = GetVertexNormal(FIntPoint(i, NormalBounds.Min.Y));
         }
     }
-    if (NormalBounds.Max.Y < MaxIdx) // Compute normals for left edge of NormalBounds if not coincident with left grid edge
+    if (NormalBounds.Max.Y < MaxVertexIdx) // Compute normals for left edge of NormalBounds if not coincident with left grid edge
     {
         for (int32 i = NormalBounds.Min.X; i <= NormalBounds.Max.X; i++)
         {
