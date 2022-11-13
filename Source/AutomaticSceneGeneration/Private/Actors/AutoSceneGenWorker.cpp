@@ -171,14 +171,14 @@ void AAutoSceneGenWorker::BeginPlay()
 		AnalyzeScenarioClient = NewObject<UService>(UService::StaticClass());
 		FString AnalyzeScenarioServiceName = FString::Printf(TEXT("/%s/services/analyze_scenario"), *AutoSceneGenClientName);
 		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioServiceName, TEXT("auto_scene_gen_msgs/AnalyzeScenario"));
-		UE_LOG(LogASG, Display, TEXT("Registered ASG worker analyze scenario ROS client to: %s"), *AnalyzeScenarioServiceName);
+		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS client: %s"), *AnalyzeScenarioServiceName);
 
 		// RunScenario service
 		RunScenarioService = NewObject<UService>(UService::StaticClass());
 		FString RunScenarioServiceName = FString::Printf(TEXT("/asg_worker%i/services/run_scenario"), WorkerID);
 		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_msgs/RunScenario"));
 		RunScenarioService->Advertise(std::bind(&AAutoSceneGenWorker::RunScenarioServiceCB, this, std::placeholders::_1, std::placeholders::_2), false);
-		UE_LOG(LogASG, Display, TEXT("Registered ASG worker run scenario ROS service: %s"), *RunScenarioServiceName);
+		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS service: %s"), *RunScenarioServiceName);
 	}
 	else
 	{
@@ -206,11 +206,11 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			WorkerStatusPub->Publish(StatusMsg);
 			FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
 		}
-		WorkerStatusPub->Unadvertise();
+		// WorkerStatusPub->Unadvertise();
 
-		ASGClientStatusSub->Unsubscribe();
-		VehicleDestinationPub->Unadvertise();
-		RunScenarioService->Unadvertise();
+		// ASGClientStatusSub->Unsubscribe();
+		// VehicleDestinationPub->Unadvertise();
+		// RunScenarioService->Unadvertise();
 	}
 }
 
@@ -268,6 +268,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		FBox LandscapeBoundingBox = ASGLandscape->GetBoundingBox();
 		if (ASGVehicle && 
 			(ASGVehicle->GetActorLocation().Z <= LandscapeBoundingBox.Min.Z + ASGLandscape->GetActorLocation().Z - 100.
+			|| ASGVehicle->GetActorLocation().Z >= LandscapeBoundingBox.Max.Z + ASGLandscape->GetActorLocation().Z + 1000.
 			|| !LandscapeBoundingBox.IsInsideXY(ASGVehicle->GetActorLocation() - ASGLandscape->GetActorLocation())) )
 		{
 			UE_LOG(LogASG, Warning, TEXT("Vehicle was thrown out of bounds or went off the landscape. Resetting so we can try again."));
@@ -453,6 +454,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 						Actor->SetActorRotation(UKismetMathLibrary::MakeRotFromZ(SurfaceData[Subclass->GetPathName()][i].ImpactNormal));
 					Actor->AddActorLocalRotation(FRotator(0., Layout.yaw[i], 0.));
 
+					Actor->SetActive(Layout.visible[i]);
 					Actor->SetCastShadow(Layout.cast_shadow[i]);
 					Actor->SetScale(Layout.scale[i]);
 				}

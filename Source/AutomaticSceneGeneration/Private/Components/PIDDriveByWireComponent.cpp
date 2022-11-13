@@ -99,8 +99,8 @@ void UPIDDriveByWireComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 	if (ROSInst)
 	{
-		BypassSub->Unsubscribe();
-		PhysxControllerSub->Unsubscribe();
+		// BypassSub->Unsubscribe();
+		// PhysxControllerSub->Unsubscribe();
 	}
 }
 

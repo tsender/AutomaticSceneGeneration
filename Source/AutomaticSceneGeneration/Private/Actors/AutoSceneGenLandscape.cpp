@@ -80,7 +80,7 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector NomLocation, float NomSize, 
     SetActorLocation(NomLocation - FVector(ActualBorderWidth, ActualBorderWidth, 0.));
     SetActorRotation(FRotator(0));
     BoundingBox.Min = FVector(0.);
-    BoundingBox.Max = FVector(NominalSize + ActualBorderWidth, NominalSize + ActualBorderWidth, 0.);
+    BoundingBox.Max = FVector(NominalSize + 2*ActualBorderWidth, NominalSize + 2*ActualBorderWidth, 0.);
 
     TArray<int32> ZeroArray;
     ZeroArray.Init(0, NumSideVertices);
@@ -120,8 +120,8 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector NomLocation, float NomSize, 
     Normals.Init(FVector(0., 0., 1.), Vertices.Num());
 
     LandscapeMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
-    UE_LOG(LogASG, Display, TEXT("Created base landscape mesh of size %f x %f [cm] with %i x %i Vertices"), NominalSize, NominalSize, NumSideVertices, NumSideVertices);
-    UE_LOG(LogASG, Warning, TEXT("Landscape bounds %s"), *BoundingBox.ToString());
+    UE_LOG(LogASG, Display, TEXT("Created base landscape mesh of nominal size %f x %f [cm] with border size %f [cm]. Total vertices is %i x %i"), NominalSize, NominalSize, ActualBorderWidth, NumSideVertices, NumSideVertices);
+    // UE_LOG(LogASG, Warning, TEXT("Landscape bounds %s"), *BoundingBox.ToString());
     bCreatedBaseMesh = true;
     return true;
 }

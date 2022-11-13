@@ -93,14 +93,12 @@ private: /****************************** AEvaluationVehicle ********************
 
 	FVector CheckEnableLocation;
 
-	int32 CheckEnableTickNumber = 0;
+	float CheckEnableTime = 0.;
 
 	bool bEnabled = false;
 
 	// Indicates if the vehicle was disabled preemptively (only applies if enabled is False)
 	bool bPreempted = false;
-
-	int32 TickNumber = 0;
 
 	FVector ResetLocation;
 

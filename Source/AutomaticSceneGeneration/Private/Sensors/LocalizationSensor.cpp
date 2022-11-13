@@ -57,7 +57,7 @@ void ULocalizationSensor::BeginPlay()
 		FString LocTopic = TopicPrefix;
 		SensorPub->Init(ROSInst->ROSIntegrationCore, LocTopic, TEXT("geometry_msgs/PoseStamped"));
 		SensorPub->Advertise();
-		UE_LOG(LogASG, Display, TEXT("Initialized localization sensor ROS topic: %s"), *LocTopic);
+		UE_LOG(LogASG, Display, TEXT("Initialized localization sensor ROS publisher: %s"), *LocTopic);
 	}
 
 	FTimerHandle TimerHandle;
@@ -69,7 +69,7 @@ void ULocalizationSensor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	Super::EndPlay(EndPlayReason);
 	if (ROSInst)
 	{
-		SensorPub->Unadvertise();
+		// SensorPub->Unadvertise();
 	}
 }
 

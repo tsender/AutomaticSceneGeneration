@@ -43,7 +43,7 @@ void AAutoSceneGenVehicle::BeginPlay()
     bEnabled = false;
     bPreempted = false;
     bWorldIsReady = false;
-    TickNumber = 0;
+    CheckEnableTime = 0.f;
     ResetTime = 0.f;
     IdleTime = 0.f;
     StuckTime = 0.f;
@@ -60,7 +60,7 @@ void AAutoSceneGenVehicle::BeginPlay()
     GetComponents<UBaseSensor>(Sensors, false);
     if (Sensors.Num() > 0)
     {
-        UE_LOG(LogASG, Display, TEXT("Vehicle has %i sensors attached"), Sensors.Num());
+        UE_LOG(LogASG, Display, TEXT("ASG vehicle has %i sensors attached"), Sensors.Num());
     }
 
     ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
@@ -86,7 +86,7 @@ void AAutoSceneGenVehicle::BeginPlay()
         FString StatusTopic = TopicPrefix + FString("status");
 		VehicleStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("auto_scene_gen_msgs/VehicleStatus"));
         VehicleStatusPub->Advertise();
-		UE_LOG(LogASG, Display, TEXT("Initialized evaluation vehicle ROS topic: %s"), *StatusTopic);
+		UE_LOG(LogASG, Display, TEXT("Initialized ASG vehicle ROS publisher: %s"), *StatusTopic);
 	}
 }
 
@@ -105,14 +105,13 @@ void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			VehicleStatusPub->Publish(VehicleStatusMsg);
 			FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
 		}
-        VehicleStatusPub->Unadvertise();
+        // VehicleStatusPub->Unadvertise();
     }
 }
 
 void AAutoSceneGenVehicle::Tick(float DeltaTime) 
 {
     Super::Tick(DeltaTime);
-    TickNumber++;
 
     if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
     {
@@ -264,7 +263,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     bWorldIsReady = false;
     DriveByWireComponent->EnableDriveByWire(false);
 
-    TickNumber = 0;
+    CheckEnableTime = 0.f;
     ResetTime = 0.f;
     IdleTime = 0.f;
     StuckTime = 0.f;
@@ -330,7 +329,7 @@ void AAutoSceneGenVehicle::OnHandbrakeReleased()
 void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime) 
 {
     // Wait at least a few ticks before checking vehicle velocity
-    if (!bEnabled && bWorldIsReady && TickNumber > 5)
+    if (!bEnabled && bWorldIsReady)
     {
         // Make sure vehicle reset within 5 sec
         // If rendering takes too long, then this might become an issue and will need a workaround
@@ -346,46 +345,44 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
         // If vehicle roll/pitch is too large after reset (e.g. from being thrown out of bounds), then reset the vehicle to try again
         if (FMath::Abs(GetActorRotation().Euler().X) > 45.f || FMath::Abs(GetActorRotation().Euler().Y) > 45.f)
         {
-            UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large after reset (thrown out of bound?), trying again."));
+            UE_LOG(LogASG, Warning, TEXT("Vehicle roll or pitch is too large after reset (thrown out of bounds?), trying again."));
             ResetVehicle(ResetLocation, ResetRotation);
             bWorldIsReady = true;
             return;
         }
 
-        float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
-        float AngVel = GetMesh()->GetPhysicsAngularVelocityInDegrees().Size(); // Angular speed [deg/s]
-        float DistanceMoved = 0.f;
-
-        if (CheckEnableTickNumber == 0)
+        if (CheckEnableTime == 0.)
         {
             CheckEnableLocation = GetActorLocation();
-            CheckEnableTickNumber = TickNumber;
+            CheckEnableTime = 0.01; // Set to small number
             return;
         }
 
-        // Check distance traveled over X ticks
-        if ((TickNumber - CheckEnableTickNumber) % 20 == 0 )
-        {
-            DistanceMoved = (GetActorLocation() - CheckEnableLocation).Size();
-            CheckEnableTickNumber = TickNumber;
-        }
+        // Check distance traveled over certain time-frame
+        CheckEnableTime += DeltaTime;
+        if (CheckEnableTime < 0.5) // Block until time has passed
+            return;
         
         // If criteria below is met, then we can assume the vehicle was reset properly without issue
+        float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
+        float AngVel = GetMesh()->GetPhysicsAngularVelocityInDegrees().Size(); // Angular speed [deg/s]
+        float DistanceMoved = (GetActorLocation() - CheckEnableLocation).Size();
         if (DistanceMoved <= 1.f && TransVel <= 5.f && AngVel <= 1.f)
         {
             bEnabled = true;
             EnableSensors(true);
-            CheckEnableTickNumber = 0;
+            CheckEnableTime = 0.;
             DriveByWireComponent->EnableDriveByWire(true);
             VehicleTrajectory.Empty();
             HeaderSequence = 1;
             NominalVehicleZLocation = GetActorLocation().Z;
             UE_LOG(LogASG, Display, TEXT("Vehicle is enabled."));
         }
-        else
-        {
-            CheckEnableLocation = GetActorLocation();
-        }
+        // else
+        // {
+        //     CheckEnableLocation = GetActorLocation();
+        // }
+        CheckEnableTime = 0.;
     }
 }
 
