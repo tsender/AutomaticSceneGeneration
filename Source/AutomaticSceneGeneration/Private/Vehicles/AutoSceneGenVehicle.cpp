@@ -115,6 +115,7 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
     if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
     {
+        // Should we be using FROSTime instead?
         TimeSinceFirstControl += DeltaTime;
 
         if (IsVehicleIdling())

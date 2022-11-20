@@ -483,10 +483,9 @@ void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 Termin
 
 	FROSTime start_time = Req->vehicle_trajectory[0].header.time;
 	FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;
-	double SecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::seconds(end_time._Sec) - std::chrono::seconds(start_time._Sec)).count();
-	double NsecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::nanoseconds(end_time._NSec) - std::chrono::nanoseconds(start_time._Sec)).count();
-	Req->vehicle_sim_time = SecDelta + NsecDelta;
+	Req->vehicle_sim_time = FROSTime::GetTimeDelta(start_time, end_time);
 
+	UE_LOG(LogASG, Display, TEXT("Computed vehicle sim time: %f"), Req->vehicle_sim_time);
 	UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 	AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 }
@@ -498,7 +497,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	// Did vehicle crash?
 	if (ROSInst && !bAllowCollisions && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle collided/touched non-traversable obstacle. Vehicle has failed."));
+		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_COLLISION."));
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_COLLISION);
 		return true;
 	}
@@ -506,7 +505,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	// Did vehicle roll over?
 	if (ROSInst && FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > MaxVehicleRoll)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle roll %f degrees exceeds %f degree maximum. Vehicle has failed."), ASGVehicle->GetActorRotation().Euler().X, MaxVehicleRoll);
+		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_FLIPPED. Vehicle roll %f degrees exceeds %f degree maximum."), ASGVehicle->GetActorRotation().Euler().X, MaxVehicleRoll);
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
 		return true;
 	}
@@ -514,7 +513,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	// Did vehicle flip over?
 	if (ROSInst && FMath::Abs(ASGVehicle->GetActorRotation().Euler().Y) > MaxVehiclePitch)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle pitch %f degrees exceeds %f degree maximum. Vehicle has failed."), ASGVehicle->GetActorRotation().Euler().Y, MaxVehiclePitch);
+		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_FLIPPED. Vehicle pitch %f degrees exceeds %f degree maximum."), ASGVehicle->GetActorRotation().Euler().Y, MaxVehiclePitch);
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
 		return true;
 	}
@@ -522,7 +521,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	// Did simulation timer expire?
 	if (ROSInst && SimTimeoutPeriod > 0. && ASGVehicle->GetTimeSinceFirstControl() >= SimTimeoutPeriod)
 	{
-		UE_LOG(LogASG, Display, TEXT("Simulation timer expired. Vehicle has failed."));
+		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_SIM_TIMEOUT. Simulation timeout is %f seconds."), SimTimeoutPeriod);
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_SIM_TIMEOUT);
 		return true;
 	}
@@ -530,7 +529,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	// Is vehicle idling too long?
 	if (ROSInst && VehicleIdlingTimeoutPeriod > 0. && ASGVehicle->GetIdleTime() >= VehicleIdlingTimeoutPeriod)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle idling for too long. Vehicle has failed."));
+		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_IDLING_TIMEOUT. Vehicle idling timeout is %f seconds."), VehicleIdlingTimeoutPeriod);
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_IDLING_TIMEOUT);
 		return true;
 	}
@@ -538,7 +537,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	// Is vehicle stuck for too long?
 	if (ROSInst && VehicleStuckTimeoutPeriod > 0. && ASGVehicle->GetStuckTime() >= VehicleStuckTimeoutPeriod)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle stuck for too long. Vehicle has failed."));
+		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_STUCK_TIMEOUT. Vehicle stuck timeout is %f seconds."), VehicleIdlingTimeoutPeriod);
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_STUCK_TIMEOUT);
 		return true;
 	}
@@ -554,7 +553,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	DistanceToGoal.Z = 0;
 	if (DistanceToGoal.Size() <= GoalRadius)
 	{
-		UE_LOG(LogASG, Display, TEXT("Vehicle reached the goal radius. Vehicle has succeeded."));
+		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_SUCCESS."));
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_trajectory);
 
@@ -569,10 +568,9 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 
 			FROSTime start_time = Req->vehicle_trajectory[0].header.time;
 			FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;
-			double SecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::seconds(end_time._Sec) - std::chrono::seconds(start_time._Sec)).count();
-			double NsecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::nanoseconds(end_time._NSec) - std::chrono::nanoseconds(start_time._Sec)).count();
-			Req->vehicle_sim_time = SecDelta + NsecDelta;
+			Req->vehicle_sim_time = FROSTime::GetTimeDelta(start_time, end_time);
 
+			UE_LOG(LogASG, Display, TEXT("Computed vehicle sim time: %f"), Req->vehicle_sim_time);
 			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 			return true;
