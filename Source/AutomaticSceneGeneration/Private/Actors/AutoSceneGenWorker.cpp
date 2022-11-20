@@ -231,7 +231,8 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		ProcessRunScenarioRequest();
 	}
 	
-	// This forces the worker to wait one tick for the frame to render before publishing its status
+	// This forces the worker to wait one tick for the frame to render (which can potentially take a few seconds) before publishing its status
+	// and allows the vehicle to know when the world is actually ready for it move around in
 	if (ASGVehicle && !bReadyToTick)
 	{
 		bReadyToTick = true;
@@ -480,6 +481,12 @@ void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 Termin
 	Req->scenario_number = ScenarioNumber;
 	Req->termination_reason = TerminationReason;
 
+	FROSTime start_time = Req->vehicle_trajectory[0].header.time;
+	FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;
+	double SecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::seconds(end_time._Sec) - std::chrono::seconds(start_time._Sec)).count();
+	double NsecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::nanoseconds(end_time._NSec) - std::chrono::nanoseconds(start_time._Sec)).count();
+	Req->vehicle_sim_time = SecDelta + NsecDelta;
+
 	UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 	AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 }
@@ -559,6 +566,12 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 			Req->worker_id = WorkerID;
 			Req->scenario_number = ScenarioNumber;
 			Req->termination_reason = Req->REASON_SUCCESS;
+
+			FROSTime start_time = Req->vehicle_trajectory[0].header.time;
+			FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;
+			double SecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::seconds(end_time._Sec) - std::chrono::seconds(start_time._Sec)).count();
+			double NsecDelta = std::chrono::duration_cast<std::chrono::duration<double> >(std::chrono::nanoseconds(end_time._NSec) - std::chrono::nanoseconds(start_time._Sec)).count();
+			Req->vehicle_sim_time = SecDelta + NsecDelta;
 
 			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));

@@ -37,6 +37,8 @@ public:
 			return ret;
 		}, LogOnErrors);
 		if (!KeyFound) return false;
+		
+		request->vehicle_sim_time = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_sim_time", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		return true;
 	}
@@ -51,6 +53,8 @@ public:
 		{
 			UASGMsgsOdometryWithoutCovarianceConverter::_bson_append_child_msg(msg, key, &odometry);
 		});
+
+		BSON_APPEND_DOUBLE(b, "vehicle_sim_time", request->vehicle_sim_time);
 	}
 	
 };

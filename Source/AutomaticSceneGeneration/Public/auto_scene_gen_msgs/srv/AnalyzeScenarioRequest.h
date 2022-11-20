@@ -32,6 +32,10 @@ namespace ROSMessages{
 
 			// The vehicle's trajectory from start to goal
 			TArray<auto_scene_gen_msgs::OdometryWithoutCovariance> vehicle_trajectory;
+
+			// Total length of vehicle simulation time (from when the first control input was received)
+			// Sometimes rosbridge (or is it UE4?) changes the timestamps and this field can be used to verify the info was sent correctly
+			float vehicle_sim_time;
 		};
 	}
 }
