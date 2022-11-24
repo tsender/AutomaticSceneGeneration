@@ -271,6 +271,16 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     TimeSinceFirstControl = 0.f;
     NumSSAHit = 0;
 
+    // Publish updated vehicle status immediately so subscribers don't continue publishing control commands
+    if (ROSInst)
+    {
+        TSharedPtr<ROSMessages::auto_scene_gen_msgs::VehicleStatus> VehicleStatusMsg(new ROSMessages::auto_scene_gen_msgs::VehicleStatus(bEnabled, bPreempted));
+        for (int i = 0; i < 10; i++)
+        {
+            VehicleStatusPub->Publish(VehicleStatusMsg);
+        }
+    }
+
     UE_LOG(LogASG, Display, TEXT("Vehicle has been reset to location %s and rotation %s."), *NewLocation.ToString(), *NewRotation.ToString());
 }
 
