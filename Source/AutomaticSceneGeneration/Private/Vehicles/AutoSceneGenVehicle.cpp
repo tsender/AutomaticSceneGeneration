@@ -138,7 +138,6 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
         if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
-            
             ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance Odometry;
             
             Odometry.header.seq = HeaderSequence;
@@ -278,6 +277,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
         for (int i = 0; i < 10; i++)
         {
             VehicleStatusPub->Publish(VehicleStatusMsg);
+            FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
         }
     }
 
