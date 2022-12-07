@@ -41,11 +41,12 @@ void AAutoSceneGenWorker::BeginPlay()
 {
 	Super::BeginPlay();
 
-	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
+	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::OFFLINE; // Only becomes online when rosbridge connection is healthy
 	ScenarioNumber = 0;
 	bASGClientOnline = false;
+	bROSBridgeHealthy = false;
 	bForceVehicleReset = false;
-	bWaitingForScenarioRequest = false;
+	bWaitingForScenarioRequest = true; // false
 	bProcessedScenarioRequest = true;
 	bReadyToTick = false;
 
@@ -146,6 +147,8 @@ void AAutoSceneGenWorker::BeginPlay()
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
 	if (ROSInst)
 	{
+		ROSInst->OnROSConnectionStatus.AddUObject(this, &AAutoSceneGenWorker::OnROSConnectionStatus);
+		
 		// ASG client status sub
 		ASGClientStatusSub = NewObject<UTopic>(UTopic::StaticClass());
 		FString ASGClientStatusTopic = FString::Printf(TEXT("/%s/status"), *AutoSceneGenClientName);
@@ -583,6 +586,23 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	}
 
 	return false;
+}
+
+void AAutoSceneGenWorker::OnROSConnectionStatus(bool bIsConnected)
+{
+	if (!bROSBridgeHealthy && bIsConnected)
+	{
+		bWaitingForScenarioRequest = true;
+		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
+		UE_LOG(LogASG, Display, TEXT("rosbridge connection is healthy. ASG worker is now ONLINE_AND_READY."));
+	}
+	else if (bROSBridgeHealthy && !bIsConnected)
+	{
+		bForceVehicleReset = true;
+		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::OFFLINE;
+		UE_LOG(LogASG, Warning, TEXT("rosbridge connection was interrupted. ASG worker is currently OFFLINE."));
+	}
+	bROSBridgeHealthy = bIsConnected;
 }
 
 void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg) 

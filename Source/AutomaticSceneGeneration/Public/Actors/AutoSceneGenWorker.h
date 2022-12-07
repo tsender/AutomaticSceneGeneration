@@ -150,6 +150,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 	UPROPERTY()
 	// ROSIntegration game instance
 	class UROSIntegrationGameInstance* ROSInst;
+
+	bool bROSBridgeHealthy = false;
 	
 	UPROPERTY(Editanywhere)
 	// Name of the ROS AutoSceneGenClient
@@ -205,6 +207,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 	bool CheckForVehicleReset();
 
 	bool CheckGoalLocation();
+
+	void OnROSConnectionStatus(bool bIsConnected);
 
 	/**
 	 * ROS callback for receiving the ASG client's status
