@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ROSIntegration/Public/ROSBaseMsg.h"
+#include "auto_scene_gen_msgs/msg/LandscapeDescription.h"
 #include "auto_scene_gen_msgs/msg/StructuralSceneActorLayout.h"
 
 namespace ROSMessages{
@@ -13,6 +14,9 @@ namespace ROSMessages{
                 _MessageType = "auto_scene_gen_msgs/SceneDescription";
 			}
 
+			// Landscape description
+			auto_scene_gen_msgs::LandscapeDescription landscape;
+			
 			// The angle the sunlight makes with the horizontal [deg]
 			float sunlight_inclination;
 

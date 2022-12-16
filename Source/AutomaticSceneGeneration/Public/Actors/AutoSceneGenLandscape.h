@@ -45,7 +45,7 @@ public: /****************************** AAutoSceneGenLandscape *****************
      * @param NomLocation The location for the nominal landscape origin (which is the lower-left corner of the nominal landscape)
      * @param NomSize The side-length in [cm] of the nominal landscape along the X and Y dimensions (this is a square landscape)
      * @param Subdivisions The number of times the two base triangles in the nominal landscape should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
-     *      Each vertex in the mesh will be spaced Size/(2^NumSubdivisions) [cm] apart in a grid.
+     *      Each vertex in the mesh will be spaced NomSize/(2^NumSubdivisions) [cm] apart in a grid.
      * @param Border (Optional) Denotes the approximate length to extend the nominal landscape in [cm]. 
      *      Using this will border the nominal landscape by ceil(Border/VertexSpacing) vertices in the four XY Cartesional directions, where VertexSpacing is discussed above.
      */

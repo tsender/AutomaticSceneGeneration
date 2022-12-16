@@ -369,6 +369,10 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	// TODO: If there are any errors parsing the new scenario request, send a message to the AutoSceneGenClient with the error message
 
 	// TODO: Add code to modify landscape from description
+	ASGLandscape->CreateBaseMesh(FVector(0.,-SceneDescription.landscape.nominal_size,0.), 
+								SceneDescription.landscape.nominal_size, 
+								SceneDescription.landscape.subdivisions, 
+								SceneDescription.landscape.border);
 
 	SetVehicleStartZLocation();
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation);
