@@ -32,6 +32,7 @@ public class AutomaticSceneGeneration : ModuleRules
 				"Core",
 				"CoreUObject",
 				"Engine",
+				"Json",
 				"PhysXVehicles",
 				"Slate",
 				"SlateCore",

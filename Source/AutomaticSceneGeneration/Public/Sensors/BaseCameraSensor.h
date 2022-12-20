@@ -44,6 +44,10 @@ public: /****************************** UBaseCameraSensor **********************
 
 	void SetSavePrefix(FString NewSavePrefix);
 
+	int32 GetFrameNumber() const;
+
+	void SetFrameNumber(int32 NewFrameNumber);
+
 	/**
 	 * Initializes a new texture target with a new width and height. This MUST be called to change the width and/or height.
 	 * @param Width The new frame width in pixels

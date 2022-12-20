@@ -9,6 +9,7 @@
 #include "Actors/AutoSceneGenWorker.h"
 #include "Vehicles/AutoSceneGenVehicle.h"
 #include "Kismet/GameplayStatics.h"
+#include "Json/Public/Serialization/JsonSerializer.h"
 #include "AutoSceneGenLogging.h"
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
@@ -64,9 +65,29 @@ void UCompleteCameraSensor::BeginPlay()
 	TravCamera->SetSaveImages(bSaveImagesToDisk);
 	SegCamera->SetSaveImages(bSaveImagesToDisk);
 
-	ColorCamera->SetSavePrefix(FPaths::ProjectUserDir() + FString::Printf(TEXT("TrainingData/%s/color/color"), *SensorName));
-	TravCamera->SetSavePrefix(FPaths::ProjectUserDir() + FString::Printf(TEXT("TrainingData/%s/trav/trav"), *SensorName));
-	SegCamera->SetSavePrefix(FPaths::ProjectUserDir() + FString::Printf(TEXT("TrainingData/%s/seg/seg"), *SensorName));
+	CameraFolder = FPaths::ProjectUserDir() + FString::Printf(TEXT("TrainingData/%s/"), *SensorName);
+	FrameNumberPath = CameraFolder + FString("FrameNumber.json");
+	ColorCamera->SetSavePrefix(CameraFolder + FString("color/color"));
+	TravCamera->SetSavePrefix(CameraFolder + FString("trav/trav"));
+	SegCamera->SetSavePrefix(CameraFolder + FString("seg/seg"));
+
+	// Load next valid frame number
+	if (bSaveImagesToDisk && FPaths::FileExists(FrameNumberPath))
+	{
+		FString JsonString;
+		FFileHelper::LoadFileToString(JsonString, *FrameNumberPath);
+		TSharedPtr<FJsonValue> JsonValue;
+		TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(JsonString);
+
+		if (FJsonSerializer::Deserialize(Reader, JsonValue))
+		{
+			int32 FrameNumber = JsonValue->AsObject()->GetIntegerField("FrameNumber");
+			UE_LOG(LogASG, Display, TEXT("Camera sensor '%s': Setting next frame number to %i"), *SensorName, FrameNumber);
+			ColorCamera->SetFrameNumber(FrameNumber);
+			TravCamera->SetFrameNumber(FrameNumber);
+			SegCamera->SetFrameNumber(FrameNumber);
+		}
+	}
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetOwner()->GetGameInstance());
 	if (ROSInst)
@@ -137,6 +158,24 @@ void UCompleteCameraSensor::BeginPlay()
 void UCompleteCameraSensor::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 {
 	Super::EndPlay(EndPlayReason);
+
+	// Save next valid frame number
+	if (bSaveImagesToDisk)
+	{
+		int32 NextFrameNumber = ColorCamera->GetFrameNumber();
+		TSharedPtr<FJsonObject> JsonObject = MakeShareable(new FJsonObject);
+		JsonObject->SetNumberField("FrameNumber", NextFrameNumber);
+
+		FString JsonString;
+		TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&JsonString);
+
+		if (FJsonSerializer::Serialize(JsonObject.ToSharedRef(), Writer))
+		{
+			FFileHelper::SaveStringToFile(JsonString, *FrameNumberPath);
+			UE_LOG(LogASG, Display, TEXT("Camera sensor '%s': Saving next frame number to %i in JSON file"), *SensorName, NextFrameNumber);
+		}
+	}
+
 	if (ROSInst)
 	{
 		// ColorCamPub->Unadvertise();

@@ -99,6 +99,16 @@ void UBaseCameraSensor::SetSavePrefix(FString NewSavePrefix)
     SavePrefix = NewSavePrefix;
 }
 
+int32 UBaseCameraSensor::GetFrameNumber() const
+{
+    return FrameNumber;
+}
+
+void UBaseCameraSensor::SetFrameNumber(int32 NewFrameNumber)
+{
+    FrameNumber = NewFrameNumber;
+}
+
 void UBaseCameraSensor::CaptureColor(TArray<FColor> &ImageData, bool bUseAnnotationMaterial, uint8 AnnotationMaterialID) 
 {
     if (!bInitTextureTarget)

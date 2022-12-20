@@ -83,6 +83,9 @@ private: /****************************** UCompleteCameraSensor *****************
 	FString HeaderFrameID;
 	int HeaderSequence = 1;
 
+	FString CameraFolder;
+	FString FrameNumberPath;
+
 	// Vectors to store raw/encoded image data
 	std::vector<uint8> EncodedColorData;
 	std::vector<uint8> EncodedDepthData;
