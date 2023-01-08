@@ -15,18 +15,27 @@ MOVE: The client speciifes the scene description and the vehicle task, and this 
 
 There are three main components that make up the workflow when using this plugin: Unreal Engine (which includes this plugin), the autonomy stack under test, and an external client to determine what scenario configurations to test. All of these components are designed to communicate with each other using ROS, and as such, we utilize existing libraries and provide any custom libraries required to make the platform work.
 
-Platforms currently supported:
-- Unreal Engine 4.23-4.27 (this repo has only been tested in 4.26 on Windows 10, but it should work on the listed versions)
-- ROS2 Foxy
+**Supported Systems:**
+- Unreal Engine 4.23-4.27 (this repo has only been written/tested in UE4.26 on Windows 10, but it should work on the listed versions)
+- ROS2 Foxy (Only tested on Ubuntu systems. We also provide dockerfiles with all needed dependencies.)
 
-### Simulation Computer (Windows or Ubuntu)
+**Required libraries:**
 1. AutomaticSceneGeneration Plugin for UE4 (this repo)
-2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use my fork of this repo.
+2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use my fork of this repo. Use the `feature/specify_ros_version` branch.
+3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/foxy): Required by the ROSIntegration plugin. You need to use my fork because the authors of `rosbridge_suite` do not want to accept one of my pull requests that add back the TCP handler. Use the `foxy` branch.
+4. auto_scene_gen_ros2: A ROS2 interface that provides the necessary tools to interact with this plugin.
 
-### Client Computer (Ubuntu)
-1. auto_scene_gen_ros2: A ROS2 interface that provides the necessary tools to interact with this plugin.
-2. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/foxy): Required by the ROSIntegration plugin. You need to use my fork because the authors of `rosbridge_suite` do not want to accept one of my pull requests.
-
-### Legacy Requirements
+If for some reason you choose to use the original ROSIntegration repo (which currently does not support ROS2), then you will need these additional legacy requirements:
 1. [ros1_bridge](https://github.com/ros2/ros1_bridge): Since the ROSIntegration plugin does not yet support ROS2, we will need this repo to convert ROS1 <--> ROS2 messages
-2. auto_scene_gen_ros1: Provides our ROS1 msg/srv definitions and addresses a weird phenomena (or bug?) between the `rosbridge` and `ros1_bridge` that prevents a ROS2 client from sending a service request to a ROS1 server inside UE4.
+2. [auto_scene_gen_ros1](https://github.com/tsender/auto_scene_gen_ros1): Provides our ROS1 msg/srv definitions and addresses a weird phenomena (or bug?) between the `rosbridge` and `ros1_bridge` that prevents a ROS2 client from sending a service request to a ROS1 server inside UE4.
+
+## Installation and Initial Setup
+
+**UE4 Installation**
+1. Install supported version of Unreal Engine 4 and create a UE4 code project (I will refer to this project as "MyProject").
+2. Download the `ROSIntegration` and `AutomaticSceneGeneration` plugins using the links above (making sure you download the specified branches). Copy these plugins into your `MyProject/Plugins/` folder.
+3. Open up your UE4 project and let the editor build the plugins.
+
+**rosbridge_suite Installation**
+1. Install a supported ROS2 version per the ROS2 documentation OR use our provided dockerfiles in Ubuntu with all the needed dependencies. If using docker, then you can download the docker image with the tag `tsender/tensorflow:gpu-focal-foxy` or you can modify the original docker image [here](https://github.com/tsender/dockerfiles/tree/main/tensorflow_foxy) and build it.
+2. 
