@@ -29,6 +29,8 @@
 #include "auto_scene_gen_msgs/srv/RunScenarioResponse.h"
 #include "auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h"
 #include "auto_scene_gen_msgs/srv/AnalyzeScenarioResponse.h"
+#include "auto_scene_gen_msgs/srv/WorkerIssueNotificationRequest.h"
+#include "auto_scene_gen_msgs/srv/WorkerIssueNotificationResponse.h"
 
 // Sets default values
 AAutoSceneGenWorker::AAutoSceneGenWorker()
@@ -45,6 +47,7 @@ void AAutoSceneGenWorker::BeginPlay()
 	ScenarioNumber = 0;
 	bASGClientOnline = false;
 	bROSBridgeHealthy = false;
+	bROSBridgeConnectionInterrupted = false;
 	bForceVehicleReset = false;
 	bWaitingForScenarioRequest = true; // false
 	bProcessedScenarioRequest = true;
@@ -175,6 +178,12 @@ void AAutoSceneGenWorker::BeginPlay()
 		FString AnalyzeScenarioServiceName = FString::Printf(TEXT("/%s/services/analyze_scenario"), *AutoSceneGenClientName);
 		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioServiceName, TEXT("auto_scene_gen_msgs/AnalyzeScenario"));
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS client: %s"), *AnalyzeScenarioServiceName);
+
+		// WorkerIssueNotification client
+		WorkerIssueNotificationClient = NewObject<UService>(UService::StaticClass());
+		FString WorkerIssueNotificationServiceName = FString::Printf(TEXT("/%s/services/worker_issue_notification"), *AutoSceneGenClientName);
+		WorkerIssueNotificationClient->Init(ROSInst->ROSIntegrationCore, WorkerIssueNotificationServiceName, TEXT("auto_scene_gen_msgs/WorkerIssueNotification"));
+		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS client: %s"), *WorkerIssueNotificationServiceName);
 
 		// RunScenario service
 		RunScenarioService = NewObject<UService>(UService::StaticClass());
@@ -362,6 +371,16 @@ void AAutoSceneGenWorker::SetVehicleStartZLocation()
 	VehicleStartLocation.Z = MaxZ + 100.; // Add 1 meter to max Z for safety
 }
 
+void AAutoSceneGenWorker::SendWorkerIssueNotification(uint8 IssueID, FString ErrorMessage)
+{
+	TSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest> Req(new ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest());
+	Req->worker_id = WorkerID;
+	Req->issue_id = IssueID;
+	Req->message = ErrorMessage;
+	UE_LOG(LogASG, Display, TEXT("Sending WorkerIssueNotification request to ASG client."));
+	WorkerIssueNotificationClient->CallService(Req, std::bind(&AAutoSceneGenWorker::WorkerIssueNotificationResponseCB, this, std::placeholders::_1));
+}
+
 void AAutoSceneGenWorker::ProcessRunScenarioRequest() 
 {
 	if (!ROSInst || !bASGClientOnline || !ASGVehicle || !LightSource || bProcessedScenarioRequest) return;
@@ -394,13 +413,17 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 			}
 			else
 			{
-				UE_LOG(LogASG, Error, TEXT("Failed to process RunScenarioRequest: UObject with path_name %s is not a child of AStructuralSceneActor"), *Layout.path_name);
+				FString ErrorMessage = FString::Printf(TEXT("Failed to process RunScenarioRequest: UObject with path_name %s is not a child of AStructuralSceneActor"), *Layout.path_name);
+				UE_LOG(LogASG, Error, TEXT("%s"), *ErrorMessage);
+				SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_PROBLEM_CREATING_SCENE, ErrorMessage);
 				return;
 			}
 		}
 		else
 		{
-			UE_LOG(LogASG, Error, TEXT("Failed to process RunScenarioRequest: Could not cast UObject with path_name %s to UBlueprintGeneratedClass"), *Layout.path_name);
+			FString ErrorMessage = FString::Printf(TEXT("Failed to process RunScenarioRequest: Could not cast UObject with path_name %s to UBlueprintGeneratedClass"), *Layout.path_name);
+			UE_LOG(LogASG, Error, TEXT("%s"), *ErrorMessage);
+			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_PROBLEM_CREATING_SCENE, ErrorMessage);
 			return;
 		}
 	}
@@ -474,7 +497,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	bReadyToTick = false;
 	bProcessedScenarioRequest = true;
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING;
-	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i"), ScenarioNumber);
+	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i. ASG worker is ONLINE_AND_RUNNING."), ScenarioNumber);
 }
 
 void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 TerminationReason)
@@ -493,7 +516,7 @@ void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 Termin
 	Req->vehicle_sim_time = FROSTime::GetTimeDelta(start_time, end_time);
 
 	UE_LOG(LogASG, Display, TEXT("Computed vehicle sim time: %f"), Req->vehicle_sim_time);
-	UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
+	UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i. ASG worker is ONLINE_AND_READY."), ScenarioNumber);
 	AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 }
 
@@ -578,7 +601,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 			Req->vehicle_sim_time = FROSTime::GetTimeDelta(start_time, end_time);
 
 			UE_LOG(LogASG, Display, TEXT("Computed vehicle sim time: %f"), Req->vehicle_sim_time);
-			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i"), ScenarioNumber);
+			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i. ASG worker is ONLINE_AND_READY."), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 			return true;
 		}
@@ -596,15 +619,21 @@ void AAutoSceneGenWorker::OnROSConnectionStatus(bool bIsConnected)
 {
 	if (!bROSBridgeHealthy && bIsConnected)
 	{
+		if (bROSBridgeConnectionInterrupted)
+		{
+			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_ROSBRIDGE_INTERRUPTED, FString(""));
+			bROSBridgeConnectionInterrupted = false;
+		}
 		bWaitingForScenarioRequest = true;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
-		UE_LOG(LogASG, Display, TEXT("rosbridge connection is healthy. ASG worker is now ONLINE_AND_READY."));
+		UE_LOG(LogASG, Display, TEXT("ROSBridge connection is healthy. ASG worker is ONLINE_AND_READY."));
 	}
 	else if (bROSBridgeHealthy && !bIsConnected)
 	{
+		bROSBridgeConnectionInterrupted = true;
 		bForceVehicleReset = true;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::OFFLINE;
-		UE_LOG(LogASG, Warning, TEXT("rosbridge connection was interrupted. ASG worker is currently OFFLINE."));
+		UE_LOG(LogASG, Warning, TEXT("ROSBridge connection was interrupted. ASG worker is OFFLINE."));
 	}
 	bROSBridgeHealthy = bIsConnected;
 }
@@ -643,6 +672,17 @@ void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceRe
 		return;
 	}
 	UE_LOG(LogASG, Display, TEXT("AnalyzeScenario request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
+}
+
+void AAutoSceneGenWorker::WorkerIssueNotificationResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
+{
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationResponse>(Response);
+	if (!CastResponse)
+	{
+		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/WorkerIssueNotificationResponse"));
+		return;
+	}
+	UE_LOG(LogASG, Display, TEXT("WorkerIssueNotification request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
 }
 
 void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest> Request, TSharedPtr<FROSBaseServiceResponse> Response) 

@@ -152,6 +152,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 	class UROSIntegrationGameInstance* ROSInst;
 
 	bool bROSBridgeHealthy = false;
+
+	bool bROSBridgeConnectionInterrupted = false;
 	
 	UPROPERTY(Editanywhere)
 	// Name of the ROS AutoSceneGenClient
@@ -177,6 +179,10 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// ROS client: Sends the scenario data to the ASG for its analysis
 	class UService* AnalyzeScenarioClient;
 
+	UPROPERTY()
+	// ROS client: Sends the worker issue notification to the ASG
+	class UService* WorkerIssueNotificationClient;
+
 	bool bASGClientOnline = false;
 
 	uint8 WorkerStatus = 0;
@@ -195,6 +201,14 @@ private: /****************************** AAutoSceneGenWorker *******************
 	
 	// Update the vehicle's starting Z location based on the newly generated landscape so that vehicle starts just above it
 	void SetVehicleStartZLocation();
+
+	/**
+	 * Send a WorkerIssueNotification to the ASG client
+	 * @param IssueID Issue ID
+	 * @param ErrorMessage Error message to send to ASG client
+	 * 
+	*/
+	void SendWorkerIssueNotification(uint8 IssueID, FString ErrorMessage);
 
 	void ProcessRunScenarioRequest();
 
@@ -215,6 +229,12 @@ private: /****************************** AAutoSceneGenWorker *******************
 	 * @param Msg The status message from the ASG client
 	 */
 	void ASGClientStatusCB(TSharedPtr<class FROSBaseMsg> Msg);
+
+	/**
+	 * ROS callback for receiving the ASG client's response for the worker issue notification
+	 * @param Response The response message from the ASG client
+	 */
+	void WorkerIssueNotificationResponseCB(TSharedPtr<class FROSBaseServiceResponse> Response);
 
 	/**
 	 * ROS callback for receiving the ASG client's response for the most recent scenario analysis
