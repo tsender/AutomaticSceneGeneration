@@ -260,6 +260,12 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 
 	if (ROSInst)
 	{
+		if (bROSBridgeConnectionInterrupted && bASGClientOnline)
+		{
+			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_ROSBRIDGE_INTERRUPTED, FString(""));
+			bROSBridgeConnectionInterrupted = false;
+		}
+		
 		// Publish ASG worker status
 		TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(WorkerStatus));
 		WorkerStatusPub->Publish(StatusMsg);
@@ -373,12 +379,15 @@ void AAutoSceneGenWorker::SetVehicleStartZLocation()
 
 void AAutoSceneGenWorker::SendWorkerIssueNotification(uint8 IssueID, FString ErrorMessage)
 {
-	TSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest> Req(new ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest());
-	Req->worker_id = WorkerID;
-	Req->issue_id = IssueID;
-	Req->message = ErrorMessage;
-	UE_LOG(LogASG, Display, TEXT("Sending WorkerIssueNotification request to ASG client."));
-	WorkerIssueNotificationClient->CallService(Req, std::bind(&AAutoSceneGenWorker::WorkerIssueNotificationResponseCB, this, std::placeholders::_1));
+	if (ROSInst && bASGClientOnline)
+	{
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest> Req(new ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest());
+		Req->worker_id = WorkerID;
+		Req->issue_id = IssueID;
+		Req->message = ErrorMessage;
+		UE_LOG(LogASG, Display, TEXT("Sending WorkerIssueNotification request to ASG client."));
+		WorkerIssueNotificationClient->CallService(Req, std::bind(&AAutoSceneGenWorker::WorkerIssueNotificationResponseCB, this, std::placeholders::_1));
+	}
 }
 
 void AAutoSceneGenWorker::ProcessRunScenarioRequest() 
@@ -619,18 +628,14 @@ void AAutoSceneGenWorker::OnROSConnectionStatus(bool bIsConnected)
 {
 	if (!bROSBridgeHealthy && bIsConnected)
 	{
-		if (bROSBridgeConnectionInterrupted)
-		{
-			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_ROSBRIDGE_INTERRUPTED, FString(""));
-			bROSBridgeConnectionInterrupted = false;
-		}
-		bWaitingForScenarioRequest = true;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 		UE_LOG(LogASG, Display, TEXT("ROSBridge connection is healthy. ASG worker is ONLINE_AND_READY."));
 	}
 	else if (bROSBridgeHealthy && !bIsConnected)
 	{
 		bROSBridgeConnectionInterrupted = true;
+		bASGClientOnline = false;
+		bWaitingForScenarioRequest = true;
 		bForceVehicleReset = true;
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::OFFLINE;
 		UE_LOG(LogASG, Warning, TEXT("ROSBridge connection was interrupted. ASG worker is OFFLINE."));
@@ -649,7 +654,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 
 	if (!bASGClientOnline && CastMsg->status == ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING)
 	{
-		UE_LOG(LogASG, Display, TEXT("ASG client back online"));
+		UE_LOG(LogASG, Display, TEXT("ASG client is online"));
 	}
 
 	// We assume the ASG client is configured to send an offline signal whenever it gets shutdown
@@ -657,7 +662,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 	{
 		bForceVehicleReset = true; // This will reset the run for us
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
-		UE_LOG(LogASG, Warning, TEXT("ASG client went offline"));
+		UE_LOG(LogASG, Warning, TEXT("ASG client is offline"));
 	}
 	
 	bASGClientOnline = CastMsg->status == ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING;
