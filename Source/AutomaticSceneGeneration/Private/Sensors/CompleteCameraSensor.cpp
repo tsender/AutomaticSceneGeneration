@@ -175,14 +175,6 @@ void UCompleteCameraSensor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			UE_LOG(LogASG, Display, TEXT("Camera sensor '%s': Saving next frame number to %i in JSON file"), *SensorName, NextFrameNumber);
 		}
 	}
-
-	if (ROSInst)
-	{
-		// ColorCamPub->Unadvertise();
-		// if (bEnableDepthCam) DepthCamPub->Unadvertise();
-		// if (bEnableTravCam) TravCamPub->Unadvertise();
-		// if (bEnableSegCam) SegCamPub->Unadvertise();
-	}
 }
 
 // Called every frame
@@ -220,7 +212,7 @@ void UCompleteCameraSensor::TickSensor()
 				// Encode float32 as 4 bytes with native byte ordering
 				std::memcpy(&EncodedDepthData[i*4], &d, sizeof(float)); // memcpy order: dest, src, size
 				
-				// // Convert to little endian if in big endian
+				// // Convert from big endian to little endian
 				// uint8 Bytes[4];
 				// std::memcpy(Bytes, &d, sizeof(float)); // Encode float32 as 4 bytes
 				// uint8 LittleBytes[4] = {Bytes[3], Bytes[2], Bytes[1], Bytes[0]}; // Reverse byte order

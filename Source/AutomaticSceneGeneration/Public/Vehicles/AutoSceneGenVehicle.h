@@ -149,6 +149,8 @@ private: /****************************** AEvaluationVehicle ********************
 
 	void CheckIfReadyForEnable(float DeltaTime);
 
+	void PublishStatus();
+
 	void EnableSensors(bool bEnable);
 
 	UFUNCTION()

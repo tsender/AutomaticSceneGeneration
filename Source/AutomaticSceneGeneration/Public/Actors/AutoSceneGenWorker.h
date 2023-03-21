@@ -202,6 +202,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// Update the vehicle's starting Z location based on the newly generated landscape so that vehicle starts just above it
 	void SetVehicleStartZLocation();
 
+	void PublishStatus();
+
 	/**
 	 * Send a WorkerIssueNotification to the ASG client
 	 * @param IssueID Issue ID

@@ -199,6 +199,9 @@ void AAutoSceneGenWorker::BeginPlay()
 
 	// Calling this here forces the engine to render the debug SSAs before the tick function
 	RandomizeDebugStructuralSceneActors();
+
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AAutoSceneGenWorker::PublishStatus, 0.05, true);
 }
 
 void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason) 
@@ -218,11 +221,6 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			WorkerStatusPub->Publish(StatusMsg);
 			FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
 		}
-		// WorkerStatusPub->Unadvertise();
-
-		// ASGClientStatusSub->Unsubscribe();
-		// VehicleDestinationPub->Unadvertise();
-		// RunScenarioService->Unadvertise();
 	}
 }
 
@@ -243,8 +241,8 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		ProcessRunScenarioRequest();
 	}
 	
-	// This forces the worker to wait one tick for the frame to render (which can potentially take a few seconds) before publishing its status
-	// and allows the vehicle to know when the world is actually ready for it move around in
+	// Since the renderer is one frame behind the game thread, this boolean forces us to wait an extra tick
+	// to ensure the vehicle is enabled when the scene is fully rendered.
 	if (ASGVehicle && !bReadyToTick)
 	{
 		bReadyToTick = true;
@@ -266,9 +264,9 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 			bROSBridgeConnectionInterrupted = false;
 		}
 		
-		// Publish ASG worker status
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(WorkerStatus));
-		WorkerStatusPub->Publish(StatusMsg);
+		// // Publish ASG worker status
+		// TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(WorkerStatus));
+		// WorkerStatusPub->Publish(StatusMsg);
 		
 		// Publish vehicle destination info
 		TSharedPtr<ROSMessages::geometry_msgs::Pose> DestMsg(new ROSMessages::geometry_msgs::Pose());
@@ -375,6 +373,16 @@ void AAutoSceneGenWorker::SetVehicleStartZLocation()
 	MaxZ = FMath::Max<float>(MaxZ, ASGLandscape->GetLandscapeElevation(VehicleStartLocation - RightVec*BoxExtent.Y - ASGLandscape->GetActorLocation(), TempArray));
 
 	VehicleStartLocation.Z = MaxZ + 100.; // Add 1 meter to max Z for safety
+}
+
+void AAutoSceneGenWorker::PublishStatus()
+{
+	if (ROSInst)
+	{
+		// Publish ASG worker status
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(WorkerStatus));
+		WorkerStatusPub->Publish(StatusMsg);
+	}
 }
 
 void AAutoSceneGenWorker::SendWorkerIssueNotification(uint8 IssueID, FString ErrorMessage)

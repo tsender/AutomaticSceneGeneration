@@ -88,6 +88,9 @@ void AAutoSceneGenVehicle::BeginPlay()
         VehicleStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG vehicle ROS publisher: %s"), *StatusTopic);
 	}
+
+    FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AAutoSceneGenVehicle::PublishStatus, 0.05, true);
 }
 
 void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason) 
@@ -105,7 +108,6 @@ void AAutoSceneGenVehicle::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			VehicleStatusPub->Publish(VehicleStatusMsg);
 			FPlatformProcess::Sleep(0.01f); // Brief pause helps ensure the messages are received
 		}
-        // VehicleStatusPub->Unadvertise();
     }
 }
 
@@ -133,8 +135,8 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
     if (ROSInst)
     {
-        TSharedPtr<ROSMessages::auto_scene_gen_msgs::VehicleStatus> VehicleStatusMsg(new ROSMessages::auto_scene_gen_msgs::VehicleStatus(bEnabled, bPreempted));
-        VehicleStatusPub->Publish(VehicleStatusMsg);
+        // TSharedPtr<ROSMessages::auto_scene_gen_msgs::VehicleStatus> VehicleStatusMsg(new ROSMessages::auto_scene_gen_msgs::VehicleStatus(bEnabled, bPreempted));
+        // VehicleStatusPub->Publish(VehicleStatusMsg);
 
         if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
@@ -257,7 +259,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     DriveByWireComponent->SetHandbrakeInput(true);
 
     SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
-    EnableSensors(false);
+    // EnableSensors(false); // Setting this to false can mess with the rate that the actual ROS nodes receive sensor messages
     bEnabled = false;
     bPreempted = bPreemptedDisable;
     bWorldIsReady = false;
@@ -337,6 +339,15 @@ void AAutoSceneGenVehicle::OnHandbrakeReleased()
     }
 }
 
+void AAutoSceneGenVehicle::PublishStatus()
+{
+    if (ROSInst)
+    {
+        TSharedPtr<ROSMessages::auto_scene_gen_msgs::VehicleStatus> VehicleStatusMsg(new ROSMessages::auto_scene_gen_msgs::VehicleStatus(bEnabled, bPreempted));
+        VehicleStatusPub->Publish(VehicleStatusMsg);
+    }
+}
+
 void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime) 
 {
     // Wait at least a few ticks before checking vehicle velocity
@@ -389,10 +400,6 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             NominalVehicleZLocation = GetActorLocation().Z;
             UE_LOG(LogASG, Display, TEXT("Vehicle is enabled."));
         }
-        // else
-        // {
-        //     CheckEnableLocation = GetActorLocation();
-        // }
         CheckEnableTime = 0.;
     }
 }

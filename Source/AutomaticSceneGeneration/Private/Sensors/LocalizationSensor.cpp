@@ -67,10 +67,6 @@ void ULocalizationSensor::BeginPlay()
 void ULocalizationSensor::EndPlay(const EEndPlayReason::Type EndPlayReason) 
 {
 	Super::EndPlay(EndPlayReason);
-	if (ROSInst)
-	{
-		// SensorPub->Unadvertise();
-	}
 }
 
 void ULocalizationSensor::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
