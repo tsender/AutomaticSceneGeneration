@@ -264,10 +264,6 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 			bROSBridgeConnectionInterrupted = false;
 		}
 		
-		// // Publish ASG worker status
-		// TSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode> StatusMsg(new ROSMessages::auto_scene_gen_msgs::StatusCode(WorkerStatus));
-		// WorkerStatusPub->Publish(StatusMsg);
-		
 		// Publish vehicle destination info
 		TSharedPtr<ROSMessages::geometry_msgs::Pose> DestMsg(new ROSMessages::geometry_msgs::Pose());
 		ROSMessages::geometry_msgs::Point Location(VehicleGoalLocation/100.f); // Put into [m]

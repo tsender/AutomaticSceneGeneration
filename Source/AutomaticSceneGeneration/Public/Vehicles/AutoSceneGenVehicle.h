@@ -106,7 +106,7 @@ private: /****************************** AEvaluationVehicle ********************
 
 	float ResetTime = 0.f;
 
-	// Motion under this linear speed [cm/s] is considered "not moving"
+	// Motion less than or equal to this linear speed [cm/s] is considered "not moving"
 	UPROPERTY(EditAnywhere)
 	float LinearMotionThreshold = 2.f;
 

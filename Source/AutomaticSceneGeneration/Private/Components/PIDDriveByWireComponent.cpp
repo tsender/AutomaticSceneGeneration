@@ -131,6 +131,11 @@ bool UPIDDriveByWireComponent::ReceivedFirstControlInput() const
 	return bReceivedFirstControlInput;
 }
 
+float UPIDDriveByWireComponent::GetForwardSpeed() const
+{
+	return VehicleMovementComponent->GetForwardSpeed();
+}
+
 float UPIDDriveByWireComponent::GetMaxManualDriveSpeed() const
 {
 	return MaxManualDriveSpeed;

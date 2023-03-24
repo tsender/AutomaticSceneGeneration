@@ -135,9 +135,6 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
     if (ROSInst)
     {
-        // TSharedPtr<ROSMessages::auto_scene_gen_msgs::VehicleStatus> VehicleStatusMsg(new ROSMessages::auto_scene_gen_msgs::VehicleStatus(bEnabled, bPreempted));
-        // VehicleStatusPub->Publish(VehicleStatusMsg);
-
         if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
         {
             ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance Odometry;
@@ -208,7 +205,8 @@ bool AAutoSceneGenVehicle::IsVehicleIdling()
 {
     if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
 
-    float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal speed [cm/s]
+    // float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal velocity [cm/s]
+    float LongitudinalVel = DriveByWireComponent->GetForwardSpeed(); // Longitudinal velocity [cm/s], velocity from movement component is more accurate
     if (FMath::Abs(LongitudinalVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) <= LinearMotionThreshold)
         return true;
     else
@@ -219,7 +217,8 @@ bool AAutoSceneGenVehicle::IsVehicleStuck()
 {
     if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
 
-    float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal speed [cm/s]
+    // float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal velocity [cm/s]
+    float LongitudinalVel = DriveByWireComponent->GetForwardSpeed(); // Longitudinal velocity [cm/s], velocity from movement component is more accurate
     if (FMath::Abs(LongitudinalVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) > LinearMotionThreshold)
         return true;
     else

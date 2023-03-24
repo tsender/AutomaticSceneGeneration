@@ -36,6 +36,8 @@ public: /****************************** UPIDDriveByWireComponent ***************
 
 	bool ReceivedFirstControlInput() const;
 
+	float GetForwardSpeed() const;
+
 	float GetMaxManualDriveSpeed() const;
 
 	float GetMaxSteeringAngle() const;
