@@ -259,7 +259,7 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     DriveByWireComponent->SetHandbrakeInput(true);
 
     SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
-    // EnableSensors(false); // Setting this to false can mess with the rate that the actual ROS nodes receive sensor messages
+    EnableSensors(false);
     bEnabled = false;
     bPreempted = bPreemptedDisable;
     bWorldIsReady = false;
