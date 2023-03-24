@@ -32,6 +32,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	bReceivedFirstControlInput = false;
 	bBypassController = false; // Updated based on what control messages arrive
 	bProcessedBypassControlInput = true;
+	NonROSTimeSinceFirstControl = 0.f;
 
 	MaxSteeringAngle = 0.f;
 	DesiredVelocity = 0.f; // [m/s]
@@ -119,6 +120,9 @@ void UPIDDriveByWireComponent::TickComponent(float DeltaTime, ELevelTick TickTyp
 		SetThrottleInput(DeltaTime);
 		SetSteeringInput(DeltaTime);
 	}
+
+	if (bEnabled && bReceivedFirstControlInput)
+		NonROSTimeSinceFirstControl += DeltaTime;
 }
 
 bool UPIDDriveByWireComponent::IsManualDrive() const
@@ -129,6 +133,17 @@ bool UPIDDriveByWireComponent::IsManualDrive() const
 bool UPIDDriveByWireComponent::ReceivedFirstControlInput() const
 {
 	return bReceivedFirstControlInput;
+}
+
+float UPIDDriveByWireComponent::GetTimeSinceFirstControlInput() const
+{
+	if (!bEnabled || !bReceivedFirstControlInput)
+		return 0.f;
+	
+	if (ROSInst)
+		return FROSTime::GetTimeDelta(ROSTimeAtFirstControl, FROSTime::Now());
+	else
+		return NonROSTimeSinceFirstControl;
 }
 
 float UPIDDriveByWireComponent::GetForwardSpeed() const
@@ -159,12 +174,14 @@ float UPIDDriveByWireComponent::GetDesiredSteeringAngle() const
 void UPIDDriveByWireComponent::EnableDriveByWire(bool bEnable) 
 {
 	bEnabled = bEnable;
-	if (!bEnabled){
+	if (!bEnabled)
+	{
 		bReceivedFirstControlInput = false;
 	}
 	if (bEnabled && bManualDrive && !bReceivedFirstControlInput)
 	{
 		bReceivedFirstControlInput = true;
+		NonROSTimeSinceFirstControl = 0.f;
 		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first manual control input."));
 	}
 
@@ -248,6 +265,9 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	if (bEnabled && !bReceivedFirstControlInput)
 	{
 		bReceivedFirstControlInput = true;
+		NonROSTimeSinceFirstControl = 0.f;
+		if (ROSInst)
+			ROSTimeAtFirstControl = FROSTime::Now();
 		UE_LOG(LogASG, Display, TEXT("PID drive-by-wire controller has received first remote control input."));
 	}
 }

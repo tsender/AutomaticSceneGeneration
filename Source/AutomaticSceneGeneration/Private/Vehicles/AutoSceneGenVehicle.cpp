@@ -16,7 +16,6 @@
 
 #include "ROSIntegration/Classes/ROSIntegrationGameInstance.h"
 #include "ROSIntegration/Classes/RI/Topic.h"
-#include "ROSIntegration/Public/ROSTime.h"
 #include "auto_scene_gen_msgs/msg/VehicleStatus.h"
 
 
@@ -47,7 +46,6 @@ void AAutoSceneGenVehicle::BeginPlay()
     ResetTime = 0.f;
     IdleTime = 0.f;
     StuckTime = 0.f;
-    TimeSinceFirstControl = 0.f;
     NominalVehicleZLocation = 0.f;
     HeaderSequence = 1;
     PathSequence = 0; // Gets incremented when enabled
@@ -117,9 +115,6 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
 
     if (bEnabled && DriveByWireComponent->ReceivedFirstControlInput())
     {
-        // Should we be using FROSTime instead?
-        TimeSinceFirstControl += DeltaTime;
-
         if (IsVehicleIdling())
             IdleTime += DeltaTime;
         else
@@ -235,9 +230,9 @@ float AAutoSceneGenVehicle::GetStuckTime() const
     return StuckTime;
 }
 
-float AAutoSceneGenVehicle::GetTimeSinceFirstControl() const
+float AAutoSceneGenVehicle::GetTimeSinceFirstControlInput() const
 {
-    return TimeSinceFirstControl;
+    return DriveByWireComponent->GetTimeSinceFirstControlInput();
 }
 
 void AAutoSceneGenVehicle::SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation)
@@ -268,7 +263,6 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     ResetTime = 0.f;
     IdleTime = 0.f;
     StuckTime = 0.f;
-    TimeSinceFirstControl = 0.f;
     NumSSAHit = 0;
 
     // Publish updated vehicle status immediately so subscribers don't continue publishing control commands

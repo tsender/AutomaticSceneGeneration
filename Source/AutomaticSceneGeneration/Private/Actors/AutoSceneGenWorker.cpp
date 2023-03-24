@@ -562,7 +562,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	}
 
 	// Did simulation timer expire?
-	if (ROSInst && SimTimeoutPeriod > 0. && ASGVehicle->GetTimeSinceFirstControl() >= SimTimeoutPeriod)
+	if (ROSInst && SimTimeoutPeriod > 0. && ASGVehicle->GetTimeSinceFirstControlInput() >= SimTimeoutPeriod)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_SIM_TIMEOUT. Simulation timeout is %f seconds."), SimTimeoutPeriod);
 		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_SIM_TIMEOUT);

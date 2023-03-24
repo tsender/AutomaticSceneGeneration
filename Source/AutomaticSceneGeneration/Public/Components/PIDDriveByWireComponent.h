@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "ROSIntegration/Public/ROSTime.h"
 #include "PIDDriveByWireComponent.generated.h"
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
@@ -35,6 +36,9 @@ public: /****************************** UPIDDriveByWireComponent ***************
 	bool IsManualDrive() const;
 
 	bool ReceivedFirstControlInput() const;
+
+	// Returns the amount of time that has passed since the vehicle received its first control command
+	float GetTimeSinceFirstControlInput() const;
 
 	float GetForwardSpeed() const;
 
@@ -91,6 +95,10 @@ private: /****************************** UPIDDriveByWireComponent **************
 	bool bEnabled = false;
 
 	bool bReceivedFirstControlInput = false;
+
+	FROSTime ROSTimeAtFirstControl;
+
+	float NonROSTimeSinceFirstControl = 0.f;
 
 	bool bBypassController = false; // Updated based on what control messages arrive
 

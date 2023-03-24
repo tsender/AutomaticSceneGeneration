@@ -53,7 +53,7 @@ public: /****************************** AAutoSceneGenVehicle *******************
 	float GetStuckTime() const;
 
 	// Returns the amount of time that has passed since the vehicle received its first control command
-	float GetTimeSinceFirstControl() const;
+	float GetTimeSinceFirstControlInput() const;
 
 	void SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation);
 
@@ -115,8 +115,6 @@ private: /****************************** AEvaluationVehicle ********************
 
 	// Most recent consecutive amount of time the vehicle is found stuck (near-zero motion but non-zero commanded velocity)
 	float StuckTime = 0.f;
-
-	float TimeSinceFirstControl = 0.f;
 
 	// We currently assume we are on a flat ground plane
 	float NominalVehicleZLocation = 0.f;
