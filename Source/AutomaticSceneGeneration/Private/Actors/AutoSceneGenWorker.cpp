@@ -727,7 +727,7 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 
 	SceneDescription = CastRequest->scene_description;
 
-	bWaitingForScenarioRequest = false;
+	bWaitingForScenarioRequest = false; // Can only set this to false here
 	bProcessedScenarioRequest = false;
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 	UE_LOG(LogASG, Display, TEXT("Saved scenario description %i"), ScenarioNumber);
