@@ -36,6 +36,9 @@ namespace ROSMessages{
 			// Total length of vehicle simulation time (from when the first control input was received)
 			// Sometimes rosbridge (or is it UE4?) changes the timestamps and this field can be used to verify the info was sent correctly
 			float vehicle_sim_time;
+
+			// Number of control messages received by the vehicle (can be cross-checked with how many were sent)
+			int32 num_vehicle_control_messages;
 		};
 	}
 }

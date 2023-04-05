@@ -33,6 +33,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	bBypassController = false; // Updated based on what control messages arrive
 	bProcessedBypassControlInput = true;
 	NonROSTimeSinceFirstControl = 0.f;
+	NumRemoteControlMessagesReceived = 0;
 
 	MaxSteeringAngle = 0.f;
 	DesiredVelocity = 0.f; // [m/s]
@@ -146,6 +147,11 @@ float UPIDDriveByWireComponent::GetTimeSinceFirstControlInput() const
 		return NonROSTimeSinceFirstControl;
 }
 
+int32 UPIDDriveByWireComponent::GetNumRemoteControlMessagesReceived() const
+{
+	return NumRemoteControlMessagesReceived;
+}
+
 float UPIDDriveByWireComponent::GetForwardSpeed() const
 {
 	return VehicleMovementComponent->GetForwardSpeed();
@@ -174,10 +180,12 @@ float UPIDDriveByWireComponent::GetDesiredSteeringAngle() const
 void UPIDDriveByWireComponent::EnableDriveByWire(bool bEnable) 
 {
 	bEnabled = bEnable;
+	if (bEnabled)
+		NumRemoteControlMessagesReceived = 0;
+	
 	if (!bEnabled)
-	{
 		bReceivedFirstControlInput = false;
-	}
+	
 	if (bEnabled && bManualDrive && !bReceivedFirstControlInput)
 	{
 		bReceivedFirstControlInput = true;
@@ -261,6 +269,7 @@ void UPIDDriveByWireComponent::PhysxControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 	SetDesiredSteeringAngle(CastMsg->steering_angle);
 	SetHandbrakeInput(CastMsg->handbrake);
 	bBypassController = false;
+	NumRemoteControlMessagesReceived += 1;
 
 	if (bEnabled && !bReceivedFirstControlInput)
 	{

@@ -40,6 +40,8 @@ public: /****************************** UPIDDriveByWireComponent ***************
 	// Returns the amount of time that has passed since the vehicle received its first control command
 	float GetTimeSinceFirstControlInput() const;
 
+	int32 GetNumRemoteControlMessagesReceived() const;
+
 	float GetForwardSpeed() const;
 
 	float GetMaxManualDriveSpeed() const;
@@ -99,6 +101,8 @@ private: /****************************** UPIDDriveByWireComponent **************
 	FROSTime ROSTimeAtFirstControl;
 
 	float NonROSTimeSinceFirstControl = 0.f;
+
+	int32 NumRemoteControlMessagesReceived = 0;
 
 	bool bBypassController = false; // Updated based on what control messages arrive
 

@@ -235,6 +235,11 @@ float AAutoSceneGenVehicle::GetTimeSinceFirstControlInput() const
     return DriveByWireComponent->GetTimeSinceFirstControlInput();
 }
 
+int32 AAutoSceneGenVehicle::GetNumRemoteControlMessagesReceived() const
+{
+    return DriveByWireComponent->GetNumRemoteControlMessagesReceived();
+}
+
 void AAutoSceneGenVehicle::SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation)
 {
     ResetLocation = DefaultLocation;

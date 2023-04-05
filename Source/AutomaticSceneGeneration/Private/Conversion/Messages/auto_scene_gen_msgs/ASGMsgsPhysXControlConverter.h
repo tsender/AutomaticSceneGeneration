@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "ROSIntegration/Private/Conversion/Messages/BaseMessageConverter.h"
+#include "ROSIntegration/Private/Conversion/Messages/std_msgs/StdMsgsHeaderConverter.h"
 #include "auto_scene_gen_msgs/msg/PhysXControl.h"
 #include "ASGMsgsPhysXControlConverter.generated.h"
 
@@ -23,6 +24,7 @@ public:
 	{
 		bool KeyFound = false;
 
+		if (!UStdMsgsHeaderConverter::_bson_extract_child_header(b, key + ".header", &msg->header)) return false;
 		msg->longitudinal_velocity = GetDoubleFromBSON(key + ".longitudinal_velocity", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		msg->steering_angle = GetDoubleFromBSON(key + ".steering_angle", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		msg->handbrake = GetBoolFromBSON(key + ".handbrake", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
@@ -39,6 +41,7 @@ public:
 
 	static void _bson_append_msg(bson_t *b, const ROSMessages::auto_scene_gen_msgs::PhysXControl *msg)
 	{
+		UStdMsgsHeaderConverter::_bson_append_child_header(b, "header", &msg->header);
 		BSON_APPEND_DOUBLE(b, "longitudinal_velocity", msg->longitudinal_velocity);
 		BSON_APPEND_DOUBLE(b, "steering_angle", msg->steering_angle);
 		BSON_APPEND_BOOL(b, "handbrake", msg->handbrake);

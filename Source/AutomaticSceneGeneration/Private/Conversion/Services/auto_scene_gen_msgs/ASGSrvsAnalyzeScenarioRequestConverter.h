@@ -39,6 +39,7 @@ public:
 		if (!KeyFound) return false;
 		
 		request->vehicle_sim_time = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_sim_time", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->num_vehicle_control_messages = UBaseMessageConverter::GetInt32FromBSON(key + ".num_vehicle_control_messages", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		return true;
 	}
@@ -55,6 +56,6 @@ public:
 		});
 
 		BSON_APPEND_DOUBLE(b, "vehicle_sim_time", request->vehicle_sim_time);
+		BSON_APPEND_INT32(b, "num_vehicle_control_messages", request->num_vehicle_control_messages);
 	}
-	
 };

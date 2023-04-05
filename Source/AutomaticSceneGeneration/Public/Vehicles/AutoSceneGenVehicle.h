@@ -55,6 +55,8 @@ public: /****************************** AAutoSceneGenVehicle *******************
 	// Returns the amount of time that has passed since the vehicle received its first control command
 	float GetTimeSinceFirstControlInput() const;
 
+	int32 GetNumRemoteControlMessagesReceived() const;
+
 	void SetDefaultResetInfo(FVector DefaultLocation, FRotator DefaultRotation);
 
 	/**

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ROSBaseMsg.h"
+#include "ROSIntegration/Public/ROSBaseMsg.h"
 
 #include "ROSIntegration/Public/std_msgs/Header.h"
 #include "ROSIntegration/Public/geometry_msgs/Pose.h"

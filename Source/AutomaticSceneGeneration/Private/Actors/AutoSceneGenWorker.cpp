@@ -523,6 +523,7 @@ void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 Termin
 	Req->worker_id = WorkerID;
 	Req->scenario_number = ScenarioNumber;
 	Req->termination_reason = TerminationReason;
+	Req->num_vehicle_control_messages = ASGVehicle->GetNumRemoteControlMessagesReceived();
 
 	FROSTime start_time = Req->vehicle_trajectory[0].header.time;
 	FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;
@@ -608,6 +609,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 			Req->worker_id = WorkerID;
 			Req->scenario_number = ScenarioNumber;
 			Req->termination_reason = Req->REASON_SUCCESS;
+			Req->num_vehicle_control_messages = ASGVehicle->GetNumRemoteControlMessagesReceived();
 
 			FROSTime start_time = Req->vehicle_trajectory[0].header.time;
 			FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;

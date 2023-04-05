@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ROSIntegration/Public/ROSBaseMsg.h"
+#include "ROSIntegration/Public/std_msgs/Header.h"
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
@@ -16,6 +17,7 @@ namespace ROSMessages{
                 _MessageType = "auto_scene_gen_msgs/PhysXControl";
 			}
 
+			std_msgs::Header header;
 			float longitudinal_velocity; // [cm/s]
 			float steering_angle; // Range [-MaxSteeringAngle, +MaxSteeringAngle] [deg]
 			bool handbrake; // false = disengaged, true = engaged
