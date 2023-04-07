@@ -151,13 +151,15 @@ void AAutoSceneGenVehicle::Tick(float DeltaTime)
             Quaternion.z *= -1;
             Odometry.pose.orientation = Quaternion;
 
-            // Linear Velocity
-            FVector LinearVelocity = GetMesh()->GetPhysicsLinearVelocity()/100.f; // Put into [m/s]
+            // Linear Velocity in [m/s]
+            FVector WorldLinearVelocity = GetMesh()->GetPhysicsLinearVelocity(); // World coordinates, [cm/s]
+            FVector LinearVelocity = UKismetMathLibrary::InverseTransformDirection(GetTransform(), WorldLinearVelocity)/100.f; // Bodyframe coordinates, [m/s]
             LinearVelocity.Y *= -1;
             Odometry.twist.linear = ROSMessages::geometry_msgs::Vector3(LinearVelocity);
 
-            // Angular Velocity
-            FVector AngularVelocity = GetMesh()->GetPhysicsAngularVelocityInRadians();
+            // Angular Velocity in [rad/s]
+            FVector WorldAngularVelocity = GetMesh()->GetPhysicsAngularVelocityInRadians(); // World coordinats, [rad/s]
+            FVector AngularVelocity = UKismetMathLibrary::InverseTransformDirection(GetTransform(), WorldAngularVelocity); // Bodyframe coordinates
             AngularVelocity.X *= -1;
             AngularVelocity.Z *= -1;
             Odometry.twist.angular = ROSMessages::geometry_msgs::Vector3(AngularVelocity);
@@ -200,8 +202,7 @@ bool AAutoSceneGenVehicle::IsVehicleIdling()
 {
     if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
 
-    // float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal velocity [cm/s]
-    float LongitudinalVel = DriveByWireComponent->GetForwardSpeed(); // Longitudinal velocity [cm/s], velocity from movement component is more accurate
+    float LongitudinalVel = DriveByWireComponent->GetForwardSpeed(); // Longitudinal velocity [cm/s]
     if (FMath::Abs(LongitudinalVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) <= LinearMotionThreshold)
         return true;
     else
@@ -212,8 +213,7 @@ bool AAutoSceneGenVehicle::IsVehicleStuck()
 {
     if (!DriveByWireComponent->ReceivedFirstControlInput()) return false;
 
-    // float LongitudinalVel = GetMesh()->GetPhysicsLinearVelocity().X; // Longitudinal velocity [cm/s]
-    float LongitudinalVel = DriveByWireComponent->GetForwardSpeed(); // Longitudinal velocity [cm/s], velocity from movement component is more accurate
+    float LongitudinalVel = DriveByWireComponent->GetForwardSpeed(); // Longitudinal velocity [cm/s]
     if (FMath::Abs(LongitudinalVel) <= LinearMotionThreshold && FMath::Abs(DriveByWireComponent->GetDesiredVelocity()) > LinearMotionThreshold)
         return true;
     else
