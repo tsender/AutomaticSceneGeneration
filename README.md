@@ -39,7 +39,7 @@ There are three main components that make up the workflow when using this plugin
 **Installing the ROS2 Packages**
 
 We will assume you are using Ubuntu for all-things ROS-related.
-1. Install a supported ROS2 version per the ROS2 documentation OR use our provided dockerfiles in Ubuntu with all the needed dependencies. If using docker, then you can download our docker image with the tag `tsender/tensorflow:gpu-focal-foxy` (you may need to login to your docker account from the command line) or you can modify the original docker image [here](https://github.com/tsender/dockerfiles/blob/main/tensorflow_foxy/Dockerfile) and build it.
+1. Install a supported ROS2 version OR use our provided dockerfiles in Ubuntu with all the needed dependencies. If using docker, then you can download our docker image with the tag `tsender/tensorflow:gpu-focal-foxy` (you may need to login to your docker account from the command line) or you can modify the [original docker image](https://github.com/tsender/dockerfiles/blob/main/tensorflow_foxy/Dockerfile) and build it.
 2. Let's put all of our code in a common folder: `mkdir ~/auto_scene_gen`
 3. Let's clone and build rosbridge_suite
    ```
@@ -47,26 +47,20 @@ We will assume you are using Ubuntu for all-things ROS-related.
    mkdir rosbridge_suite
    cd rosbridge_suite/
    git clone https://github.com/tsender/rosbridge_suite.git src
-   cd src
-   git checkout foxy
-   cd ..
-   
-   # Build rosbridge_suite from scratch
    source /opt/ros/foxy/setup.bash
    colcon build
    ```
-3. Let's clone and build the `adversarial_scene_gen_ros2` repo since it contains more than just the bare interface. You may replace this repo with your primary development repo, so long as contains the `auto_scene_gen_ros2` packages.
+3. Let's clone and build the `auto_scene_gen` repo. Rplace this repo with your primary development repo, so long as contains the `auto_scene_gen` packages.
    ```
    cd ~/auto_scene_gen/
    source rosbridge_suite/install/setup.bash # rosbridge_suite is our underlay
-   mkdir adversarial_scene_gen_ros2
-   cd adversarial_scene_gen_ros2
-   git clone https://github.com/tsender/adversarial_scene_gen_ros2.git src
-   
-   # Build the packages
+   mkdir auto_scene_gen
+   cd auto_scene_gen
+   git clone https://github.com/tsender/auto_scene_gen.git src
    colcon build
    source install/setup.bash # This sources the overlay
    ```
+   In all new terminals you open, make sure to source the overlay: `source ~/auto_scene_gen/auto_scene_gen/install/setup.bash`
 
 **Initial UE4 Setup**
 1. Open your UE4 project.
@@ -76,7 +70,6 @@ We will assume you are using Ubuntu for all-things ROS-related.
 5. Add a `ROSBridgeParamOverride` actor to the level. Click on this actor in the World Outline. Under the Details display, Sst the ROSVersion to 2, and adjust the `ROSBridgeServerHost` and `ROSBridgeServerPort` according to your setup. Save the level.
 8. Open a terminal in your Ubuntu computer and launch the rosbridge TCP node
    ```
-   source ~/auto_scene_gen/adversarial_scene_gen_ros2/install/setup.bash # Use your development repo as mentioned above
    ros2 launch rosbridge_server rosbridge_tcp_launch.xml bson_only_mode:=True
    ```
 7. Press Play in your UE4 project, and you should see some log lines indicating that the game connected to rosbridge. You should also see a few lines printed to the rosbridge launch terminal indicating the client subscribed to a few ROS topics with a prefix `/unreal_ros/`. See the `ROSintegration` README if you have issues.
