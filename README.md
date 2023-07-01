@@ -5,11 +5,14 @@ Table of Contents
 - [The AutoSceneGen Ecosystem and Dependencies](#the-autoscenegen-ecosystem-and-dependencies)
 
 ## Description
-The purpose of this plugin is to support the development, validation, and testing of off-road autonomous vehicles (AVs). One of the primary knowledge gaps pertaining to off-road AV evaluation and testing is in the ability to quickly and automatically test an AV system in *arbitrary* and *diverse* simulated environments. While there exist numerous simulator packages designed for the development and testing of AVs in urban environments, most notably the [CARLA](https://carla.org/) simulator, there are very few high-fidelity open-source tools designed for testing AVs in natural, unstructured off-road environments. Consequently, we developed a plugin for UE4 that allows an external client to test a virtual vehicle in any scenario (suppported by our custom scenario description protocol) across as many UE4 editors as your computational resources can support. We also provide an external ROS2 interface to interact with this plugin.
+The purpose of this plugin is to support the development, validation, and testing of off-road autonomous vehicles (AVs). One of the primary knowledge gaps pertaining to off-road AV evaluation and testing is in the ability to quickly and automatically test an AV system in *arbitrary* and *diverse* simulated environments. While there exist numerous simulator packages designed for the development and testing of AVs in urban environments, most notably the [CARLA](https://carla.org/) simulator, there are very few high-fidelity open-source tools designed for testing AVs in natural, unstructured off-road environments. Consequently, we are developing a plugin for UE4 specifically for this purpose. Our plugin allows an external ROS2 client to test a virtual vehicle in any scenario (suppported by our custom scenario description protocol) across as many UE4 editors as your computational resources can support. We also provide an external ROS2 interface to interact with this plugin.
 
 Moving forward, we will often refer to this plugin by the abbreviated name "AutoSceneGen".
 
-MOVE: The client speciifes the scene description and the vehicle task, and this plugin will create the desired scene, and then it will monitor the vehicle's performance as it performs the task. When the vehicle succeeds or fails, the plugin will end the simulation, send the vehicle's trajectory information to the client for further processing, and wait for another request.
+### A Note from the Author 
+My name is Ted Sender, I am a PhD candidate at the University of Michigan, and I am developing this platform as part of my PhD research project. Hence this platform will be under active development until I graduate. 
+
+I am aware that some features you may wish to have (e.g. a larger sensor suite, a weather system, controlling the 3D terrain elevation, etc.) have not yet been added to this platform. Some improvements are a work in progress and/or will be added in the near future as I continue my research, some might get added in my free time, and others may just be a stretch goal. My goal is that together, we can improve the capabilities of this platform and the state-of-the-art in testing off-road AVs.
 
 ## The AutoSceneGen Ecosystem and Dependencies
 
@@ -21,17 +24,17 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 - ROS2 Foxy+
   - This repo was written and tested with ROS2 Foxy on Ubuntu 20.04, but it should work on Foxy and up.
 
-**Required Libraries:**
+**Software Libraries:**
 1. AutomaticSceneGeneration Plugin for UE4 (this repo)
 2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use the `feature/specify_ros_version` branch of @tsender's fork.
-3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. You need to use the `main` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
+3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. Use the `main` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
 4. auto_scene_gen_ros2: A ROS2 interface that provides the necessary tools to interact with this plugin.
    - Since this repo is the minimalistic ROS2 interface, it is often more convenient to add the ament packages in the `auto_scene_gen_ros2` repo to the repo you are developing.
 
 ## Installation
 
 **Installing the UE4 Plugins**
-1. Install supported version of Unreal Engine 4 and create a UE4 code project (let's refer to this project as "MyProject").
+1. Install a supported version of Unreal Engine 4 and create a code project (let's refer to this project as "MyProject").
 2. Download the `ROSIntegration` and `AutomaticSceneGeneration` plugins using the links above (making sure you download the specified branches). Copy these plugins into your `MyProject/Plugins/` folder.
 3. Open up your UE4 project and let the editor build the plugins (they will only build automatically the first time you open the project).
 4. Once everything builds and the project opens, verify the plugins are active by going to Edit -> Plugins. If they are for some reason inactive, then activate them and restart the editor.
@@ -82,7 +85,7 @@ We will assume you are using Ubuntu for all-things ROS-related.
 
 The diagram above shows the typical workflow for interacting with the platform. There are three main components: Unreal Engine (which includes this plugin), the autonomy stack under test, and an external client. The general process is as follows:
 1. The AutoSceneGen client sends a `RunScenario` request to the AutoSceneGen worker describing all of the scenario's parameters (scene description and mavigation task).
-2. The AutoSceneGen worker parses the `RunScenario` request, creates the desired scene, places the vehicle at the desired starting location and orientation, and relays the goal location to the AutoSceneGen vehicle nodes.
+2. The AutoSceneGen worker processes the `RunScenario` request, creates the desired scene, places the vehicle at the desired starting location and orientation, and relays the goal location to the AutoSceneGen vehicle nodes.
 3. The autonomy stack, consisting of AutoSceneGen vehicle nodes, then process exchanges sensor data and control commands to control the vehicle to reach the goal location.
 4. Once the AutoSceneGen vehicle receives its first control command, the AutoSceneGen worker continuously monitors the vehicle's performance. If the vehicle succeeds or fails (see below for how we define failure), then the worker will reset the vehicle and send a `AnalyzeScenario` request to the client containing information about the vehicle's trajectory and performance.
 5. The AutoSceneGen client will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeast until the client is done running tests.
