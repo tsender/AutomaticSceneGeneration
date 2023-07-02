@@ -83,15 +83,37 @@ We will assume you are using Ubuntu for all-things ROS-related.
 
 ![text](Documentation/AutoSceneGen_Workflow.PNG)
 
-The diagram above shows the typical workflow for interacting with the platform. There are three main components: Unreal Engine (which includes this plugin), the autonomy stack under test, and an external client. The general process is as follows:
-1. The AutoSceneGen client sends a `RunScenario` request to the AutoSceneGen worker describing all of the scenario's parameters (scene description and mavigation task).
-2. The AutoSceneGen worker processes the `RunScenario` request, creates the desired scene, places the vehicle at the desired starting location and orientation, and relays the goal location to the AutoSceneGen vehicle nodes.
-3. The autonomy stack, consisting of AutoSceneGen vehicle nodes, then process exchanges sensor data and control commands to control the vehicle to reach the goal location.
-4. Once the AutoSceneGen vehicle receives its first control command, the AutoSceneGen worker continuously monitors the vehicle's performance. If the vehicle succeeds or fails (see below for how we define failure), then the worker will reset the vehicle and send a `AnalyzeScenario` request to the client containing information about the vehicle's trajectory and performance.
-5. The AutoSceneGen client will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeast until the client is done running tests.
+The diagram above shows the typical workflow for interacting with the platform. There are three main components: Unreal Engine (which includes this plugin), the autonomy stack under test, and an external client. The platform is configured to work following a server-client model, with the AutoSceneGenWorker as the server and the AutoSceneGenClient as the client. The general process is as follows:
+1. The AutoSceneGenClient sends a `RunScenario` request to the AutoSceneGenWorker describing all of the scenario's parameters (scene description and mavigation task).
+2. The AutoSceneGenWorker processes the `RunScenario` request, creates the desired scene, places the vehicle at the desired starting location and orientation, and relays the goal location to the AutoSceneGenVehicleNodes.
+3. The autonomy stack, consisting of AutoSceneGenVehicleNodes, then process exchanges sensor data and control commands to control the vehicle to reach the goal location.
+4. Once the AutoSceneGenVehicle receives its first control command, the AutoSceneGenWorker continuously monitors the vehicle's performance. If the vehicle succeeds or fails (see below for how we define failure), then the worker will reset the vehicle and send a `AnalyzeScenario` request to the client containing information about the vehicle's trajectory and performance.
+5. The client will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeats until the client is done running tests.
 
+### The AutoSceneGenWorker Actor
 
+This is the main actor controlling everything within the simulation and is the server that the AutoSceneGen client node communicates with. This actor is responsible for processing the RunScenario requests, creating the specified scene, and monitoring the navigation task.
 
-### Setting up an AutoSceneGenVehicle
+Every level must have one of these actors in the World Outliner to take advantage of the features provided by this plugin. While most of the settings in the details panel under the category "AutoSceneGenVehicle" are overwritten from the RunScenario request, there are a few that should be modified prior to pressing Play:
+* `Worker ID`: The ID associated with this worker. Used in communication with the AutoSceneGenClient. All ROS topics related to this plugin will have the prefix `/asg_workerX/` where "X" is the worker ID.
+* `Landscape Material`: The material/texture that will be applied to the AutoSceneGenLandscape actor.
+* `Vehicle Start Location`: The starting location for the vehicle. Make sure this location is within the landscape bounds and is just above the landscape (a Z value of 50 cm should be fine). This ensures the vehicle starts on the default landscape.
+* `Auto Scene Gen Client Name`: The name of the ROS AutoSceneGenClient node.
 
-### Setting up Structural Scene Elements
+### The AutoSceneGenVehicle Actor
+
+This is the base vehicle actor class. This class comes with a custom `PIDDriveByWireComponent` to allow you to control it externally via ROS, and you can attach any number of our provided sensors to the vehicle. To create your vehicle model, follow these steps:
+1. Make a Blueprint class that inherits from `AutoSceneGenVehicle`.
+2. Click on the MeshComponent.
+   - Under "Animation", provide the `Animation Mode` and `Anim Class`.
+   - Under "Mesh", provide the `Skeletal Mesh`.
+   - Under "Materials", make sure the skeletal mesh materials appear.
+3. Go the physics asset for the skeletal mesh. Click on each component in the Skeleton Tree and under "Collision", check the box "Simulation Generates Hit Events".
+4. Go to the Class Defaults for the BP actor
+   - Adjust the `Linear Motion Threshold` value as desired. This value is used to determine if the vehicle is stuck or idling.
+   - Set the vehicle name as desired. All ROS topics pertaining to the vehicle will have the prefix `/asg_workerX/vehicle/`. If no worker is present, then the prefix will just be `/vehicle/`.
+6. Click on the `DriveByWireComponent`
+   - Under "PID Drive By Wire", make sure `Manual Drive` is unchecked, and set the Kp and Kd values for the throttle PID controller.
+7. dd
+
+### StructuralSceneActor
