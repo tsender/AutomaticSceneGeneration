@@ -36,7 +36,7 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 **Installing the UE4 Plugins**
 1. Install a supported version of Unreal Engine 4 and create a code project (let's refer to this project as "MyProject").
 2. Download the `ROSIntegration` and `AutomaticSceneGeneration` plugins using the links above (making sure you download the specified branches). Copy these plugins into your `MyProject/Plugins/` folder.
-3. Open up your UE4 project and let the editor build the plugins (they will only build automatically the first time you open the project).
+3. Open up your UE4 project and let the editor build the plugins (they will build automatically the first time you open the project).
 4. Once everything builds and the project opens, verify the plugins are active by going to Edit -> Plugins. If they are for some reason inactive, then activate them and restart the editor.
 
 **Installing the ROS2 Packages**
@@ -63,7 +63,10 @@ We will assume you are using Ubuntu for all-things ROS-related.
    colcon build
    source install/setup.bash # This sources the overlay
    ```
-   In all new terminals you open, make sure to source the overlay: `source ~/auto_scene_gen/auto_scene_gen/install/setup.bash`
+   In all new terminals you open, make sure to source the overlay:
+   ```
+   source ~/auto_scene_gen/auto_scene_gen/install/setup.bash
+   ```
 
 **Initial UE4 Setup**
 1. Open your UE4 project.
@@ -77,7 +80,7 @@ We will assume you are using Ubuntu for all-things ROS-related.
    ```
 7. Press Play in your UE4 project, and you should see some log lines indicating that the game connected to rosbridge. You should also see a few lines printed to the rosbridge launch terminal indicating the client subscribed to a few ROS topics with a prefix `/unreal_ros/`. See the `ROSintegration` README if you have issues.
 
-## Usage
+## Overview
 
 ### Typical Workflow
 
@@ -111,9 +114,45 @@ This is the base vehicle actor class. This class comes with a custom `PIDDriveBy
 3. Go the physics asset for the skeletal mesh. Click on each component in the Skeleton Tree and under "Collision", check the box "Simulation Generates Hit Events".
 4. Go to the Class Defaults for the BP actor
    - Adjust the `Linear Motion Threshold` value as desired. This value is used to determine if the vehicle is stuck or idling.
-   - Set the vehicle name as desired. All ROS topics pertaining to the vehicle will have the prefix `/asg_workerX/vehicle/`. If no worker is present, then the prefix will just be `/vehicle/`.
+   - Set the vehicle name as desired. All ROS topics pertaining to the vehicle will have the prefix `/asg_workerX/vehicle_name/`. If no worker is present, then the prefix will just be `/vehicle/`.
 6. Click on the `DriveByWireComponent`
    - Under "PID Drive By Wire", make sure `Manual Drive` is unchecked, and set the Kp and Kd values for the throttle PID controller.
-7. dd
+7. Attach sensors to the vehicle (see below for types of provided sensors)
+
+### Sensors
+
+We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`.
+
+#### Localization Sensor
+
+This sensor provides the position and orientation of the sensor component. it will publish data using a `geometry_msgs/PoseStamped` message. The configurable parameters are under the "Localization Sensor" tab in the details panel:
+- `Sensor Name`: The name of the sensor to be used in the ROS topic. Sensor name will appear as `/asg_workerX/vehicle_name/localization_name`.
+- - `Frame Rate`: The frame rate in Hz that the sensor will run at.
+
+#### CompleteCameraSensor
+
+This sensor is a multifunctional camera sensor. The true RGB colors will always be enabled, but there are others types of cameras that can be enabled:
+- Depth Camera: This camera provides the depth data. The raw data in the `sensor_msgs/Image` message will use the `32FC1` emcoding.
+- Traversability Segmentation Camera: This camera provides a semantic segmentation image of traversable objects (white), non-traversable objects (black), and the sky (blue).
+- Semantic Segmentation Camera: This camera provides a semantic segmentation image corresponding to a user-specified color scheme. All objects can be configured to have a semantic segmentation color, and this color will used to create this omage.
+
+Both semantic segmentation colors will encode the raw data in the `sensor_msgs/Image` message will use the `rgb8` emcoding. The main color camera ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/color_image`.
+
+**CAUTION**: The semantic segmentation cameras do not function by using the depth stencil buffer that Unreal Engine provides, as this limits the number of colors to 255. Instead, we adopt the approach taken by [UnrealCV](https://github.com/unrealcv/unrealcv) in which we manually change the mesh texture to create the new image. This added flexibility unfortunately comes with a cost, being the cost of rendering the scene multiple times per tick. Enabling these segmentation cameras will significantly slow down the game frame rate. We recommend you only use these sensors to help collect training data for DNNs and set the frame rate to be about 5 Hz.
+
+The configurable parameters are under the "Complete Camera Sensor" tab in the details panel:
+- `Image Width`: The image width, in pixels.
+- `Image Height`: The image height, in pixels.
+- `Sensor Name`: The name of the camera sensor to be used in the ROS topic. Sensor name will appear as `/asg_workerX/vehicle_name/camera_name`.
+- `Save Images to Disk`: Idicates if images from the color camera, trav camera, and seg camera should be saved to disk. If so, then they will be saved in the folder `/Game/TraininData/camera_name/` and will each have their own subfolder.
+- `Frame Rate`: The frame rate in Hz that the sensor will run at.
+- `Enable Depth Cam`: Indicates if the depth camera should be activated. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/depth_image`.
+- `Enable Trav Cam`: Indicates if the traversability segmentation camera should be enabled. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/trav_image`.
+- `Enable Seg Cam`: Indicates if the semantic segmentation camera should be enabled. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/seg_image`.
 
 ### StructuralSceneActor
+
+Structural scene acotrs (SSAs) are static structural elements that are part of the landscape (e.g., trees, bushes, rocks, etc.). The configurable parameters are under the "Structural Scene Actor" tab in the details panel:
+- `Static Mesh Component`: This is where you provide the static mesh component for the actor.
+- `Traversable Height Threshold`: If the actor is less than this height, then it will be considered traversable and the vehicle mesh will not collide with it (i.e,, they will "pass through" each other). This height is also used by the traversability segmenation camera.
+- `Always Traversable`: Indicates if the actor will always be traversable. If so, then the vehicle mesh will never collide with this mesh.
