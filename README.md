@@ -3,16 +3,26 @@
 Table of Contents
 - [Description](#description)
 - [The AutoSceneGen Ecosystem and Dependencies](#the-autoscenegen-ecosystem-and-dependencies)
+- [Installation](#installation)
+- [Overview](#overview)
 
 ## Description
-The purpose of this plugin is to support the development, validation, and testing of off-road autonomous vehicles (AVs). One of the primary knowledge gaps pertaining to off-road AV evaluation and testing is in the ability to quickly and automatically test an AV system in *arbitrary* and *diverse* simulated environments. While there exist numerous simulator packages designed for the development and testing of AVs in urban environments, most notably the [CARLA](https://carla.org/) simulator, there are very few high-fidelity open-source tools designed for testing AVs in natural, unstructured off-road environments. Consequently, we are developing a plugin for UE4 specifically for this purpose. Our plugin allows an external ROS2 client to test a virtual vehicle in any scenario (suppported by our custom scenario description protocol) across as many UE4 editors as your computational resources can support. We also provide an external ROS2 interface to interact with this plugin.
+The purpose of this plugin is to support the development, validation, and testing of off-road autonomous vehicles (AVs). One of the primary knowledge gaps pertaining to off-road AV evaluation and testing is in the ability to *quickly and automatically* test an AV system in *arbitrary and diverse* simulated environments. While there exist numerous simulator packages designed for the development and testing of AVs in urban environments, most notably the [CARLA](https://carla.org/) simulator, there are very few high-fidelity open-source tools designed for testing AVs in natural, unstructured off-road environments. Consequently, we are developing a plugin for UE4 specifically for this purpose. Our plugin allows an external ROS2 client to test a virtual vehicle in any scenario (suppported by our custom scenario description protocol) across as many UE4 editors as your computational resources can support. We also provide an external ROS2 interface to interact with this plugin.
+
+Efficiently conducting various navigation scenarios requires *automation*.
 
 Moving forward, we will often refer to this plugin by the abbreviated name "AutoSceneGen".
 
 ### A Note from the Author 
-My name is Ted Sender, I am a PhD candidate at the University of Michigan, and I am developing this platform as part of my PhD research project. Hence this platform will be under active development until I graduate. 
+My name is Ted Sender, I am a PhD candidate at the University of Michigan, and I am developing this platform as part of my PhD research project. This platform is still in its infancy and will be under active development as I continue my research.
 
 I am aware that some features you may wish to have (e.g. a larger sensor suite, a weather system, controlling the 3D terrain elevation, etc.) have not yet been added to this platform. Some improvements are a work in progress and/or will be added in the near future as I continue my research, some might get added in my free time, and others may just be a stretch goal. My goal is that together, we can improve the capabilities of this platform and the state-of-the-art in testing off-road AVs.
+
+### Citation
+
+If you use our work in an academic context, we would greatly appreciate it if you used the following citation:
+
+TODO
 
 ## The AutoSceneGen Ecosystem and Dependencies
 
@@ -24,7 +34,7 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 - ROS2 Foxy+
   - This repo was written and tested with ROS2 Foxy on Ubuntu 20.04, but it should work on Foxy and up.
 
-**Software Libraries:**
+**Required Software Libraries:**
 1. AutomaticSceneGeneration Plugin for UE4 (this repo)
 2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use the `feature/specify_ros_version` branch of @tsender's fork.
 3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. Use the `main` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
@@ -119,40 +129,41 @@ This is the base vehicle actor class. This class comes with a custom `PIDDriveBy
    - Under "PID Drive By Wire", make sure `Manual Drive` is unchecked, and set the Kp and Kd values for the throttle PID controller.
 7. Attach sensors to the vehicle (see below for types of provided sensors)
 
-### Sensors
-
-We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`.
-
-#### Localization Sensor
-
-This sensor provides the position and orientation of the sensor component. it will publish data using a `geometry_msgs/PoseStamped` message. The configurable parameters are under the "Localization Sensor" tab in the details panel:
-- `Sensor Name`: The name of the sensor to be used in the ROS topic. Sensor name will appear as `/asg_workerX/vehicle_name/localization_name`.
-- - `Frame Rate`: The frame rate in Hz that the sensor will run at.
-
-#### CompleteCameraSensor
-
-This sensor is a multifunctional camera sensor. The true RGB colors will always be enabled, but there are others types of cameras that can be enabled:
-- Depth Camera: This camera provides the depth data. The raw data in the `sensor_msgs/Image` message will use the `32FC1` emcoding.
-- Traversability Segmentation Camera: This camera provides a semantic segmentation image of traversable objects (white), non-traversable objects (black), and the sky (blue).
-- Semantic Segmentation Camera: This camera provides a semantic segmentation image corresponding to a user-specified color scheme. All objects can be configured to have a semantic segmentation color, and this color will used to create this omage.
-
-Both semantic segmentation colors will encode the raw data in the `sensor_msgs/Image` message will use the `rgb8` emcoding. The main color camera ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/color_image`.
-
-**CAUTION**: The semantic segmentation cameras do not function by using the depth stencil buffer that Unreal Engine provides, as this limits the number of colors to 255. Instead, we adopt the approach taken by [UnrealCV](https://github.com/unrealcv/unrealcv) in which we manually change the mesh texture to create the new image. This added flexibility unfortunately comes with a cost, being the cost of rendering the scene multiple times per tick. Enabling these segmentation cameras will significantly slow down the game frame rate. We recommend you only use these sensors to help collect training data for DNNs and set the frame rate to be about 5 Hz.
-
-The configurable parameters are under the "Complete Camera Sensor" tab in the details panel:
-- `Image Width`: The image width, in pixels.
-- `Image Height`: The image height, in pixels.
-- `Sensor Name`: The name of the camera sensor to be used in the ROS topic. Sensor name will appear as `/asg_workerX/vehicle_name/camera_name`.
-- `Save Images to Disk`: Idicates if images from the color camera, trav camera, and seg camera should be saved to disk. If so, then they will be saved in the folder `/Game/TraininData/camera_name/` and will each have their own subfolder.
-- `Frame Rate`: The frame rate in Hz that the sensor will run at.
-- `Enable Depth Cam`: Indicates if the depth camera should be activated. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/depth_image`.
-- `Enable Trav Cam`: Indicates if the traversability segmentation camera should be enabled. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/trav_image`.
-- `Enable Seg Cam`: Indicates if the semantic segmentation camera should be enabled. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/seg_image`.
-
 ### StructuralSceneActor
 
 Structural scene acotrs (SSAs) are static structural elements that are part of the landscape (e.g., trees, bushes, rocks, etc.). The configurable parameters are under the "Structural Scene Actor" tab in the details panel:
 - `Static Mesh Component`: This is where you provide the static mesh component for the actor.
 - `Traversable Height Threshold`: If the actor is less than this height, then it will be considered traversable and the vehicle mesh will not collide with it (i.e,, they will "pass through" each other). This height is also used by the traversability segmenation camera.
 - `Always Traversable`: Indicates if the actor will always be traversable. If so, then the vehicle mesh will never collide with this mesh.
+
+### Sensors
+
+We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. All ROS topic names will follow the naming hierarchy `/asg_workerX` + `/vehicle_name` + `/sensor_name`. If an AutoSceneGen worker or vehicle is not present, then the according prefix will be omitted.
+
+#### Localization Sensor
+
+This sensor provides the position and orientation of the sensor component. it will publish data using a `geometry_msgs/PoseStamped` message. The configurable parameters are under the "Localization Sensor" tab in the details panel:
+- `Sensor Name`: The name of the sensor to be used in the ROS topic.
+- `Frame Rate`: The frame rate in Hz that the sensor will run at.
+
+#### CompleteCameraSensor
+
+This sensor is a multifunctional camera sensor supporting the following types of cameras:
+- Color Camera (Color Cam): This is the standard RGB color camera that capture the scene's tru colors.
+- Depth Camera (Depth Cam): This camera provides the depth data. The raw data in the `sensor_msgs/Image` message will use the `32FC1` encoding.
+- Traversability Segmentation Camera (Trav Cam): This camera provides a semantic segmentation image of traversable objects (white), non-traversable objects (black), and the sky (blue).
+- Semantic Segmentation Camera (Seg Cam): This camera provides a semantic segmentation image corresponding to a user-specified color scheme. All objects can be configured to have a semantic segmentation color, and this color will used to create this omage.
+
+Both semantic segmentation colors will encode the raw data in the `sensor_msgs/Image` message will use the `rgb8` encoding. The main color camera ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/color_image`.
+
+**CAUTION**: These semantic segmentation cameras do not use the depth stencil buffer that Unreal Engine provides; this may be more efficient but it limits the number of segmentation colors to 256. Instead, we adopt the approach taken by [UnrealCV](https://github.com/unrealcv/unrealcv) in which we manually change the mesh texture to create the new image. This added flexibility unfortunately comes with a cost, being the cost of rerendering the scene multiple times per sensor tick. Enabling these segmentation cameras will significantly slow down the game frame rate. We recommend you only use these sensors to help collect training data for DNNs and set the frame rate to be about 5 Hz.
+
+The configurable parameters are under the "Complete Camera Sensor" tab in the details panel:
+- `Image Width`: The image width, in pixels.
+- `Image Height`: The image height, in pixels.
+- `Sensor Name`: The name of the camera sensor to be used in the ROS topic.
+- `Save Images to Disk`: Idicates if images from the color camera, trav camera, and seg camera should be saved to disk. If so, then they will be saved in the folder `/Game/TraininData/camera_name/` and will each have their own subfolder.
+- `Frame Rate`: The frame rate in Hz that the sensor will run at.
+- `Enable Depth Cam`: Indicates if the depth camera should be activated. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/depth_image`.
+- `Enable Trav Cam`: Indicates if the traversability segmentation camera should be enabled. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/trav_image`.
+- `Enable Seg Cam`: Indicates if the semantic segmentation camera should be enabled. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/seg_image`.
