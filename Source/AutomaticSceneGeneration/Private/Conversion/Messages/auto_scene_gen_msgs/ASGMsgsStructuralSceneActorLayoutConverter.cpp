@@ -19,9 +19,7 @@ bool UASGMsgsStructuralSceneActorLayoutConverter::ConvertIncomingMessage(const R
 bool UASGMsgsStructuralSceneActorLayoutConverter::ConvertOutgoingMessage(TSharedPtr<FROSBaseMsg> BaseMsg, bson_t** message) 
 {
     auto CastMsg = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::StructuralSceneActorLayout>(BaseMsg);
-
 	*message = bson_new();
 	_bson_append_msg(*message, CastMsg.Get());
-
 	return true;
 }

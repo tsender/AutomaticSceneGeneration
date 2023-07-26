@@ -9,9 +9,9 @@ USegmentationCameraSensor::USegmentationCameraSensor()
 
 }
 
-void USegmentationCameraSensor::InitTextureTarget(int32 Width, int32 Height) 
+void USegmentationCameraSensor::InitTextureTarget(int32 Width, int32 Height, float FOV) 
 {
-    Super::InitTextureTarget(Width, Height);
+    Super::InitTextureTarget(Width, Height, FOV);
     ShowFlags.SetPostProcessing(false); // Allows for unlit colors in materials to be one solid color
     ShowFlags.SetFog(false); // Must remove fog effects
     ShowFlags.SetVolumetricFog(false); // Must remove fog effects

@@ -16,7 +16,6 @@ bool UASGMsgsOdometryWithoutCovarianceConverter::ConvertIncomingMessage(const RO
 bool UASGMsgsOdometryWithoutCovarianceConverter::ConvertOutgoingMessage(TSharedPtr<FROSBaseMsg> BaseMsg, bson_t** message)
 {
 	auto CastMsg = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(BaseMsg);
-
 	*message = bson_new();
 	_bson_append_msg(*message, CastMsg.Get());
 	return true;

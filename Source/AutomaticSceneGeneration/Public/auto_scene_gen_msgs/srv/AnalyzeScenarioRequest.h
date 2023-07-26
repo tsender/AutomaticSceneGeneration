@@ -3,6 +3,7 @@
 #include <CoreMinimal.h>
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "auto_scene_gen_msgs/msg/OdometryWithoutCovariance.h"
+#include "ROSIntegration/Public/sensor_msgs/Image.h"
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
@@ -19,6 +20,15 @@ namespace ROSMessages{
 
 			// Scenario number that the ASG worker just ran
 			int32 scenario_number;
+
+			// Indicates if this request only contains scene capture data
+			bool scene_capture_only;
+
+			// List of all scene captures (in same order as list of names)
+			TArray<sensor_msgs::Image> scene_captures;
+
+			// List of all scene capture names (in same order as scene_captures)
+			TArray<FString> scene_capture_names;
 
 			static const uint8 REASON_SUCCESS = 0;                // Vehicle reached the goal
 			static const uint8 REASON_VEHICLE_COLLISION = 1;      // (If collisions are not allowed) Vehicle crashed into a non-traversable obstacle (any form of contact counts as collision)

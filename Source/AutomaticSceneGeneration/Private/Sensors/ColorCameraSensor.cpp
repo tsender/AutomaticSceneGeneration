@@ -9,8 +9,8 @@ UColorCameraSensor::UColorCameraSensor()
 
 }
 
-void UColorCameraSensor::InitTextureTarget(int32 Width, int32 Height) 
+void UColorCameraSensor::InitTextureTarget(int32 NewWidth, int32 NewHeight, float NewFOV) 
 {
-    Super::InitTextureTarget(Width, Height);
+    Super::InitTextureTarget(NewWidth, NewHeight, NewFOV);
     TextureTarget->TargetGamma = 1.2f;
 }

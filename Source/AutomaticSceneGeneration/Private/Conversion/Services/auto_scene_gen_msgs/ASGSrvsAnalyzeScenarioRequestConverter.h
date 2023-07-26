@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Conversion/Services/BaseRequestConverter.h"
+#include "ROSIntegration/Private/Conversion/Messages/sensor_msgs/SensorMsgsImageConverter.h"
 #include "Conversion/Messages/auto_scene_gen_msgs/ASGMsgsOdometryWithoutCovarianceConverter.h"
 #include "auto_scene_gen_msgs/srv/AnalyzeScenarioRequest.h"
 #include "ASGSrvsAnalyzeScenarioRequestConverter.generated.h"
@@ -28,6 +29,16 @@ public:
 
 		request->worker_id = UBaseMessageConverter::GetInt32FromBSON(key + ".worker_id", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->scenario_number = UBaseMessageConverter::GetInt32FromBSON(key + ".scenario_number", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+
+		request->scene_capture_only = UBaseMessageConverter::GetBoolFromBSON(key + ".scene_capture_only", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->scene_captures = GetTArrayFromBSON<ROSMessages::sensor_msgs::Image>(key + ".scene_captures", b, KeyFound, [](FString subKey, bson_t* subMsg, bool& subKeyFound) {
+			ROSMessages::sensor_msgs::Image ret;
+			subKeyFound = USensorMsgsImageConverter::_bson_extract_child_image(subMsg, subKey, &ret);
+			return ret;
+		});
+		if (!KeyFound) return false;
+		request->scene_capture_names = GetFStringTArrayFromBSON(key + ".scene_capture_names", b, KeyFound); if (!KeyFound) return false;
+
 		request->termination_reason = UBaseMessageConverter::GetInt32FromBSON(key + ".termination_reason", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		
 		request->vehicle_trajectory = UBaseMessageConverter::GetTArrayFromBSON<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(key + ".vehicle_trajectory", b, KeyFound, [LogOnErrors](FString subKey, bson_t* subMsg, bool& subKeyFound)
@@ -48,6 +59,14 @@ public:
 	{
 		BSON_APPEND_INT32(b, "worker_id", request->worker_id);
 		BSON_APPEND_INT32(b, "scenario_number", request->scenario_number);
+
+		BSON_APPEND_BOOL(b, "scene_capture_only", request->scene_capture_only);
+		UBaseMessageConverter::_bson_append_tarray<ROSMessages::sensor_msgs::Image>(b, "scene_captures", request->scene_captures, [](bson_t* msg, const char* key, const ROSMessages::sensor_msgs::Image &image)
+		{
+			USensorMsgsImageConverter::_bson_append_child_image(msg, key, &image);
+		});
+		_bson_append_fstring_tarray(b, "scene_capture_names", request->scene_capture_names);
+
 		BSON_APPEND_INT32(b, "termination_reason", request->termination_reason);
 
 		UBaseMessageConverter::_bson_append_tarray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance>(b, "vehicle_trajectory", request->vehicle_trajectory, [](bson_t* msg, const char* key, const ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance& odometry)

@@ -5,10 +5,21 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "auto_scene_gen_msgs/msg/SceneDescription.h"
+#include "auto_scene_gen_msgs/msg/SceneCaptureSettings.h"
 #include <chrono>
+#include <vector>
 #include "AutoSceneGenWorker.generated.h"
 
 // NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings
+
+namespace ROSMessages
+{
+	namespace auto_scene_gen_msgs
+	{
+		class FAnalyzeScenarioRequest;
+	}
+}
+
 
 UCLASS()
 class AUTOMATICSCENEGENERATION_API AAutoSceneGenWorker : public AActor
@@ -31,19 +42,47 @@ public: /****************************** AAutoSceneGenWorker ********************
 	uint8 GetWorkerID() const;
 
 private: /****************************** AAutoSceneGenWorker ******************************/
+	
 	UPROPERTY(EditAnywhere)
 	// ASG Worker ID number
 	uint8 WorkerID = 0;
 
+	UPROPERTY()
+	// Perspective camera for capturing image views of the scene
+	class UColorCameraSensor* PerspectiveCamera;
+
+	UPROPERTY()
+	// Orthographic camera for capturing image views of the scene
+	class UColorCameraSensor* OrthoCamera;
+
+    UPROPERTY(EditAnywhere)
+	int32 CameraImageSize = 1024;
+
+    // UPROPERTY(EditAnywhere)
+	// Perspective camera field of view in [deg]
+	float CameraFOV = 60.f;
+
+	bool bTookSceneCaptureInternal = false;
+
+	// Each key is the name of the scene capture, and each value is the FColor array
+	TMap<FString, TArray<FColor>> SceneCaptures;
+
+	// Each key is the name of the scene capture, and each value is the raw uint8 array
+	TMap<FString, std::vector<uint8>> RawSceneCaptures;
+
+	// Stores the latest scene capture settings
+	ROSMessages::auto_scene_gen_msgs::SceneCaptureSettings SceneCaptureSettings;
+
 	// Keeps track of the requested scene description
 	ROSMessages::auto_scene_gen_msgs::SceneDescription SceneDescription;
+
+	bool bTakeSceneCapture = true;
+
+	bool bSceneCaptureOnly = false;
 
 	UPROPERTY()
 	// Keeps track of the SSA maintainers
 	TMap<FString, class UStructuralSceneActorMaintainer*> SSAMaintainerMap;
-
-	UPROPERTY()
-	class AStaticMeshActor* GroundPlaneActor;
 
 	UPROPERTY()
 	class AAutoSceneGenLandscape* ASGLandscape;
@@ -183,6 +222,10 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// ROS client: Sends the worker issue notification to the ASG
 	class UService* WorkerIssueNotificationClient;
 
+	UPROPERTY()
+	// ROS client: Sends the scene captures to the ASG client
+	class UService* SceneCaptureClient;
+
 	bool bASGClientOnline = false;
 
 	uint8 WorkerStatus = 0;
@@ -250,4 +293,27 @@ private: /****************************** AAutoSceneGenWorker *******************
 	 * @param Response The response message to be sent to the ASG client (indicates receipt of request)
 	 */
 	void RunScenarioServiceCB(TSharedPtr<class FROSBaseServiceRequest> Request, TSharedPtr<class FROSBaseServiceResponse> Response);
+
+	/**
+	 * ROS callback for receiving the ASG client's response for the scene captures
+	 * @param Response The response message from the ASG client
+	 */
+	void SceneCaptureResponseCB(TSharedPtr<class FROSBaseServiceResponse> Response);
+
+	// Clear the scene capture maps
+	void ClearSceneCaptures();
+
+	void StoreSceneCapture(FString ImageName, TArray<FColor> &ImageData);
+
+	/**
+	 * Captrue the scene images as specified in the SceneCaptureSettings message
+	 * @param bDrawAnnotations Indicates if we should include the annotations specified in the SceneCaptureSettings message
+	*/
+	void CaptureSceneImages(bool bDrawAnnotations);
+
+	/**
+	 * Add the scene capture data to the AnalyzeScenario request
+	 * @param Request The AnalyzeScenario request to add scene capture data to
+	*/
+	void AddSceneCapturesToRequest(TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Request);
 };

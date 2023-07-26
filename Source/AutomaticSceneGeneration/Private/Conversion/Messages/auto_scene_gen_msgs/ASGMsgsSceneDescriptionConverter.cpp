@@ -19,9 +19,7 @@ bool UASGMsgsSceneDescriptionConverter::ConvertIncomingMessage(const ROSBridgePu
 bool UASGMsgsSceneDescriptionConverter::ConvertOutgoingMessage(TSharedPtr<FROSBaseMsg> BaseMsg, bson_t** message) 
 {
     auto CastMsg = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::SceneDescription>(BaseMsg);
-
 	*message = bson_new();
 	_bson_append_msg(*message, CastMsg.Get());
-
 	return true;
 }

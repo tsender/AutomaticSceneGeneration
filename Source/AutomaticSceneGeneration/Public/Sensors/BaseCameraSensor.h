@@ -49,11 +49,25 @@ public: /****************************** UBaseCameraSensor **********************
 	void SetFrameNumber(int32 NewFrameNumber);
 
 	/**
-	 * Initializes a new texture target with a new width and height. This MUST be called to change the width and/or height.
-	 * @param Width The new frame width in pixels
-	 * @param Height The new frame height in pixels
+	 * Initializes a new texture target. This must be called before using the camera.
+	 * @param NewWidth The new frame width in pixels
+	 * @param NewHeight The new frame height in pixels
+	 * @param NewFOV Horizontal field of view in degrees
 	 */
-	virtual void InitTextureTarget(int32 Width, int32 Height);
+	virtual void InitTextureTarget(int32 NewWidth, int32 NewHeight, float NewFOV);
+
+	/**
+	 * Resize the texture target width and height
+	 * @param NewWidth The new frame width in pixels
+	 * @param NewHeight The new frame height in pixels
+	 */
+	void ResizeTextureTarget(int32 NewWidth, int32 NewHeight);
+
+	/**
+	 * Set the camera FOV
+	 * @param NewFOV The new FOV angle in [deg]
+	*/
+	void SetFOV(float NewFOV);
 
 	/**
 	 * Captures an image of the scene based on the FColor format (used for most cameras). Make sure your texture render target is set correctly before using this.
@@ -72,7 +86,6 @@ public: /****************************** UBaseCameraSensor **********************
 protected: /****************************** UBaseCameraSensor ******************************/
 	int32 ImageWidth = 640;
 	int32 ImageHeight = 480;
-	float FieldOfView = 90.f;
 	bool bInitTextureTarget = false;
 
 	// Used for saving frames to disk

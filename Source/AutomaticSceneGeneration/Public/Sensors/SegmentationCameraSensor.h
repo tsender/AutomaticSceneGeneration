@@ -16,5 +16,5 @@ public:
 	USegmentationCameraSensor();
 
 public: /****************************** UBaseCameraSensor Overrides ******************************/
-	virtual void InitTextureTarget(int32 Width, int32 Height) override;
+	virtual void InitTextureTarget(int32 Width, int32 Height, float FOV) override;
 };

@@ -5,29 +5,36 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "RHICommandList.h"
 #include "Kismet/GameplayStatics.h"
+#include "AutoSceneGenLogging.h"
 
 UDepthCameraSensor::UDepthCameraSensor() 
 {
 
 }
 
-void UDepthCameraSensor::InitTextureTarget(int32 Width, int32 Height) 
+void UDepthCameraSensor::InitTextureTarget(int32 NewWidth, int32 NewHeight, float NewFOV) 
 {
-    if (ImageWidth <= 0 || ImageHeight <= 0)
+    if (NewWidth <= 0 || NewHeight <= 0)
 	{
 		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers."));
 		return;
 	}
     
-    ImageWidth = Width;
-    ImageHeight = Height;
-    FOVAngle = FieldOfView;
+    ImageWidth = NewWidth;
+    ImageHeight = NewHeight;
+    FOVAngle = NewFOV;
     
     // Create TextureRenderTarget
+    if (TextureTarget)
+    {
+        UTextureRenderTarget2D* OldTarget = TextureTarget;
+        TextureTarget = nullptr;
+        OldTarget->ConditionalBeginDestroy();
+
+    }
     TextureTarget = NewObject<UTextureRenderTarget2D>();
     
     TextureTarget->InitCustomFormat(ImageWidth, ImageHeight, PF_FloatRGBA, false); // Is PF_FloatRGBA correct?
-    // TextureTarget->InitAutoFormat(ImageWidth, ImageHeight);
     TextureTarget->RenderTargetFormat = ETextureRenderTargetFormat::RTF_RGBA16f;
     TextureTarget->bGPUSharedFlag = true; // Demand buffer on GPU?
 
@@ -37,21 +44,3 @@ void UDepthCameraSensor::InitTextureTarget(int32 Width, int32 Height)
 
     bInitTextureTarget = true;
 }
-
-// void UDepthCameraSensor::CaptureFloat16Color(TArray<FFloat16Color> &ImageData) 
-// {
-//     if (!bInitTextureTarget)
-//     {
-//         UE_LOG(LogASG, Error, TEXT("TextureTarget is not initialized."));
-//         return;
-//     }
-
-//     CaptureScene();
-//     FTextureRenderTargetResource* RenderTargetResource = TextureTarget->GameThread_GetRenderTargetResource();
-//     if (!RenderTargetResource)
-//     {
-//         UE_LOG(LogASG, Error, TEXT("RenderTargetResource returned nullptr."));
-//         return;
-//     }
-//     RenderTargetResource->ReadFloat16Pixels(ImageData);
-// }

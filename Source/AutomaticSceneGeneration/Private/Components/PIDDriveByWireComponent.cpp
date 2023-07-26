@@ -239,7 +239,7 @@ void UPIDDriveByWireComponent::BypassControllerCB(TSharedPtr<FROSBaseMsg> Msg)
 
 	BypassLocation.X = CastMsg->position.x;
 	BypassLocation.Y = CastMsg->position.y;
-	BypassLocation.Z = Vehicle->GetNominalVehicleZLocation();
+	BypassLocation.Z = CastMsg->position.z;; //Vehicle->GetNominalVehicleZLocation();
 	BypassQuat = FQuat(CastMsg->orientation.x, CastMsg->orientation.y, CastMsg->orientation.z, CastMsg->orientation.w);
 
 	bBypassController = true;

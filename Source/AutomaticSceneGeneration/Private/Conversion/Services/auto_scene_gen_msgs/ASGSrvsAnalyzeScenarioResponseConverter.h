@@ -24,7 +24,6 @@ public:
 	static bool _bson_extract_child_response(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioResponse *response, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
-
 		response->received = UBaseMessageConverter::GetBoolFromBSON(key + ".received", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		return true;
 	}

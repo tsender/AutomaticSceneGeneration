@@ -53,19 +53,26 @@ void UBaseCameraSensor::InitAnnotatableActors()
 }
 
 // These settings will be fine for most camera sensors
-void UBaseCameraSensor::InitTextureTarget(int32 Width, int32 Height) 
+void UBaseCameraSensor::InitTextureTarget(int32 NewWidth, int32 NewHeight, float NewFOV) 
 {
-    if (ImageWidth <= 0 || ImageHeight <= 0)
+    if (NewWidth <= 0 || NewHeight <= 0)
 	{
 		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers."));
 		return;
 	}
     
-    ImageWidth = Width;
-    ImageHeight = Height;
-    FOVAngle = FieldOfView;
+    ImageWidth = NewWidth;
+    ImageHeight = NewHeight;
+    FOVAngle = NewFOV;
     
     // Create TextureRenderTarget
+    if (TextureTarget)
+    {
+        UTextureRenderTarget2D* OldTarget = TextureTarget;
+        TextureTarget = nullptr;
+        OldTarget->ConditionalBeginDestroy();
+
+    }
     TextureTarget = NewObject<UTextureRenderTarget2D>();
     
     TextureTarget->InitCustomFormat(ImageWidth, ImageHeight, PF_B8G8R8A8, false); // PF_B8G8R8A8 disables HDR which will boost storing to disk due to less image information
@@ -77,6 +84,23 @@ void UBaseCameraSensor::InitTextureTarget(int32 Width, int32 Height)
     bAlwaysPersistRenderingState = true;
 
     bInitTextureTarget = true;
+}
+
+void UBaseCameraSensor::ResizeTextureTarget(int32 NewWidth, int32 NewHeight)
+{
+    if (NewWidth <= 0 || NewHeight <= 0)
+	{
+		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers."));
+		return;
+	}
+
+    if (TextureTarget)
+        TextureTarget->ResizeTarget(NewWidth, NewHeight);
+}
+
+void UBaseCameraSensor::SetFOV(float NewFOV)
+{
+    FOVAngle = NewFOV;
 }
 
 int32 UBaseCameraSensor::GetImageWidth() 
@@ -141,8 +165,8 @@ void UBaseCameraSensor::CaptureColor(TArray<FColor> &ImageData, bool bUseAnnotat
         FVector RelLocation = Comp->GetOwner()->GetActorLocation() - CamLocation;
         float x1 = FMath::Cos(CamYaw) * RelLocation.X + FMath::Sin(CamYaw) * RelLocation.Y;
         float y1 = -FMath::Sin(CamYaw) * RelLocation.X + FMath::Cos(CamYaw) * RelLocation.Y;
-        float m = FMath::Cos(FieldOfView*PI/360.f) / FMath::Sin(FieldOfView*PI/360.f);
-        float xb = -1000.f / FMath::Sin(FieldOfView*PI/360.f); // 10m buffer from actual FOV
+        float m = FMath::Cos(FOVAngle*PI/360.f) / FMath::Sin(FOVAngle*PI/360.f);
+        float xb = -1000.f / FMath::Sin(FOVAngle*PI/360.f); // 10m buffer from actual FOV
 
         // If (x1, y1) in field of view, then set material
         if ((x1 > -m*y1 + xb) && (x1 > m*y1 + xb))

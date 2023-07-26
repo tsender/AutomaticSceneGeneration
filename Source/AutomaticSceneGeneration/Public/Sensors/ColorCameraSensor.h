@@ -16,5 +16,6 @@ public:
 	UColorCameraSensor();
 
 public: /****************************** UBaseCameraSensor Overrides ******************************/
-	virtual void InitTextureTarget(int32 Width, int32 Height) override;
+
+	virtual void InitTextureTarget(int32 NewWidth, int32 NewHeight, float NewFOV) override;
 };

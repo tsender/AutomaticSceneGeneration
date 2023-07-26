@@ -6,6 +6,7 @@
 #include "ROSIntegration/Private/Conversion/Services/BaseRequestConverter.h"
 #include "ROSIntegration/Private/Conversion/Messages/geometry_msgs/GeometryMsgsPointConverter.h"
 #include "Conversion/Messages/auto_scene_gen_msgs/ASGMsgsSceneDescriptionConverter.h"
+#include "Conversion/Messages/auto_scene_gen_msgs/ASGMsgsSceneCaptureSettingsConverter.h"
 #include "auto_scene_gen_msgs/srv/RunScenarioRequest.h"
 #include "ASGSrvsRunScenarioRequestConverter.generated.h"
 
@@ -32,6 +33,10 @@ public:
 		request->sim_timeout_period = UBaseMessageConverter::GetDoubleFromBSON(key + ".sim_timeout_period", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->vehicle_idling_timeout_period = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_idling_timeout_period", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		request->vehicle_stuck_timeout_period = UBaseMessageConverter::GetDoubleFromBSON(key + ".vehicle_stuck_timeout_period", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		
+		request->max_vehicle_roll = UBaseMessageConverter::GetDoubleFromBSON(key + ".max_vehicle_roll", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->max_vehicle_pitch = UBaseMessageConverter::GetDoubleFromBSON(key + ".max_vehicle_pitch", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		
 		request->allow_collisions = UBaseMessageConverter::GetBoolFromBSON(key + ".allow_collisions", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		if (!UGeometryMsgsPointConverter::_bson_extract_child_point(b, key + ".vehicle_start_location", &request->vehicle_start_location, LogOnErrors)) return false;
@@ -41,6 +46,10 @@ public:
 		request->goal_radius = UBaseMessageConverter::GetDoubleFromBSON(key + ".goal_radius", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		
 		if (!UASGMsgsSceneDescriptionConverter::_bson_extract_child_msg(b, key + ".scene_description", &request->scene_description, LogOnErrors)) return false;
+
+		request->take_scene_capture = UBaseMessageConverter::GetBoolFromBSON(key + ".take_scene_capture", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		request->scene_capture_only = UBaseMessageConverter::GetBoolFromBSON(key + ".scene_capture_only", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		if (!UASGMsgsSceneCaptureSettingsConverter::_bson_extract_child_msg(b, key + ".scene_capture_settings", &request->scene_capture_settings, LogOnErrors)) return false;
 
 		return true;
 	}
@@ -52,6 +61,10 @@ public:
 		BSON_APPEND_DOUBLE(b, "sim_timeout_period", request->sim_timeout_period);
 		BSON_APPEND_DOUBLE(b, "vehicle_idling_timeout_period", request->vehicle_idling_timeout_period);
 		BSON_APPEND_DOUBLE(b, "vehicle_stuck_timeout_period", request->vehicle_stuck_timeout_period);
+
+		BSON_APPEND_DOUBLE(b, "max_vehicle_roll", request->max_vehicle_roll);
+		BSON_APPEND_DOUBLE(b, "max_vehicle_pitch", request->max_vehicle_pitch);
+
 		BSON_APPEND_BOOL(b, "allow_collisions", request->allow_collisions);
 
 		UGeometryMsgsPointConverter::_bson_append_child_point(b, "vehicle_start_location", &request->vehicle_start_location);
@@ -61,6 +74,9 @@ public:
 		BSON_APPEND_DOUBLE(b, "goal_radius", request->goal_radius);
 
 		UASGMsgsSceneDescriptionConverter::_bson_append_child_msg(b, "scene_description", &request->scene_description);
+
+		BSON_APPEND_BOOL(b, "take_scene_capture", request->take_scene_capture);
+		BSON_APPEND_BOOL(b, "scene_capture_only", request->scene_capture_only);
+		UASGMsgsSceneCaptureSettingsConverter::_bson_append_child_msg(b, "scene_capture_settings", &request->scene_capture_settings);
 	}
-	
 };

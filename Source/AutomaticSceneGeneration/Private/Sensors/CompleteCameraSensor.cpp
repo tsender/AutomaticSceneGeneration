@@ -56,16 +56,16 @@ void UCompleteCameraSensor::BeginPlay()
 	EncodedTravData.resize(ImageWidth*ImageHeight*3);
 	EncodedSegData.resize(ImageWidth*ImageHeight*3);
 
-	ColorCamera->InitTextureTarget(ImageWidth, ImageHeight);
-	DepthCamera->InitTextureTarget(ImageWidth, ImageHeight);
-	TravCamera->InitTextureTarget(ImageWidth, ImageHeight);
-	SegCamera->InitTextureTarget(ImageWidth, ImageHeight);
+	ColorCamera->InitTextureTarget(ImageWidth, ImageHeight, FieldOfView);
+	DepthCamera->InitTextureTarget(ImageWidth, ImageHeight, FieldOfView);
+	TravCamera->InitTextureTarget(ImageWidth, ImageHeight, FieldOfView);
+	SegCamera->InitTextureTarget(ImageWidth, ImageHeight, FieldOfView);
 
 	ColorCamera->SetSaveImages(bSaveImagesToDisk);
 	TravCamera->SetSaveImages(bSaveImagesToDisk);
 	SegCamera->SetSaveImages(bSaveImagesToDisk);
 
-	CameraFolder = FPaths::ProjectUserDir() + FString::Printf(TEXT("TrainingData/%s/"), *SensorName);
+	CameraFolder = FPaths::ProjectUserDir() + FString::Printf(TEXT("%s/%s/"), *SaveFolder, *SensorName);
 	FrameNumberPath = CameraFolder + FString("FrameNumber.json");
 	ColorCamera->SetSavePrefix(CameraFolder + FString("color/color"));
 	TravCamera->SetSavePrefix(CameraFolder + FString("trav/trav"));
@@ -159,6 +159,11 @@ void UCompleteCameraSensor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 
+	EncodedColorData.clear();
+	EncodedDepthData.clear();
+	EncodedTravData.clear();
+	EncodedSegData.clear();
+
 	// Save next valid frame number
 	if (bSaveImagesToDisk)
 	{
@@ -211,12 +216,6 @@ void UCompleteCameraSensor::TickSensor()
 				
 				// Encode float32 as 4 bytes with native byte ordering
 				std::memcpy(&EncodedDepthData[i*4], &d, sizeof(float)); // memcpy order: dest, src, size
-				
-				// // Convert from big endian to little endian
-				// uint8 Bytes[4];
-				// std::memcpy(Bytes, &d, sizeof(float)); // Encode float32 as 4 bytes
-				// uint8 LittleBytes[4] = {Bytes[3], Bytes[2], Bytes[1], Bytes[0]}; // Reverse byte order
-				// std::memcpy(&EncodedDepthData[i*4], LittleBytes, sizeof(float)); // Then copy to array
 			}
 
 			TSharedPtr<ROSMessages::sensor_msgs::Image> DepthCamMsg(new ROSMessages::sensor_msgs::Image());

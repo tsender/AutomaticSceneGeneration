@@ -6,6 +6,8 @@
 #include "Objects/StructuralSceneActorMaintainer.h"
 #include "Actors/StructuralSceneActor.h"
 #include "Vehicles/AutoSceneGenVehicle.h"
+#include "Sensors/ColorCameraSensor.h"
+#include "DrawDebugHelpers.h"
 #include "AutoSceneGenLogging.h"
 
 #include "Components/StaticMeshComponent.h"
@@ -31,11 +33,18 @@
 #include "auto_scene_gen_msgs/srv/AnalyzeScenarioResponse.h"
 #include "auto_scene_gen_msgs/srv/WorkerIssueNotificationRequest.h"
 #include "auto_scene_gen_msgs/srv/WorkerIssueNotificationResponse.h"
+// #include "auto_scene_gen_msgs/srv/SceneCaptureRequest.h"
+// #include "auto_scene_gen_msgs/srv/SceneCaptureResponse.h"
 
 // Sets default values
 AAutoSceneGenWorker::AAutoSceneGenWorker()
 {
 	PrimaryActorTick.bCanEverTick = true;
+
+	PerspectiveCamera = CreateDefaultSubobject<UColorCameraSensor>(TEXT("Perspective Camera"));
+	OrthoCamera = CreateDefaultSubobject<UColorCameraSensor>(TEXT("Orthographic Camera"));
+	RootComponent = PerspectiveCamera;
+	OrthoCamera->SetupAttachment(RootComponent);
 }
 
 // Called when the game starts or when spawned
@@ -52,27 +61,6 @@ void AAutoSceneGenWorker::BeginPlay()
 	bWaitingForScenarioRequest = true; // false
 	bProcessedScenarioRequest = true;
 	bReadyToTick = false;
-
-	// Find ground plane actor
-	// TArray<AActor*> TempArray;
-	// UGameplayStatics::GetAllActorsOfClass(GetWorld(), AStaticMeshActor::StaticClass(), TempArray);
-	// if (!TempArray.Num())
-	// {
-	// 	UE_LOG(LogASG, Error, TEXT("The ground plane must be a StaticMeshActors with tag 'ground_plane', but could not find any StaticMeshActors in the scene."));
-	// 	return;
-	// }
-	// for (AActor* Actor: TempArray)
-	// {
-	// 	if (Actor->ActorHasTag("ground_plane"))
-	// 	{
-	// 		FVector Origin;
-	// 		FVector BoxExtent;
-	// 		Actor->GetActorBounds(true, Origin, BoxExtent);
-	// 		GroundPlaneZHeight = Origin.Z + BoxExtent.Z;
-	// 		// LandscapeSize = 2*BoxExtent;
-	// 		break;
-	// 	}
-	// }
 
 	// Get landscape actor
 	TArray<AActor*> TempArray;
@@ -96,6 +84,8 @@ void AAutoSceneGenWorker::BeginPlay()
 	}
 	ASGLandscape->CreateBaseMesh(FVector(0.,-LandscapeSize,0.), LandscapeSize, DebugLandscapeSubdivisions, LandscapeBorder);
 	ASGLandscape->SetMaterial(LandscapeMaterial);
+
+	// Demo commands for editing landscape
 	// ASGLandscape->LandscapeEditSculptCircularPatch(FVector(LandscapeSize/2., LandscapeSize/2, 0.), LandscapeSize/4., 20.*100, true, 0, ELandscapeFalloff::Smooth);
 	// ASGLandscape->LandscapeEditSculptRamp(FVector(100.*100, 100.*100, 0.), FVector(150.*100, 150*100., 10.*100), 50.*100, false, false, 0.7, ELandscapeFalloff::Smooth);
 	// ASGLandscape->LandscapeEditSculptRamp(FVector(100.*100, 200.*100, 0.*100.), FVector(100.*100, 300*100., 10.*100), 50.*100, true, false, 0.5, ELandscapeFalloff::Smooth);
@@ -191,14 +181,50 @@ void AAutoSceneGenWorker::BeginPlay()
 		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_msgs/RunScenario"));
 		RunScenarioService->Advertise(std::bind(&AAutoSceneGenWorker::RunScenarioServiceCB, this, std::placeholders::_1, std::placeholders::_2), false);
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS service: %s"), *RunScenarioServiceName);
+		
+		// SceneCapture service
+		// SceneCaptureClient = NewObject<UService>(UService::StaticClass());
+		// FString SceneCaptureServiceName = FString::Printf(TEXT("/%s/services/scene_capture"), *AutoSceneGenClientName);
+		// SceneCaptureClient->Init(ROSInst->ROSIntegrationCore, SceneCaptureServiceName, TEXT("auto_scene_gen_msgs/SceneCapture"));
+		// UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS client: %s"), *SceneCaptureServiceName);
 	}
 	else
 	{
 		UE_LOG(LogASG, Display, TEXT("ASG worker will create scenes randomly (for debugging purposes)."));
+		RandomizeDebugStructuralSceneActors(); // Calling this here forces the engine to render the debug SSAs before the tick function
 	}
 
-	// Calling this here forces the engine to render the debug SSAs before the tick function
-	RandomizeDebugStructuralSceneActors();
+	// Setup cameras and scene capture settings
+	SetActorEnableCollision(false);
+    SetActorHiddenInGame(true);
+    PerspectiveCamera->InitTextureTarget(CameraImageSize, CameraImageSize, CameraFOV);
+	OrthoCamera->ProjectionType = ECameraProjectionMode::Orthographic;
+    OrthoCamera->InitTextureTarget(CameraImageSize, CameraImageSize, CameraFOV);
+
+	bTookSceneCaptureInternal = false; 	// This variable is an internal flag
+	bTakeSceneCapture = true;	// Gets overridden from the scene capture settings
+	bSceneCaptureOnly = false; 	// Gets overridden from the scene capture settings
+	SceneCaptureSettings.draw_annotations = false;
+	SceneCaptureSettings.ortho_aerial = true;
+	SceneCaptureSettings.perspective_aerial = false;
+	SceneCaptureSettings.front_aerial = true;
+	SceneCaptureSettings.front_left_aerial = false;
+	SceneCaptureSettings.left_aerial = false;
+	SceneCaptureSettings.back_left_aerial = false;
+	SceneCaptureSettings.back_aerial = false;
+	SceneCaptureSettings.back_right_aerial = false;
+	SceneCaptureSettings.right_aerial = false;
+	SceneCaptureSettings.front_right_aerial = false;
+	SceneCaptureSettings.vehicle_start_pov = true;
+
+	if (!ROSInst) // Only save images to disk if we don't have a ROS connection
+	{
+		PerspectiveCamera->SetSaveImages(true);
+		PerspectiveCamera->SetSavePrefix(FPaths::ProjectUserDir() + FString("SceneCapture/perspective"));
+
+		OrthoCamera->SetSaveImages(true);
+		OrthoCamera->SetSavePrefix(FPaths::ProjectUserDir() + FString("SceneCapture/orthographic"));
+	}
 
 	FTimerHandle TimerHandle;
 	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &AAutoSceneGenWorker::PublishStatus, 0.05, true);
@@ -211,6 +237,7 @@ void AAutoSceneGenWorker::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	DebugSSASubclasses.Empty();
 	SSAMaintainerMap.Empty();
 	SceneDescription.ssa_array.Empty();
+	ClearSceneCaptures();
 
 	if (ROSInst)
 	{
@@ -238,6 +265,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 	
 	if (!bProcessedScenarioRequest)
 	{
+		ClearSceneCaptures();
 		ProcessRunScenarioRequest();
 	}
 	
@@ -249,6 +277,51 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		ASGVehicle->SetWorldIsReadyFlag(true);
 		return;
 	}
+
+	if (ASGVehicle && ASGVehicle->OnStandby() && !bTookSceneCaptureInternal)
+	{
+		if (bTakeSceneCapture)
+		{
+			OrthoCamera->ResizeTextureTarget(CameraImageSize, CameraImageSize);
+			PerspectiveCamera->ResizeTextureTarget(CameraImageSize, CameraImageSize);
+
+			CaptureSceneImages(false);
+			if (SceneCaptureSettings.draw_annotations)
+				CaptureSceneImages(true);
+		}
+
+		// TArray<int32> Arr = {1,2,3};
+		// TMap<int32, TArray<int32>> MyMap;
+		// MyMap.Emplace(0, Arr);
+		// Arr[0] = -1;
+		// MyMap.Emplace(1, Arr);
+		// UE_LOG(LogASG, Display, TEXT("Arr0: %i, %i, %i"), MyMap[0][0], MyMap[0][1], MyMap[0][2]);
+		// UE_LOG(LogASG, Display, TEXT("Arr1: %i, %i, %i"), MyMap[1][0], MyMap[1][1], MyMap[1][2]);
+
+		bTookSceneCaptureInternal = true;
+
+		// Send bare AnalyzeScenario request with just the scene captures
+		if (bSceneCaptureOnly)
+		{
+			TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
+			
+			bWaitingForScenarioRequest = true;
+			WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
+			Req->worker_id = WorkerID;
+			Req->scenario_number = ScenarioNumber;
+			Req->termination_reason = ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_SUCCESS;
+			Req->num_vehicle_control_messages = 0;
+			Req->vehicle_sim_time = 0.;
+			AddSceneCapturesToRequest(Req);
+
+			UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i (scene capture only). ASG worker is ONLINE_AND_READY."), ScenarioNumber);
+			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
+		}
+	}
+
+	// Indicate the ASG worker is ready
+	if (ASGVehicle && ASGVehicle->OnStandby() && !bSceneCaptureOnly)
+		ASGVehicle->SetASGWorkerIsReadyFlag(true);
 
 	if (bProcessedScenarioRequest && !bWaitingForScenarioRequest)
 	{
@@ -479,6 +552,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	}
 
 	// Set attributes for all requested SSA subclasses
+	// TODO: Allow some SSAs to have their normals aligned with the landscape surface normal
 	for (TSubclassOf<AStructuralSceneActor> Subclass : RequestedSSASubclasses)
 	{
 		// Find corresponding element in SSA array
@@ -509,6 +583,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 	
 	bReadyToTick = false;
 	bProcessedScenarioRequest = true;
+	bTookSceneCaptureInternal = false;
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_RUNNING;
 	UE_LOG(LogASG, Display, TEXT("Processed scenario description %i. ASG worker is ONLINE_AND_RUNNING."), ScenarioNumber);
 }
@@ -529,6 +604,7 @@ void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 Termin
 	FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;
 	Req->vehicle_sim_time = FROSTime::GetTimeDelta(start_time, end_time);
 
+	AddSceneCapturesToRequest(Req);
 	UE_LOG(LogASG, Display, TEXT("Computed vehicle sim time: %f"), Req->vehicle_sim_time);
 	UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i. ASG worker is ONLINE_AND_READY."), ScenarioNumber);
 	AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
@@ -615,6 +691,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 			FROSTime end_time = Req->vehicle_trajectory[Req->vehicle_trajectory.Num()-1].header.time;
 			Req->vehicle_sim_time = FROSTime::GetTimeDelta(start_time, end_time);
 
+			AddSceneCapturesToRequest(Req);
 			UE_LOG(LogASG, Display, TEXT("Computed vehicle sim time: %f"), Req->vehicle_sim_time);
 			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i. ASG worker is ONLINE_AND_READY."), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
@@ -718,6 +795,9 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	SimTimeoutPeriod = CastRequest->sim_timeout_period;
 	VehicleIdlingTimeoutPeriod = CastRequest->vehicle_idling_timeout_period;
 	VehicleStuckTimeoutPeriod = CastRequest->vehicle_stuck_timeout_period;
+
+	MaxVehicleRoll = CastRequest->max_vehicle_roll;
+	MaxVehiclePitch = CastRequest->max_vehicle_pitch;
 	bAllowCollisions = CastRequest->allow_collisions;
 
 	VehicleStartLocation.X = CastRequest->vehicle_start_location.x;
@@ -729,6 +809,11 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 
 	SceneDescription = CastRequest->scene_description;
 
+	bTakeSceneCapture = CastRequest->take_scene_capture;
+	bSceneCaptureOnly = CastRequest->scene_capture_only;
+	SceneCaptureSettings = CastRequest->scene_capture_settings;
+	CameraImageSize = SceneCaptureSettings.image_size;
+
 	bWaitingForScenarioRequest = false; // Can only set this to false here
 	bProcessedScenarioRequest = false;
 	WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
@@ -736,4 +821,296 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 
 	// Fill in response
 	CastResponse->received = true;
+}
+
+// void AAutoSceneGenWorker::SceneCaptureResponseCB(TSharedPtr<class FROSBaseServiceResponse> Response)
+// {
+// 	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FSceneCaptureResponse>(Response);
+// 	if (!CastResponse)
+// 	{
+// 		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/SceneCaptureResponse"));
+// 		return;
+// 	}
+// 	UE_LOG(LogASG, Display, TEXT("SceneCapture request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
+// }
+
+void AAutoSceneGenWorker::ClearSceneCaptures()
+{
+	for (TPair<FString, TArray<FColor>> Elem : SceneCaptures)
+	{
+		Elem.Value.Empty();
+	}
+	for (TPair<FString, std::vector<uint8>> Elem : RawSceneCaptures)
+	{
+		Elem.Value.clear();
+	}
+	SceneCaptures.Empty();
+	RawSceneCaptures.Empty();
+}
+
+void AAutoSceneGenWorker::StoreSceneCapture(FString ImageName, TArray<FColor> &ImageData)
+{
+	SceneCaptures.Emplace(ImageName, ImageData);
+	std::vector<uint8> RawData(CameraImageSize*CameraImageSize*3);
+	for (int32 i = 0; i < ImageData.Num(); i++)
+	{
+		RawData[i*3] = ImageData[i].R;
+		RawData[i*3+1] = ImageData[i].G;
+		RawData[i*3+2] = ImageData[i].B;
+	}
+	RawSceneCaptures.Emplace(ImageName, RawData);
+}
+
+void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
+{
+	// TODO: Account for non-flat landscape
+
+	float NomSize;
+	if (ROSInst)
+		NomSize = SceneDescription.landscape.nominal_size;
+	else
+		NomSize = LandscapeSize;
+
+	float NomCamHeight = 0.5*NomSize/FMath::Tan(CameraFOV*PI/360.);
+	float CamYaw;
+	TArray<FColor> ImageData;
+	FVector Location;
+	FRotator Rotation;
+
+	FString AnnotationExtension = FString("");
+	if (bDrawAnnotations)
+	{
+		FVector GoalSphereLocation = VehicleGoalLocation;
+		TArray<AActor*> TempArray;
+		GoalSphereLocation.Z = ASGLandscape->GetLandscapeElevation(VehicleGoalLocation - ASGLandscape->GetActorLocation(), TempArray);
+		DrawDebugSphere(GetWorld(), GoalSphereLocation, GoalRadius, 36, SceneCaptureSettings.goal_sphere_color.ToFLinearColor().ToFColor(false), true, -1, 0, SceneCaptureSettings.goal_sphere_thickness);
+		AnnotationExtension = FString("_annotated");
+	}
+	
+	// Aerial / Bird's Eye
+	if (SceneCaptureSettings.ortho_aerial || SceneCaptureSettings.perspective_aerial)
+	{
+		CamYaw = -90.;
+		for (int32 Padding : SceneCaptureSettings.aerial_padding)
+		{
+			float PadCamHeight = 0.5*(NomSize + 2*Padding*100.)/FMath::Tan(CameraFOV*PI/360.);
+			Location = FVector(NomSize/2, -NomSize/2, PadCamHeight);
+			Rotation = FRotator(-90., -90., 0.);
+			SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+
+			// Ortho
+			if (SceneCaptureSettings.ortho_aerial)
+			{
+				OrthoCamera->OrthoWidth = NomSize + 2*Padding*100.;
+				OrthoCamera->CaptureColor(ImageData, false);
+				StoreSceneCapture(FString::Printf(TEXT("ortho_aerial_pad%i"), Padding) + AnnotationExtension, ImageData);
+			}
+
+			// Perspective
+			if (SceneCaptureSettings.perspective_aerial)
+			{
+				PerspectiveCamera->CaptureColor(ImageData, false);
+				StoreSceneCapture(FString::Printf(TEXT("perspective_aerial_pad%i"), Padding) + AnnotationExtension, ImageData);
+			}
+		}
+	}
+
+	// float NewPitch = 90. - 0.5*(FMath::Atan2(Size/2, NomCamHeight) * 360./PI); // 60 for 60 FOV
+	
+	// Perspective Front Aerial
+	if (SceneCaptureSettings.front_aerial)
+	{
+		CamYaw = -90.;
+		// 60 deg
+		Location = FVector(NomSize/2, 0.1*NomSize, NomCamHeight);
+		Rotation = FRotator(-60., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_front_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector(NomSize/2, NomSize/3, 0.9*NomCamHeight);
+		Rotation = FRotator(-45., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_front_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Perspective Front Left Aerial
+	if (SceneCaptureSettings.front_left_aerial)
+	{
+		CamYaw = -45.;
+		// 60 deg
+		Location = FVector(0., 0., NomCamHeight);
+		Rotation = FRotator(-60, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_front_left_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector(-0.15*NomSize, 0.15*NomSize, 0.9*NomCamHeight);
+		Rotation = FRotator(-45, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_front_left_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Perspective Left Aerial
+	if (SceneCaptureSettings.left_aerial)
+	{
+		CamYaw = 0.;
+		// 60 deg
+		Location = FVector(-0.1*NomSize, -NomSize/2, NomCamHeight);
+		Rotation = FRotator(-60., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_left_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector(-NomSize/3, -NomSize/2, 0.9*NomCamHeight);
+		Rotation = FRotator(-45., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_left_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Perspective Back Left Aerial
+	if (SceneCaptureSettings.back_left_aerial)
+	{
+		CamYaw = 45.;
+		// 60 deg
+		Location = FVector(0., -NomSize, NomCamHeight);
+		Rotation = FRotator(-60, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_back_left_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector(-0.15*NomSize, -1.15*NomSize, 0.9*NomCamHeight);
+		Rotation = FRotator(-45, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_back_left_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Perspective Back Aerial
+	if (SceneCaptureSettings.back_aerial)
+	{
+		CamYaw = 90.;
+		// 60 deg
+		Location = FVector(NomSize/2, -1.1*NomSize, NomCamHeight);
+		Rotation = FRotator(-60., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_back_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector(NomSize/2, -(4./3.)*NomSize, 0.9*NomCamHeight);
+		Rotation = FRotator(-45., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_back_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Perspective Back Right Aerial
+	if (SceneCaptureSettings.back_right_aerial)
+	{
+		CamYaw = 135.;
+		// 60 deg
+		Location = FVector(NomSize, -NomSize, NomCamHeight);
+		Rotation = FRotator(-60, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_back_right_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector(1.15*NomSize, -1.15*NomSize, 0.9*NomCamHeight);
+		Rotation = FRotator(-45, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_back_right_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Perspective Right Aerial
+	if (SceneCaptureSettings.right_aerial)
+	{
+		CamYaw = 180.;
+		// 60 deg
+		Location = FVector(1.1*NomSize, -NomSize/2, NomCamHeight);
+		Rotation = FRotator(-60., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_right_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector((4./3.)*NomSize, -NomSize/2, 0.9*NomCamHeight);
+		Rotation = FRotator(-45., CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_right_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Perspective Front Right Aerial
+	if (SceneCaptureSettings.front_right_aerial)
+	{
+		CamYaw = -135.;
+		// 60 deg
+		Location = FVector(NomSize, 0., NomCamHeight);
+		Rotation = FRotator(-60, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_front_right_aerial_60") + AnnotationExtension, ImageData);
+		// 45 deg
+		Location = FVector(1.15*NomSize, 0.15*NomSize, 0.9*NomCamHeight);
+		Rotation = FRotator(-45, CamYaw, 0.);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_front_right_aerial_45") + AnnotationExtension, ImageData);
+	}
+
+	// Vehice Start View
+	if (SceneCaptureSettings.vehicle_start_pov)
+	{
+		if (ASGVehicle)
+			ASGVehicle->SetActorHiddenInGame(true);
+		// Location = ASGVehicle->GetActorLocation();
+		// Rotation = ASGVehicle->GetActorRotation();
+		Location = VehicleStartLocation;
+		Rotation = VehicleStartRotation;
+		TArray<AActor*> TempArray;
+		Location.Z = ASGLandscape->GetLandscapeElevation(VehicleStartLocation - ASGLandscape->GetActorLocation(), TempArray) + 100.;
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		if (ASGVehicle)
+			ASGVehicle->SetActorHiddenInGame(false);
+		StoreSceneCapture(FString("perspective_vehicle_start") + AnnotationExtension, ImageData);
+	}
+
+	if (bDrawAnnotations)
+	{
+		UKismetSystemLibrary::FlushPersistentDebugLines(GetWorld());
+		UE_LOG(LogASG, Display, TEXT("Captured scene images with annotations"));
+	}
+	else
+		UE_LOG(LogASG, Display, TEXT("Captured scene images"));
+}
+
+void AAutoSceneGenWorker::AddSceneCapturesToRequest(TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Request)
+{
+	Request->scene_capture_only = bSceneCaptureOnly;
+	if (!bTakeSceneCapture && !bSceneCaptureOnly) return;
+	
+	FROSTime ROSTime = FROSTime::Now();
+	for (TPair<FString,std::vector<uint8>> Elem : RawSceneCaptures)
+	{
+		ROSMessages::sensor_msgs::Image ColorCamMsg;
+		// ColorCamMsg->header.seq = HeaderSequence;
+		ColorCamMsg.header.time = ROSTime;
+		ColorCamMsg.header.frame_id =  FString::Printf(TEXT("/asg_worker%i/scene_capture_camera"), WorkerID);
+		ColorCamMsg.height = CameraImageSize;
+		ColorCamMsg.width = CameraImageSize;
+		ColorCamMsg.encoding = TEXT("rgb8");
+		ColorCamMsg.is_bigendian = false;
+		ColorCamMsg.step = CameraImageSize * 3;
+		ColorCamMsg.data = &(Elem.Value)[0];
+
+		Request->scene_capture_names.Emplace(Elem.Key);
+		Request->scene_captures.Emplace(ColorCamMsg);
+	}
+	
+	UE_LOG(LogASG, Display, TEXT("Added %i scene captures to AnalyzeScenario request"), RawSceneCaptures.Num());
+	// SceneCaptureClient->CallService(Req, std::bind(&AAutoSceneGenWorker::SceneCaptureResponseCB, this, std::placeholders::_1));
 }

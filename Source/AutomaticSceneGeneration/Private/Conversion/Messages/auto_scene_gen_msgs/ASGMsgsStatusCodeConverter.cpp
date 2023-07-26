@@ -19,9 +19,7 @@ bool UASGMsgsStatusCodeConverter::ConvertIncomingMessage(const ROSBridgePublishM
 bool UASGMsgsStatusCodeConverter::ConvertOutgoingMessage(TSharedPtr<FROSBaseMsg> BaseMsg, bson_t** message) 
 {
     auto CastMsg = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::StatusCode>(BaseMsg);
-
 	*message = bson_new();
 	_bson_append_msg(*message, CastMsg.Get());
-
 	return true;
 }

@@ -38,7 +38,13 @@ public: /****************************** AAutoSceneGenVehicle *******************
 
 	void SetWorldIsReadyFlag(bool bReady);
 
+	void SetASGWorkerIsReadyFlag(bool bReady);
+
+	// Indicates if the vehicle is in the starting position and can accept control commands
 	bool IsEnabled() const;
+
+	// Indicates if the vehicle is in the starting position but cannot accept control commands yet
+	bool OnStandby() const;
 
 	// Indicates if the vehicle is idling. Better to use GetIdleTime() to see how long the vehicle has been idling.
 	bool IsVehicleIdling();
@@ -75,7 +81,7 @@ public: /****************************** AAutoSceneGenVehicle *******************
 	 */
 	void ResetVehicle(FVector NewLocation, FRotator NewRotation, TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory);
 
-	float GetNominalVehicleZLocation();
+	// float GetNominalVehicleZLocation();
 
 	void GetVehicleTrajectory(TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory);
 
@@ -93,13 +99,17 @@ private: /****************************** AEvaluationVehicle ********************
 
 	bool bWorldIsReady = false;
 
-	FVector CheckEnableLocation;
+	bool bASGWorkerIsReady = false;
 
-	float CheckEnableTime = 0.;
+	FVector CheckStandbyLocation;
+
+	float CheckStandbyTime = 0.;
+
+	bool bStandby = false;
 
 	bool bEnabled = false;
 
-	// Indicates if the vehicle was disabled preemptively (only applies if enabled is False)
+	// Indicates if the vehicle was disabled preemptively (only applies if enabled is false)
 	bool bPreempted = false;
 
 	FVector ResetLocation;
@@ -108,8 +118,8 @@ private: /****************************** AEvaluationVehicle ********************
 
 	float ResetTime = 0.f;
 
-	// Motion less than or equal to this linear speed [cm/s] is considered "not moving"
 	UPROPERTY(EditAnywhere)
+	// Motion less than or equal to this linear speed [cm/s] is considered "not moving"
 	float LinearMotionThreshold = 2.f;
 
 	// Most recent consecutive amount of time the vehicle is found idling (near-zero motion with near-zero commanded velocity)
@@ -119,7 +129,7 @@ private: /****************************** AEvaluationVehicle ********************
 	float StuckTime = 0.f;
 
 	// We currently assume we are on a flat ground plane
-	float NominalVehicleZLocation = 0.f;
+	// float NominalVehicleZLocation = 0.f;
 
 	// Number of structural scene actors hit
 	int32 NumSSAHit = 0;

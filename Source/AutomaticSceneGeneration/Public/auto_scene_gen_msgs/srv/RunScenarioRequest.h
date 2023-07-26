@@ -4,6 +4,7 @@
 #include "ROSIntegration/Public/ROSBaseServiceRequest.h"
 #include "ROSIntegration/Public/geometry_msgs/Point.h"
 #include "auto_scene_gen_msgs/msg/SceneDescription.h"
+#include "auto_scene_gen_msgs/msg/SceneCaptureSettings.h"
 
 namespace ROSMessages {
 	namespace auto_scene_gen_msgs {
@@ -28,6 +29,12 @@ namespace ROSMessages {
 			// We define the vehicle as being stuck if it is not moving, has not flipped over, but is still being sent non-zero control commands.
 			float vehicle_stuck_timeout_period;
 
+			// Max allowed vehicle roll angle [deg]. Simulation will end if this threshold is met.
+			float max_vehicle_roll;
+
+			// Max allowed vehicle pitch angle [deg]. Simulation will end if this threshold is met.
+			float max_vehicle_pitch;
+
 			// If true, then the simulator will not terminate the simulation if the vehicle touches a non-traversable obstacle.
 			// If false, then the simulation will terminate with reason REASON_VEHICLE_COLLISION (see AnalyzeScenario.srv) if the vehicle touches a non-traversable obstacle.
 			bool allow_collisions;
@@ -45,6 +52,15 @@ namespace ROSMessages {
 
 			// The scene description
 			auto_scene_gen_msgs::SceneDescription scene_description;
+
+			// Indicates if we should take scene captures to send back to the client
+			bool take_scene_capture;
+
+			// Indicates if we should only take scene captures after creating the scene (the scneario will NOT be run).
+			bool scene_capture_only;
+
+			// Scene capture settings
+			auto_scene_gen_msgs::SceneCaptureSettings scene_capture_settings;
 		};
 	}
 }

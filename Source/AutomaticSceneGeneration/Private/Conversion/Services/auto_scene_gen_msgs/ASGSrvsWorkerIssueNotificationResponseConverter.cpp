@@ -20,7 +20,6 @@ bool UASGSrvsWorkerIssueNotificationResponseConverter::ConvertIncomingResponse(c
 bool UASGSrvsWorkerIssueNotificationResponseConverter::ConvertOutgoingResponse(TSharedPtr<FROSBaseServiceResponse> Response, ROSBridgeServiceResponseMsg &res) 
 {
     auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationResponse>(Response);
-
 	res.result_ = CastResponse->_Result;
     _bson_append_response(res.values_bson_, CastResponse.Get());
 	return true;

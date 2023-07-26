@@ -40,13 +40,16 @@ void AAutoSceneGenVehicle::BeginPlay()
     AnnotationComponent->AddAnnotationColor(EAnnotationColor::Traversable, FColor(0, 0, 0, 255));
 
     bEnabled = false;
+    bStandby = false;
     bPreempted = false;
     bWorldIsReady = false;
-    CheckEnableTime = 0.f;
+    bASGWorkerIsReady = false;
+
+    CheckStandbyTime = 0.f;
     ResetTime = 0.f;
     IdleTime = 0.f;
     StuckTime = 0.f;
-    NominalVehicleZLocation = 0.f;
+    // NominalVehicleZLocation = 0.f;
     HeaderSequence = 1;
     PathSequence = 0; // Gets incremented when enabled
     NumSSAHit = 0;
@@ -193,9 +196,19 @@ void AAutoSceneGenVehicle::SetWorldIsReadyFlag(bool bReady)
     bWorldIsReady = bReady;
 }
 
+void AAutoSceneGenVehicle::SetASGWorkerIsReadyFlag(bool bReady)
+{
+    bASGWorkerIsReady = bReady;
+}
+
 bool AAutoSceneGenVehicle::IsEnabled() const
 {
     return bEnabled;
+}
+
+bool AAutoSceneGenVehicle::OnStandby() const
+{
+    return bStandby;
 }
 
 bool AAutoSceneGenVehicle::IsVehicleIdling()
@@ -260,11 +273,13 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     SetActorLocationAndRotation(NewLocation, NewRotation, false, nullptr, ETeleportType::TeleportPhysics);
     EnableSensors(false);
     bEnabled = false;
+    bStandby = false;
     bPreempted = bPreemptedDisable;
     bWorldIsReady = false;
+    bASGWorkerIsReady = false;
     DriveByWireComponent->EnableDriveByWire(false);
 
-    CheckEnableTime = 0.f;
+    CheckStandbyTime = 0.f;
     ResetTime = 0.f;
     IdleTime = 0.f;
     StuckTime = 0.f;
@@ -290,10 +305,10 @@ void AAutoSceneGenVehicle::ResetVehicle(FVector NewLocation, FRotator NewRotatio
     ResetVehicle(NewLocation, NewRotation);
 }
 
-float AAutoSceneGenVehicle::GetNominalVehicleZLocation() 
-{
-    return NominalVehicleZLocation;
-}
+// float AAutoSceneGenVehicle::GetNominalVehicleZLocation() 
+// {
+//     return NominalVehicleZLocation;
+// }
 
 void AAutoSceneGenVehicle::GetVehicleTrajectory(TArray<ROSMessages::auto_scene_gen_msgs::OdometryWithoutCovariance> &Trajectory) 
 {
@@ -348,8 +363,8 @@ void AAutoSceneGenVehicle::PublishStatus()
 
 void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime) 
 {
-    // Wait at least a few ticks before checking vehicle velocity
-    if (!bEnabled && bWorldIsReady)
+    // Check if vehicle can be put in standby (vehicle is in the starting position, waiting for the ASG worker to be ready)
+    if (!bEnabled && !bStandby && bWorldIsReady)
     {
         // Make sure vehicle reset within 5 sec
         // If rendering takes too long, then this might become an issue and will need a workaround
@@ -371,34 +386,42 @@ void AAutoSceneGenVehicle::CheckIfReadyForEnable(float DeltaTime)
             return;
         }
 
-        if (CheckEnableTime == 0.)
+        if (CheckStandbyTime == 0.)
         {
-            CheckEnableLocation = GetActorLocation();
-            CheckEnableTime = 0.01; // Set to small number
+            CheckStandbyLocation = GetActorLocation();
+            CheckStandbyTime = 0.01; // Set to small number
             return;
         }
 
         // Check distance traveled over certain time-frame
-        CheckEnableTime += DeltaTime;
-        if (CheckEnableTime < 0.5) // Block until time has passed
+        CheckStandbyTime += DeltaTime;
+        if (CheckStandbyTime < 0.5) // Block until time has passed
             return;
         
         // If criteria below is met, then we can assume the vehicle was reset properly without issue
         float TransVel = GetMesh()->GetPhysicsLinearVelocity().Size(); // Translational speed [cm/s]
         float AngVel = GetMesh()->GetPhysicsAngularVelocityInDegrees().Size(); // Angular speed [deg/s]
-        float DistanceMoved = (GetActorLocation() - CheckEnableLocation).Size();
+        float DistanceMoved = (GetActorLocation() - CheckStandbyLocation).Size();
         if (DistanceMoved <= 1.f && TransVel <= 5.f && AngVel <= 1.f)
         {
-            bEnabled = true;
-            EnableSensors(true);
-            CheckEnableTime = 0.;
-            DriveByWireComponent->EnableDriveByWire(true);
+            bStandby = true;
+            CheckStandbyTime = 0.;
             VehicleTrajectory.Empty();
             HeaderSequence = 1;
-            NominalVehicleZLocation = GetActorLocation().Z;
-            UE_LOG(LogASG, Display, TEXT("Vehicle is enabled."));
+            // NominalVehicleZLocation = GetActorLocation().Z;
+            UE_LOG(LogASG, Display, TEXT("Vehicle is on standby."));
         }
-        CheckEnableTime = 0.;
+        CheckStandbyTime = 0.;
+    }
+
+    // Check if vehicle can be enabled (vehicle is in standby and ASG worker is ready)
+    if (!bEnabled && bStandby && bASGWorkerIsReady)
+    {
+        bEnabled = true;
+        bStandby = false;
+        EnableSensors(true);
+        DriveByWireComponent->EnableDriveByWire(true);
+        UE_LOG(LogASG, Display, TEXT("Vehicle is enabled."));
     }
 }
 

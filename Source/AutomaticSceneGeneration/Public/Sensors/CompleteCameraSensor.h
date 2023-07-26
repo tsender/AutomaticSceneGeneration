@@ -48,11 +48,17 @@ private: /****************************** UCompleteCameraSensor *****************
 	int32 ImageHeight = 480;
 
 	UPROPERTY(EditAnywhere)
+	float FieldOfView = 90.f;
+
+	UPROPERTY(EditAnywhere)
 	FString SensorName = TEXT("camera");
 
 	UPROPERTY(EditAnywhere)
 	bool bSaveImagesToDisk = false;
 	
+	UPROPERTY(EditAnywhere)
+	FString SaveFolder = TEXT("TrainingData");
+
 	UPROPERTY(EditAnywhere)
 	float FrameRate = 15.f;
 

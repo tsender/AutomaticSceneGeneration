@@ -20,7 +20,6 @@ bool UASGSrvsAnalyzeScenarioResponseConverter::ConvertIncomingResponse(const ROS
 bool UASGSrvsAnalyzeScenarioResponseConverter::ConvertOutgoingResponse(TSharedPtr<FROSBaseServiceResponse> Response, ROSBridgeServiceResponseMsg &res) 
 {
     auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioResponse>(Response);
-
 	res.result_ = CastResponse->_Result;
     _bson_append_response(res.values_bson_, CastResponse.Get());
 	return true;
