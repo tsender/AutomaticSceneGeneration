@@ -65,6 +65,8 @@ void UCompleteCameraSensor::BeginPlay()
 	TravCamera->SetSaveImages(bSaveImagesToDisk);
 	SegCamera->SetSaveImages(bSaveImagesToDisk);
 
+	ColorCamera->PostProcessSettings = ColorCameraPostProcessSettings;
+
 	CameraFolder = FPaths::ProjectUserDir() + FString::Printf(TEXT("%s/%s/"), *SaveFolder, *SensorName);
 	FrameNumberPath = CameraFolder + FString("FrameNumber.json");
 	ColorCamera->SetSavePrefix(CameraFolder + FString("color/color"));

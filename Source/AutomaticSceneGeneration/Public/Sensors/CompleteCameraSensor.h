@@ -42,6 +42,9 @@ private: /****************************** UCompleteCameraSensor *****************
 	class USegmentationCameraSensor* SegCamera;
 
 	UPROPERTY(EditAnywhere)
+	struct FPostProcessSettings ColorCameraPostProcessSettings;
+
+	UPROPERTY(EditAnywhere)
 	int32 ImageWidth = 640;
 
 	UPROPERTY(EditAnywhere)
