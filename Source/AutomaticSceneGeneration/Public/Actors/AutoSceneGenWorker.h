@@ -65,7 +65,7 @@ private: /****************************** AAutoSceneGenWorker *******************
 	bool bTookSceneCaptureInternal = false;
 
 	// Each key is the name of the scene capture, and each value is the FColor array
-	TMap<FString, TArray<FColor>> SceneCaptures;
+	// TMap<FString, TArray<FColor>> SceneCaptures;
 
 	// Each key is the name of the scene capture, and each value is the raw uint8 array
 	TMap<FString, std::vector<uint8>> RawSceneCaptures;

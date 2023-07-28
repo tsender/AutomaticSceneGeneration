@@ -57,7 +57,7 @@ void UBaseCameraSensor::InitTextureTarget(int32 NewWidth, int32 NewHeight, float
 {
     if (NewWidth <= 0 || NewHeight <= 0)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers."));
+		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers. You provided %i and %i"), NewWidth, NewHeight);
 		return;
 	}
     
@@ -90,7 +90,7 @@ void UBaseCameraSensor::ResizeTextureTarget(int32 NewWidth, int32 NewHeight)
 {
     if (NewWidth <= 0 || NewHeight <= 0)
 	{
-		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers."));
+		UE_LOG(LogASG, Warning, TEXT("Both frame width and height must be positive integers. You provided %i and %i"), NewWidth, NewHeight);
 		return;
 	}
 

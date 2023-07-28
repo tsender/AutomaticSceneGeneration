@@ -198,8 +198,17 @@ void AAutoSceneGenWorker::BeginPlay()
 	SetActorEnableCollision(false);
     SetActorHiddenInGame(true);
     PerspectiveCamera->InitTextureTarget(CameraImageSize, CameraImageSize, CameraFOV);
+	PerspectiveCamera->PostProcessSettings.bOverride_AutoExposureMinBrightness = true;
+	PerspectiveCamera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = true;
+	PerspectiveCamera->PostProcessSettings.AutoExposureMinBrightness = 1.;
+	PerspectiveCamera->PostProcessSettings.AutoExposureMaxBrightness = 1.;
+	
 	OrthoCamera->ProjectionType = ECameraProjectionMode::Orthographic;
     OrthoCamera->InitTextureTarget(CameraImageSize, CameraImageSize, CameraFOV);
+	OrthoCamera->PostProcessSettings.bOverride_AutoExposureMinBrightness = true;
+	OrthoCamera->PostProcessSettings.bOverride_AutoExposureMaxBrightness = true;
+	OrthoCamera->PostProcessSettings.AutoExposureMinBrightness = 1.;
+	OrthoCamera->PostProcessSettings.AutoExposureMaxBrightness = 1.;
 
 	bTookSceneCaptureInternal = false; 	// This variable is an internal flag
 	bTakeSceneCapture = true;	// Gets overridden from the scene capture settings
@@ -207,6 +216,7 @@ void AAutoSceneGenWorker::BeginPlay()
 	SceneCaptureSettings.draw_annotations = false;
 	SceneCaptureSettings.ortho_aerial = true;
 	SceneCaptureSettings.perspective_aerial = false;
+	SceneCaptureSettings.aerial_padding = {0, 10, 20};
 	SceneCaptureSettings.front_aerial = true;
 	SceneCaptureSettings.front_left_aerial = false;
 	SceneCaptureSettings.left_aerial = false;
@@ -836,21 +846,21 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 
 void AAutoSceneGenWorker::ClearSceneCaptures()
 {
-	for (TPair<FString, TArray<FColor>> Elem : SceneCaptures)
-	{
-		Elem.Value.Empty();
-	}
+	// for (TPair<FString, TArray<FColor>> Elem : SceneCaptures)
+	// {
+	// 	Elem.Value.Empty();
+	// }
 	for (TPair<FString, std::vector<uint8>> Elem : RawSceneCaptures)
 	{
 		Elem.Value.clear();
 	}
-	SceneCaptures.Empty();
+	// SceneCaptures.Empty();
 	RawSceneCaptures.Empty();
 }
 
 void AAutoSceneGenWorker::StoreSceneCapture(FString ImageName, TArray<FColor> &ImageData)
 {
-	SceneCaptures.Emplace(ImageName, ImageData);
+	// SceneCaptures.Emplace(ImageName, ImageData);
 	std::vector<uint8> RawData(CameraImageSize*CameraImageSize*3);
 	for (int32 i = 0; i < ImageData.Num(); i++)
 	{
@@ -896,7 +906,7 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 			float PadCamHeight = 0.5*(NomSize + 2*Padding*100.)/FMath::Tan(CameraFOV*PI/360.);
 			Location = FVector(NomSize/2, -NomSize/2, PadCamHeight);
 			Rotation = FRotator(-90., -90., 0.);
-			SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+			SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 
 			// Ortho
 			if (SceneCaptureSettings.ortho_aerial)
@@ -924,13 +934,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(NomSize/2, 0.1*NomSize, NomCamHeight);
 		Rotation = FRotator(-60., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_front_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector(NomSize/2, NomSize/3, 0.9*NomCamHeight);
 		Rotation = FRotator(-45., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_front_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -942,13 +952,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(0., 0., NomCamHeight);
 		Rotation = FRotator(-60, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_front_left_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector(-0.15*NomSize, 0.15*NomSize, 0.9*NomCamHeight);
 		Rotation = FRotator(-45, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_front_left_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -960,13 +970,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(-0.1*NomSize, -NomSize/2, NomCamHeight);
 		Rotation = FRotator(-60., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_left_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector(-NomSize/3, -NomSize/2, 0.9*NomCamHeight);
 		Rotation = FRotator(-45., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_left_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -978,13 +988,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(0., -NomSize, NomCamHeight);
 		Rotation = FRotator(-60, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_back_left_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector(-0.15*NomSize, -1.15*NomSize, 0.9*NomCamHeight);
 		Rotation = FRotator(-45, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_back_left_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -996,13 +1006,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(NomSize/2, -1.1*NomSize, NomCamHeight);
 		Rotation = FRotator(-60., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_back_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector(NomSize/2, -(4./3.)*NomSize, 0.9*NomCamHeight);
 		Rotation = FRotator(-45., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_back_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -1014,13 +1024,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(NomSize, -NomSize, NomCamHeight);
 		Rotation = FRotator(-60, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_back_right_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector(1.15*NomSize, -1.15*NomSize, 0.9*NomCamHeight);
 		Rotation = FRotator(-45, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_back_right_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -1032,13 +1042,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(1.1*NomSize, -NomSize/2, NomCamHeight);
 		Rotation = FRotator(-60., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_right_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector((4./3.)*NomSize, -NomSize/2, 0.9*NomCamHeight);
 		Rotation = FRotator(-45., CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_right_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -1050,13 +1060,13 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		// 60 deg
 		Location = FVector(NomSize, 0., NomCamHeight);
 		Rotation = FRotator(-60, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_front_right_aerial_60") + AnnotationExtension, ImageData);
 		// 45 deg
 		Location = FVector(1.15*NomSize, 0.15*NomSize, 0.9*NomCamHeight);
 		Rotation = FRotator(-45, CamYaw, 0.);
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		StoreSceneCapture(FString("perspective_front_right_aerial_45") + AnnotationExtension, ImageData);
 	}
@@ -1072,7 +1082,7 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		Rotation = VehicleStartRotation;
 		TArray<AActor*> TempArray;
 		Location.Z = ASGLandscape->GetLandscapeElevation(VehicleStartLocation - ASGLandscape->GetActorLocation(), TempArray) + 100.;
-		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::TeleportPhysics);
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		if (ASGVehicle)
 			ASGVehicle->SetActorHiddenInGame(false);
@@ -1105,12 +1115,11 @@ void AAutoSceneGenWorker::AddSceneCapturesToRequest(TSharedPtr<ROSMessages::auto
 		ColorCamMsg.encoding = TEXT("rgb8");
 		ColorCamMsg.is_bigendian = false;
 		ColorCamMsg.step = CameraImageSize * 3;
-		ColorCamMsg.data = &(Elem.Value)[0];
+		ColorCamMsg.data = &RawSceneCaptures[Elem.Key][0]; // Using &Elem.Value[0] does not work here
 
 		Request->scene_capture_names.Emplace(Elem.Key);
 		Request->scene_captures.Emplace(ColorCamMsg);
 	}
 	
 	UE_LOG(LogASG, Display, TEXT("Added %i scene captures to AnalyzeScenario request"), RawSceneCaptures.Num());
-	// SceneCaptureClient->CallService(Req, std::bind(&AAutoSceneGenWorker::SceneCaptureResponseCB, this, std::placeholders::_1));
 }

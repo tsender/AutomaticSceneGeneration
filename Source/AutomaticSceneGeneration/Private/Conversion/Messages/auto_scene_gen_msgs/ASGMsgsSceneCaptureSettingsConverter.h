@@ -23,7 +23,7 @@ public:
 	{
 		bool KeyFound = false;
 
-		msg->image_size = GetDoubleFromBSON(key + ".image_size", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->image_size = GetInt32FromBSON(key + ".image_size", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		msg->draw_annotations = GetBoolFromBSON(key + ".draw_annotations", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		msg->goal_sphere_thickness = GetDoubleFromBSON(key + ".goal_sphere_thickness", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
