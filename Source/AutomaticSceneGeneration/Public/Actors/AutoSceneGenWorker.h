@@ -64,9 +64,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	bool bTookSceneCaptureInternal = false;
 
-	// Each key is the name of the scene capture, and each value is the FColor array
-	// TMap<FString, TArray<FColor>> SceneCaptures;
-
 	// Each key is the name of the scene capture, and each value is the raw uint8 array
 	TMap<FString, std::vector<uint8>> RawSceneCaptures;
 
@@ -300,9 +297,14 @@ private: /****************************** AAutoSceneGenWorker *******************
 	 */
 	void SceneCaptureResponseCB(TSharedPtr<class FROSBaseServiceResponse> Response);
 
-	// Clear the scene capture maps
+	// Clear all stored scene capture data
 	void ClearSceneCaptures();
 
+	/**
+	 * Extract the raw image data from the provided scene capture image
+	 * @param ImageName The name of the provided image
+	 * @param ImageData The actual color data from the image
+	*/
 	void StoreSceneCapture(FString ImageName, TArray<FColor> &ImageData);
 
 	/**

@@ -846,21 +846,15 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 
 void AAutoSceneGenWorker::ClearSceneCaptures()
 {
-	// for (TPair<FString, TArray<FColor>> Elem : SceneCaptures)
-	// {
-	// 	Elem.Value.Empty();
-	// }
 	for (TPair<FString, std::vector<uint8>> Elem : RawSceneCaptures)
 	{
 		Elem.Value.clear();
 	}
-	// SceneCaptures.Empty();
 	RawSceneCaptures.Empty();
 }
 
 void AAutoSceneGenWorker::StoreSceneCapture(FString ImageName, TArray<FColor> &ImageData)
 {
-	// SceneCaptures.Emplace(ImageName, ImageData);
 	std::vector<uint8> RawData(CameraImageSize*CameraImageSize*3);
 	for (int32 i = 0; i < ImageData.Num(); i++)
 	{
