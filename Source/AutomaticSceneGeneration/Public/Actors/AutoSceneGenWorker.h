@@ -218,10 +218,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// ROS client: Sends the worker issue notification to the ASG
 	class UService* WorkerIssueNotificationClient;
 
-	UPROPERTY()
-	// ROS client: Sends the scene captures to the ASG client
-	class UService* SceneCaptureClient;
-
 	bool bASGClientOnline = false;
 
 	uint8 WorkerStatus = 0;
@@ -289,12 +285,6 @@ private: /****************************** AAutoSceneGenWorker *******************
 	 * @param Response The response message to be sent to the ASG client (indicates receipt of request)
 	 */
 	void RunScenarioServiceCB(TSharedPtr<class FROSBaseServiceRequest> Request, TSharedPtr<class FROSBaseServiceResponse> Response);
-
-	/**
-	 * ROS callback for receiving the ASG client's response for the scene captures
-	 * @param Response The response message from the ASG client
-	 */
-	void SceneCaptureResponseCB(TSharedPtr<class FROSBaseServiceResponse> Response);
 
 	// Clear all stored scene capture data
 	void ClearSceneCaptures();

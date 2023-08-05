@@ -33,8 +33,6 @@
 #include "auto_scene_gen_msgs/srv/AnalyzeScenarioResponse.h"
 #include "auto_scene_gen_msgs/srv/WorkerIssueNotificationRequest.h"
 #include "auto_scene_gen_msgs/srv/WorkerIssueNotificationResponse.h"
-// #include "auto_scene_gen_msgs/srv/SceneCaptureRequest.h"
-// #include "auto_scene_gen_msgs/srv/SceneCaptureResponse.h"
 
 // Sets default values
 AAutoSceneGenWorker::AAutoSceneGenWorker()
@@ -181,12 +179,6 @@ void AAutoSceneGenWorker::BeginPlay()
 		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_msgs/RunScenario"));
 		RunScenarioService->Advertise(std::bind(&AAutoSceneGenWorker::RunScenarioServiceCB, this, std::placeholders::_1, std::placeholders::_2), false);
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS service: %s"), *RunScenarioServiceName);
-		
-		// SceneCapture service
-		// SceneCaptureClient = NewObject<UService>(UService::StaticClass());
-		// FString SceneCaptureServiceName = FString::Printf(TEXT("/%s/services/scene_capture"), *AutoSceneGenClientName);
-		// SceneCaptureClient->Init(ROSInst->ROSIntegrationCore, SceneCaptureServiceName, TEXT("auto_scene_gen_msgs/SceneCapture"));
-		// UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS client: %s"), *SceneCaptureServiceName);
 	}
 	else
 	{
@@ -324,7 +316,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 			Req->vehicle_sim_time = 0.;
 			AddSceneCapturesToRequest(Req);
 
-			UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i (scene capture only). ASG worker is ONLINE_AND_READY."), ScenarioNumber);
+			UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i (scene capture only). ASG worker is ONLINE_AND_READY."), ScenarioNumber);
 			AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 		}
 	}
@@ -616,7 +608,7 @@ void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 Termin
 
 	AddSceneCapturesToRequest(Req);
 	UE_LOG(LogASG, Display, TEXT("Computed vehicle sim time: %f"), Req->vehicle_sim_time);
-	UE_LOG(LogASG, Warning, TEXT("Submitting AnalyzeScenario request %i. ASG worker is ONLINE_AND_READY."), ScenarioNumber);
+	UE_LOG(LogASG, Display, TEXT("Submitting AnalyzeScenario request %i. ASG worker is ONLINE_AND_READY."), ScenarioNumber);
 	AnalyzeScenarioClient->CallService(Req, std::bind(&AAutoSceneGenWorker::AnalyzeScenarioResponseCB, this, std::placeholders::_1));
 }
 
@@ -832,17 +824,6 @@ void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest
 	// Fill in response
 	CastResponse->received = true;
 }
-
-// void AAutoSceneGenWorker::SceneCaptureResponseCB(TSharedPtr<class FROSBaseServiceResponse> Response)
-// {
-// 	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FSceneCaptureResponse>(Response);
-// 	if (!CastResponse)
-// 	{
-// 		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/SceneCaptureResponse"));
-// 		return;
-// 	}
-// 	UE_LOG(LogASG, Display, TEXT("SceneCapture request received: %s"), (CastResponse->received ? *FString("True") : *FString("False")));
-// }
 
 void AAutoSceneGenWorker::ClearSceneCaptures()
 {
