@@ -210,14 +210,15 @@ void AAutoSceneGenWorker::BeginPlay()
 	SceneCaptureSettings.perspective_aerial = false;
 	SceneCaptureSettings.aerial_padding = {0, 10, 20};
 	SceneCaptureSettings.front_aerial = true;
-	SceneCaptureSettings.front_left_aerial = false;
+	SceneCaptureSettings.left_front_aerial = false;
 	SceneCaptureSettings.left_aerial = false;
-	SceneCaptureSettings.back_left_aerial = false;
-	SceneCaptureSettings.back_aerial = false;
-	SceneCaptureSettings.back_right_aerial = false;
+	SceneCaptureSettings.left_rear_aerial = false;
+	SceneCaptureSettings.rear_aerial = false;
+	SceneCaptureSettings.right_rear_aerial = false;
 	SceneCaptureSettings.right_aerial = false;
-	SceneCaptureSettings.front_right_aerial = false;
+	SceneCaptureSettings.right_front_aerial = false;
 	SceneCaptureSettings.vehicle_start_pov = true;
+	SceneCaptureSettings.vehicle_start_rear_aerial = true;
 
 	if (!ROSInst) // Only save images to disk if we don't have a ROS connection
 	{
@@ -899,8 +900,6 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 			}
 		}
 	}
-
-	// float NewPitch = 90. - 0.5*(FMath::Atan2(Size/2, NomCamHeight) * 360./PI); // 60 for 60 FOV
 	
 	// Perspective Front Aerial
 	if (SceneCaptureSettings.front_aerial)
@@ -920,8 +919,8 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		StoreSceneCapture(FString("perspective_front_aerial_45") + AnnotationExtension, ImageData);
 	}
 
-	// Perspective Front Left Aerial
-	if (SceneCaptureSettings.front_left_aerial)
+	// Perspective Left Front Aerial
+	if (SceneCaptureSettings.left_front_aerial)
 	{
 		CamYaw = -45.;
 		// 60 deg
@@ -956,8 +955,8 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		StoreSceneCapture(FString("perspective_left_aerial_45") + AnnotationExtension, ImageData);
 	}
 
-	// Perspective Back Left Aerial
-	if (SceneCaptureSettings.back_left_aerial)
+	// Perspective Left Rear Aerial
+	if (SceneCaptureSettings.left_rear_aerial)
 	{
 		CamYaw = 45.;
 		// 60 deg
@@ -974,8 +973,8 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		StoreSceneCapture(FString("perspective_back_left_aerial_45") + AnnotationExtension, ImageData);
 	}
 
-	// Perspective Back Aerial
-	if (SceneCaptureSettings.back_aerial)
+	// Perspective Rear Aerial
+	if (SceneCaptureSettings.rear_aerial)
 	{
 		CamYaw = 90.;
 		// 60 deg
@@ -992,8 +991,8 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		StoreSceneCapture(FString("perspective_back_aerial_45") + AnnotationExtension, ImageData);
 	}
 
-	// Perspective Back Right Aerial
-	if (SceneCaptureSettings.back_right_aerial)
+	// Perspective Right Rear Aerial
+	if (SceneCaptureSettings.right_rear_aerial)
 	{
 		CamYaw = 135.;
 		// 60 deg
@@ -1028,8 +1027,8 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		StoreSceneCapture(FString("perspective_right_aerial_45") + AnnotationExtension, ImageData);
 	}
 
-	// Perspective Front Right Aerial
-	if (SceneCaptureSettings.front_right_aerial)
+	// Perspective Right Front Aerial
+	if (SceneCaptureSettings.right_front_aerial)
 	{
 		CamYaw = -135.;
 		// 60 deg
@@ -1046,13 +1045,11 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		StoreSceneCapture(FString("perspective_front_right_aerial_45") + AnnotationExtension, ImageData);
 	}
 
-	// Vehice Start View
+	// Vehice Start POV
 	if (SceneCaptureSettings.vehicle_start_pov)
 	{
 		if (ASGVehicle)
 			ASGVehicle->SetActorHiddenInGame(true);
-		// Location = ASGVehicle->GetActorLocation();
-		// Rotation = ASGVehicle->GetActorRotation();
 		Location = VehicleStartLocation;
 		Rotation = VehicleStartRotation;
 		TArray<AActor*> TempArray;
@@ -1061,7 +1058,21 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		PerspectiveCamera->CaptureColor(ImageData, false);
 		if (ASGVehicle)
 			ASGVehicle->SetActorHiddenInGame(false);
-		StoreSceneCapture(FString("perspective_vehicle_start") + AnnotationExtension, ImageData);
+		StoreSceneCapture(FString("perspective_vehicle_start_pov") + AnnotationExtension, ImageData);
+	}
+
+	// Vehicle Start Rear Aerial
+	if (SceneCaptureSettings.vehicle_start_rear_aerial)
+	{
+		Location = VehicleStartLocation;
+		Rotation = FRotator(-15, VehicleStartRotation.Euler().Z, 0.);
+		TArray<AActor*> TempArray;
+		Location.Z = ASGLandscape->GetLandscapeElevation(VehicleStartLocation - ASGLandscape->GetActorLocation(), TempArray) + 300.;
+		FVector ForwardVector = UKismetMathLibrary::GetForwardVector(VehicleStartRotation);
+		Location = Location - 500. * ForwardVector;
+		SetActorLocationAndRotation(Location, Rotation, false, nullptr, ETeleportType::None);
+		PerspectiveCamera->CaptureColor(ImageData, false);
+		StoreSceneCapture(FString("perspective_vehicle_start_rear_aerial") + AnnotationExtension, ImageData);
 	}
 
 	if (bDrawAnnotations)

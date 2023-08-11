@@ -57,6 +57,8 @@ public: /****************************** AStructuralSceneActor ******************
 
 	bool IsTraversable() const;
 
+	void SetInstanceSegmentationColor(FColor Color);
+
 private: /****************************** AStructuralSceneActor ******************************/
 	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* StaticMeshComponent;
@@ -69,7 +71,12 @@ private: /****************************** AStructuralSceneActor *****************
 	// If a structural scene actor is always traversable (e.g. grass), then set this to true. This parameter takes priority over the TraversableHeightThreshold.
 	bool bAlwaysTraversable = false;
 
-	uint16 IDNumber; // Currently not used
+	UPROPERTY(EditAnywhere)
+	// The color that objects of this class will appear when creating semantic segmentation images of the scene.
+	FColor SemanticSegmentationColor = FColor(0,0,0,255);
+
+	// The color that this instance will appear when creating instance segmentation images of the scene.
+	FColor InstanceSegmentationColor = FColor(0,0,0,255);
 
 	// Indicates if the actor is active (visible, can tick, etc.)
 	bool bActive = true;

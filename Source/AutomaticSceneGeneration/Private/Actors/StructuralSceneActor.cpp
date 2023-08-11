@@ -23,6 +23,9 @@ void AStructuralSceneActor::BeginPlay()
 {
 	Super::BeginPlay();
 
+	AnnotationComponent->AddAnnotationColor(EAnnotationColor::SemanticSegmentation, SemanticSegmentationColor);
+	AnnotationComponent->AddAnnotationColor(EAnnotationColor::InstanceSegmentation, InstanceSegmentationColor);
+
 	// StaticMeshComponent->OnComponentHit.AddDynamic(this, &AStructuralSceneActor::OnHit);
 	StaticMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
@@ -50,16 +53,6 @@ void AStructuralSceneActor::BeginPlay()
 void AStructuralSceneActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-}
-
-void AStructuralSceneActor::SetIDNumber(uint16 NewID) 
-{
-	IDNumber = NewID;
-}
-
-uint16 AStructuralSceneActor::GetIDNumber() const
-{
-	return IDNumber;
 }
 
 void AStructuralSceneActor::SetStructuralAttributes(bool bVisibile, bool bNewCastShadow, FVector NewLocation, FRotator NewRotation, float NewScale) 
@@ -134,4 +127,10 @@ void AStructuralSceneActor::UpdateTraversabilitySettings()
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_PhysicsBody, ECollisionResponse::ECR_Block);
 		StaticMeshComponent->SetCollisionResponseToChannel(ECollisionChannel::ECC_Vehicle, ECollisionResponse::ECR_Block);
 	}
+}
+
+void AStructuralSceneActor::SetInstanceSegmentationColor(FColor Color)
+{
+	InstanceSegmentationColor = Color;
+	AnnotationComponent->AddAnnotationColor(EAnnotationColor::InstanceSegmentation, InstanceSegmentationColor);
 }

@@ -34,15 +34,16 @@ public:
 		msg->aerial_padding = (TArray<uint32>)GetInt32TArrayFromBSON(key + ".aerial_padding", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		
 		msg->front_aerial = GetBoolFromBSON(key + ".front_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		msg->front_left_aerial = GetBoolFromBSON(key + ".front_left_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->left_front_aerial = GetBoolFromBSON(key + ".left_front_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		msg->left_aerial = GetBoolFromBSON(key + ".left_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		msg->back_left_aerial = GetBoolFromBSON(key + ".back_left_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		msg->back_aerial = GetBoolFromBSON(key + ".back_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		msg->back_right_aerial = GetBoolFromBSON(key + ".back_right_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->left_rear_aerial = GetBoolFromBSON(key + ".left_rear_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->rear_aerial = GetBoolFromBSON(key + ".rear_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->right_rear_aerial = GetBoolFromBSON(key + ".right_rear_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		msg->right_aerial = GetBoolFromBSON(key + ".right_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
-		msg->front_right_aerial = GetBoolFromBSON(key + ".front_right_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->right_front_aerial = GetBoolFromBSON(key + ".right_front_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		msg->vehicle_start_pov = GetBoolFromBSON(key + ".vehicle_start_pov", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
+		msg->vehicle_start_rear_aerial = GetBoolFromBSON(key + ".vehicle_start_rear_aerial", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 
 		return true;
 	}
@@ -68,14 +69,15 @@ public:
 		_bson_append_uint32_tarray(b, "aerial_padding", msg->aerial_padding);
 
 		BSON_APPEND_BOOL(b, "front_aerial", msg->front_aerial);
-		BSON_APPEND_BOOL(b, "front_left_aerial", msg->front_left_aerial);
+		BSON_APPEND_BOOL(b, "left_front_aerial", msg->left_front_aerial);
 		BSON_APPEND_BOOL(b, "left_aerial", msg->left_aerial);
-		BSON_APPEND_BOOL(b, "back_left_aerial", msg->back_left_aerial);
-		BSON_APPEND_BOOL(b, "back_aerial", msg->back_aerial);
-		BSON_APPEND_BOOL(b, "back_right_aerial", msg->back_right_aerial);
+		BSON_APPEND_BOOL(b, "left_rear_aerial", msg->left_rear_aerial);
+		BSON_APPEND_BOOL(b, "rear_aerial", msg->rear_aerial);
+		BSON_APPEND_BOOL(b, "right_rear_aerial", msg->right_rear_aerial);
 		BSON_APPEND_BOOL(b, "right_aerial", msg->right_aerial);
-		BSON_APPEND_BOOL(b, "front_right_aerial", msg->front_right_aerial);
+		BSON_APPEND_BOOL(b, "right_front_aerial", msg->right_front_aerial);
 
 		BSON_APPEND_BOOL(b, "vehicle_start_pov", msg->vehicle_start_pov);
+		BSON_APPEND_BOOL(b, "vehicle_start_rear_aerial", msg->vehicle_start_rear_aerial);
 	}
 };
