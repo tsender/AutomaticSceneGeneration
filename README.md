@@ -7,11 +7,11 @@ Table of Contents
 - [Overview](#overview)
 
 ## Description
-The purpose of this plugin is to support the development, validation, and testing of off-road autonomous vehicles (AVs). One of the primary knowledge gaps pertaining to off-road AV evaluation and testing is in the ability to *quickly and automatically* test an AV system in *arbitrary and diverse* simulated environments. While there exist numerous simulator packages designed for the development and testing of AVs in urban environments, most notably the [CARLA](https://carla.org/) simulator, there are very few high-fidelity open-source tools designed for testing AVs in natural, unstructured off-road environments. Consequently, we are developing a plugin for UE4 specifically for this purpose. Our plugin allows an external ROS2 client to test a virtual vehicle in any scenario (suppported by our custom scenario description protocol) across as many UE4 editors as your computational resources can support. We also provide an external ROS2 interface to interact with this plugin.
+The purpose of this plugin is to support the development, validation, and testing of off-road autonomous vehicles (AVs). One of the primary knowledge gaps pertaining to off-road AV evaluation and testing is in the ability to *quickly and automatically* test an AV system in *arbitrary and diverse* simulated environments. While there exist numerous simulator packages designed for the development and testing of AVs in urban environments, most notably the [CARLA](https://carla.org/) simulator, there are very few high-fidelity open-source tools designed for testing AVs in natural, unstructured off-road environments. Consequently, we are developing a plugin for Unreal Engine specifically for this purpose. Our plugin allows for an external ROS2 client to test a virtual vehicle in any scenario (suppported by our custom scenario description protocol) across as many UE4 editors as your computational resources can support. We also provide an external ROS2 interface to interact with this plugin.
 
-Efficiently conducting various navigation scenarios requires *automation*.
+*Automation* is an integral component for efficiently conducting navigation scenarios one after the other. This process includes tearing down the previous scene, creating the new one, resetting the internal state of the vehicle's processing nodes, and signalling to the vehicle processing nodes when it's okay to run. All of these functional requirements needed to perform automatic scene creation and vehicle testing are embedded into this platform, hence the name "Automatic Scene Generation".
 
-Moving forward, we will often refer to this plugin by the abbreviated name "AutoSceneGen".
+Moving forward, we will often refer to the UE plugin by the abbreviated name "AutoSceneGen". This plugin currently only supports UE4.
 
 ### A Note from the Author 
 My name is Ted Sender, I am a PhD candidate at the University of Michigan, and I am developing this platform as part of my PhD research project. This platform is still in its infancy and will be under active development as I continue my research.
@@ -38,7 +38,7 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 1. AutomaticSceneGeneration Plugin for UE4 (this repo)
 2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use the `feature/specify_ros_version` branch of @tsender's fork.
 3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. Use the `main` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
-4. auto_scene_gen_ros2: A ROS2 interface that provides the necessary tools to interact with this plugin.
+4. auto_scene_gen: A ROS2 interface that provides the necessary tools to interact with this plugin.
    - Since this repo is the minimalistic ROS2 interface, it is often more convenient to add the ament packages in the `auto_scene_gen_ros2` repo to the repo you are developing.
 
 ## Installation
@@ -51,12 +51,11 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 
 **Installing the ROS2 Packages**
 
-We will assume you are using Ubuntu for all-things ROS-related.
 1. Install a supported ROS2 version OR use our provided dockerfiles in Ubuntu with all the needed dependencies. If using docker, then you can download our docker image with the tag `tsender/tensorflow:gpu-focal-foxy` (you may need to login to your docker account from the command line) or you can modify the [original docker image](https://github.com/tsender/dockerfiles/blob/main/tensorflow_foxy/Dockerfile) and build it.
-2. Let's put all of our code in a common folder: `mkdir ~/auto_scene_gen`
+2. Let's put all of our code in a common folder: `mkdir ~/auto_scene_gen_ws`
 3. Let's clone and build rosbridge_suite
    ```
-   cd ~/auto_scene_gen/
+   cd ~/auto_scene_gen_ws/
    mkdir rosbridge_suite
    cd rosbridge_suite/
    git clone https://github.com/tsender/rosbridge_suite.git src
@@ -65,7 +64,7 @@ We will assume you are using Ubuntu for all-things ROS-related.
    ```
 3. Let's clone and build the `auto_scene_gen` repo. Rplace this repo with your primary development repo, so long as contains the `auto_scene_gen` packages.
    ```
-   cd ~/auto_scene_gen/
+   cd ~/auto_scene_gen_ws/
    source rosbridge_suite/install/setup.bash # rosbridge_suite is our underlay
    mkdir auto_scene_gen
    cd auto_scene_gen
@@ -75,7 +74,7 @@ We will assume you are using Ubuntu for all-things ROS-related.
    ```
    In all new terminals you open, make sure to source the overlay:
    ```
-   source ~/auto_scene_gen/auto_scene_gen/install/setup.bash
+   source ~/auto_scene_gen_ws/auto_scene_gen/install/setup.bash
    ```
 
 **Initial UE4 Setup**
@@ -88,6 +87,7 @@ We will assume you are using Ubuntu for all-things ROS-related.
    ```
    ros2 launch rosbridge_server rosbridge_tcp_launch.xml bson_only_mode:=True
    ```
+   Or feel free to create another version of this launch file if you have other needs.
 7. Press Play in your UE4 project, and you should see some log lines indicating that the game connected to rosbridge. You should also see a few lines printed to the rosbridge launch terminal indicating the client subscribed to a few ROS topics with a prefix `/unreal_ros/`. See the `ROSintegration` README if you have issues.
 
 ## Overview
@@ -138,7 +138,7 @@ Structural scene acotrs (SSAs) are static structural elements that are part of t
 
 ### Sensors
 
-We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. All ROS topic names will follow the naming hierarchy `/asg_workerX` + `/vehicle_name` + `/sensor_name`. If an AutoSceneGen worker or vehicle is not present, then the according prefix will be omitted.
+We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. All ROS topic names will follow the naming hierarchy `/asg_workerX` + `/vehicle_name` + `/sensors/sensor_name`. If an AutoSceneGen worker or vehicle is not present, then the according prefix will be omitted.
 
 #### Localization Sensor
 
@@ -162,7 +162,7 @@ The configurable parameters are under the "Complete Camera Sensor" tab in the de
 - `Image Width`: The image width, in pixels.
 - `Image Height`: The image height, in pixels.
 - `Sensor Name`: The name of the camera sensor to be used in the ROS topic.
-- `Save Images to Disk`: Idicates if images from the color camera, trav camera, and seg camera should be saved to disk. If so, then they will be saved in the folder `/Game/TraininData/camera_name/` and will each have their own subfolder.
+- `Save Images to Disk`: Indicates if images from the color camera, trav camera, and seg camera should be saved to disk. If so, then they will be saved in the folder `/Game/TraininData/camera_name/` and will each have their own subfolder.
 - `Frame Rate`: The frame rate in Hz that the sensor will run at.
 - `Enable Depth Cam`: Indicates if the depth camera should be activated. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/depth_image`.
 - `Enable Trav Cam`: Indicates if the traversability segmentation camera should be enabled. ROS topic name will be of the form `/asg_workerX/vehicle_name/camera_name/trav_image`.
