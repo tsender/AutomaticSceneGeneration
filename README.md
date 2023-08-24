@@ -103,7 +103,7 @@ The diagram above shows the typical workflow for interacting with the platform. 
 4. Once the AutoSceneGenVehicle receives its first control command, the AutoSceneGenWorker continuously monitors the vehicle's performance. If the vehicle succeeds or fails (see below for how we define failure), then the worker will reset the vehicle and send a `AnalyzeScenario` request to the client containing information about the vehicle's trajectory and performance.
 5. The client will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeats until the client is done running tests.
 
-### The AutoSceneGenWorker Actor
+### AutoSceneGenWorker Actor
 
 This is the main actor controlling everything within the simulation and is the server that the AutoSceneGen client node communicates with. This actor is responsible for processing the RunScenario requests, creating the specified scene, and monitoring the navigation task.
 
@@ -112,8 +112,27 @@ Every level must have one of these actors in the World Outliner to take advantag
 * `Landscape Material`: The material/texture that will be applied to the AutoSceneGenLandscape actor.
 * `Vehicle Start Location`: The starting location for the vehicle. Make sure this location is within the landscape bounds and is just above the landscape (a Z value of 50 cm should be fine). This ensures the vehicle starts on the default landscape.
 * `Auto Scene Gen Client Name`: The name of the ROS AutoSceneGenClient node.
+Almost all of the other settings are used right after you press Play, and then get reset from the ROS interface.
 
-### The AutoSceneGenVehicle Actor
+Additional Requirements:
+* Uncheck the `EnableWorldBoundsCheck` in the World Settings. This will allow the AutoSceneGenWorker to teleport the AutoSceneGenVehicle when the vehicle needs to be reset.
+
+### AutoSceneGenLandscape Actor
+
+This is a custom landscape actor that allows you to modify the elevation of its vertices at runtime (unlike the landscape actor provided by Unreal). Having this capability is incredibly important for testing off-road vehicles in diverse environments. While we do provide a number of sculpting brushes available for modifying the landscape's elevation (similar to the brushes for UE's landscape actor, but available through code), these features are still experimental and not yet accessible to the ROS interface. This actor currently is only fully tested for creating flat landscapes (in the future we will test/enable the remaining features). Every level must have one of these actors in it, as the AutoSceneGenWorker will use it to create the desired scene.
+
+The landscape is a square mesh subdivided into triangles. The overall mesh consist of a nominal landscape and an optional border. The nominal landscape is the region in which the user can apply the various sculpting brushes to shape its mesh, and the lower left corner is placed at (0,0) in the XY plane. The border controls how much padding is placed around the nominal landscape. The border is solely a convenience feature. If the user only wants to control a LxL sized landscape, but wants the landscape to appear as if it extends in all directions far enough such that the vehicle 
+
+ There are a few primary parameters that control how the landscape will look (accessible through the AutoSceneGenWorker and the ROS interface):
+- Subdivisions: The landscape mesh is a square mesh broken into triangles. The base mesh is a square broken into two right triangles. The subdivisions parameter controls how many times these two base triangles in the nominal landscape should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
+- Nominal Size:
+- Border:
+
+Additional Requirements:
+* Go to World Settings --> World --> Navigation System Config --> Disable NullNavSysConfig.
+* Go to World Settings --> Lightmass --> Check ForceNoPrecomputedLighting.
+
+### AutoSceneGenVehicle Actor
 
 This is the base vehicle actor class. This class comes with a custom `PIDDriveByWireComponent` to allow you to control it externally via ROS, and you can attach any number of our provided sensors to the vehicle. To create your vehicle model, follow these steps:
 1. Make a Blueprint class that inherits from `AutoSceneGenVehicle`.
@@ -135,7 +154,7 @@ Structural scene acotrs (SSAs) are static structural elements that are part of t
 - `Static Mesh Component`: This is where you provide the static mesh component for the actor.
 - `Traversable Height Threshold`: If the actor is less than this height, then it will be considered traversable and the vehicle mesh will not collide with it (i.e,, they will "pass through" each other). This height is also used by the traversability segmenation camera.
 - `Always Traversable`: Indicates if the actor will always be traversable. If so, then the vehicle mesh will never collide with this mesh.
-- `Semantic Segmentation Color `: The color these ibjectswill apear in semantic segmentation images.
+- `Semantic Segmentation Color `: The color these objects will appear in semantic segmentation images.
 
 ### Sensors
 
