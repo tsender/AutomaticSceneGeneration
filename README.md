@@ -119,9 +119,9 @@ Additional Requirements:
 
 ### AutoSceneGenLandscape Actor
 
-This is a custom landscape actor that allows you to modify the elevation of its vertices at runtime (unlike the landscape actor provided by Unreal). Having this capability is incredibly important for testing off-road vehicles in diverse environments. While we do provide a number of sculpting brushes available for modifying the landscape's elevation (similar to the brushes for UE's landscape actor, but available through code), these features are still experimental and not yet accessible to the ROS interface. This actor currently is only fully tested for creating flat landscapes (in the future we will test/enable the remaining features). Every level must have one of these actors in it, as the AutoSceneGenWorker will use it to create the desired scene.
+This is a custom landscape actor that allows you to modify its height map at runtime (unlike the landscape actor provided by UE which only allows manual modifications through the interactive landscape menu). Having this capability is incredibly important for testing off-road vehicles in diverse environments. While we do provide a number of sculpting brushes available for modifying the landscape's elevation (similar to the brushes with UE's landscape actor), these features are still experimental and not yet accessible to the ROS interface. This actor currently is only fully tested for creating flat landscapes (in the future we will test/enable the remaining features). 
 
-The landscape is a square mesh subdivided into triangles. The overall mesh consist of a nominal landscape and an optional border. The nominal landscape is the region in which the user can apply the various sculpting brushes to shape its mesh, and the lower left corner is placed at (0,0) in the XY plane. The border controls how much padding is placed around the nominal landscape. The border is solely a convenience feature. If the user only wants to control a LxL sized landscape, but wants the landscape to appear as if it extends in all directions far enough such that the vehicle 
+The landscape is a square mesh subdivided into triangles. The overall mesh consists of a nominal landscape and an optional border. The nominal landscape is the region in which the user can apply the various sculpting brushes to shape its mesh. The border controls how much padding is placed around the nominal landscape and it is solely a convenience feature. If the user only wants to control a LxL sized landscape, but wants the landscape to appear as if it extends in all directions (far enough such that the vehicle wouldn't know the landscape has a finite size), then applying a border prevents the user from having to manually account for the border when modifying or interacting with the landscape.
 
  There are a few primary parameters that control how the landscape will look (accessible through the AutoSceneGenWorker and the ROS interface):
 - Subdivisions: The landscape mesh is a square mesh broken into triangles. The base mesh is a square broken into two right triangles. The subdivisions parameter controls how many times these two base triangles in the nominal landscape should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
@@ -129,8 +129,9 @@ The landscape is a square mesh subdivided into triangles. The overall mesh consi
 - Border:
 
 Additional Requirements:
-* Go to World Settings --> World --> Navigation System Config --> Disable NullNavSysConfig.
-* Go to World Settings --> Lightmass --> Check ForceNoPrecomputedLighting.
+- Every level must have one of these actors in it, as the AutoSceneGenWorker will use it to create the desired scene.
+- Go to World Settings --> World --> Navigation System Config --> Disable NullNavSysConfig.
+- Go to World Settings --> Lightmass --> Check ForceNoPrecomputedLighting.
 
 ### AutoSceneGenVehicle Actor
 
