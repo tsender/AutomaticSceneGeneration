@@ -114,9 +114,37 @@ Every level must have one of these actors in the World Outliner to take advantag
 * `Auto Scene Gen Client Name`: The name of the ROS AutoSceneGenClient node.
 Almost all of the other settings are used right after you press Play, and then get reset from the ROS interface.
 
-Additional Requirements:
+**Additional Requirements:**
 * A directional light set to `Moveable` must exist in the World Outline so that we can control the sun position.
 * Uncheck the `EnableWorldBoundsCheck` in the World Settings. This will allow the AutoSceneGenWorker to teleport the AutoSceneGenVehicle when the vehicle needs to be reset.
+
+**ROS Publishers:**
+* Worker Status Pub:
+  - Topic: `/asg_workerX/status`
+  - Type: `auto_scene_gen_msgs/StatusCode`
+  - Description: Publishes the worker's status
+- Vehicle Destination Pub
+  - Topic: `/asg_workerX/nav/destination`
+  - Type: `geometry_msgs/Pose`
+  - Description: Publishes the goal location for the vehicle
+
+**ROS Subscribers:**
+* AutoSceneGenClient Status Sub:
+  - Topic: `/asg_client/status` ("asg_client" is replaced with the actual name of the AutoSceneGenClient node)
+  - Type: `auto_scene_gen_msgs/StatusCode`
+  - Description: Subscribes to the AutoSceneGenClient node's status
+ 
+**ROS Clients:**
+* Analyze Scenario Client:
+  - Topic: `/asg_client/services/analyze_scenario`
+  - Type: `auto_scene_gen_msgs/AnalyzeScenario`
+  - Description: Sends the trajectory info
+ 
+**ROS Services:**
+* Worker Status Pub:
+  - Topic: `/asg_workerX/status`
+  - Type: `auto_scene_gen_msgs/StatusCode`
+  - Description: Publishes the worker's status
 
 ### AutoSceneGenLandscape Actor
 
