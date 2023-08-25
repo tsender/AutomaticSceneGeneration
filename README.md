@@ -115,6 +115,7 @@ Every level must have one of these actors in the World Outliner to take advantag
 Almost all of the other settings are used right after you press Play, and then get reset from the ROS interface.
 
 Additional Requirements:
+* A directional light set to `Moveable` so that we can control the sun position.
 * Uncheck the `EnableWorldBoundsCheck` in the World Settings. This will allow the AutoSceneGenWorker to teleport the AutoSceneGenVehicle when the vehicle needs to be reset.
 
 ### AutoSceneGenLandscape Actor
@@ -128,16 +129,18 @@ There are a few primary parameters that control the base (flat) landscape (acces
 - Subdivisions: The number of times the triangles in the nominal landscape mesh should be subdivided. Must be a nonnegaive integer.
 - Border: The minimum allowed amount of padding for the border
 
-The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size and subdivisions parameters. In the figure, L is the nominal size of the landscape. The formulas for determining how many triangles and vertices that will be in the mesh are: Triangles = 2^(2*Subdivisions + 1) and Vertices = (Subdivisions + 2)^2.
+The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size and subdivisions parameters. In the figure, `L` is the nominal size of the landscape. The formulas for determining how many triangles and vertices that will be in the mesh are: `Triangles = 2^(2*Subdivisions + 1)` and `Vertices = (Subdivisions + 2)^2`. The vertex spacing is given by the formula `s = L / (Subdivisions + 2)`, and this spacing holds for *all* vertices in the entire mesh.
+
 ![text](Documentation/AutoSceneGenLandscape_Subdivisions.PNG)
 
-The figure below illustrates the placement of the mesh as well as how the border parameter changes the mesh.
+The figure below illustrates the placement of the mesh as well as how the border affects the mesh. In the figure, `L` is the nominal landscape size, `b` is the desired border padding, and `s` is the vertex spacing. In this example, `Subdivisions = 1`, `s = L/2`, abd `b < s`. The green square indicate the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape plus the border with amount of padding requested. Since the `Subdivisions` parameter controls the vertex spacing `s`, we set the border padding to the next highest multiple of `s`, creating a slightly larger mesh as shown by the largest square in the figure.
+
 ![text](Documentation/AutoSceneGenLandscape_Example.PNG)
 
 Additional Requirements:
 - Every level must have one of these actors in it, as the AutoSceneGenWorker will use it to create the desired scene.
-- Go to World Settings --> World --> Navigation System Config --> Disable NullNavSysConfig.
-- Go to World Settings --> Lightmass --> Check ForceNoPrecomputedLighting.
+- Go to World Settings --> World --> Navigation System Config --> Disable `NullNavSysConfig`.
+- Go to World Settings --> Lightmass --> Check `ForceNoPrecomputedLighting`.
 
 ### AutoSceneGenVehicle Actor
 
@@ -147,7 +150,7 @@ This is the base vehicle actor class. This class comes with a custom `PIDDriveBy
    - Under "Animation", provide the `Animation Mode` and `Anim Class`.
    - Under "Mesh", provide the `Skeletal Mesh`.
    - Under "Materials", make sure the skeletal mesh materials appear.
-3. Go the physics asset for the skeletal mesh. Click on each component in the Skeleton Tree and under "Collision", check the box "Simulation Generates Hit Events".
+3. Go to the physics asset for the skeletal mesh. Click on each component in the Skeleton Tree and under "Collision", check the box `Simulation Generates Hit Events`.
 4. Go to the Class Defaults for the BP actor
    - Adjust the `Linear Motion Threshold` value as desired. This value is used to determine if the vehicle is stuck or idling.
    - Set the vehicle name as desired. All ROS topics pertaining to the vehicle will have the prefix `/asg_workerX/vehicle_name/`. If no worker is present, then the prefix will just be `/vehicle/`.
