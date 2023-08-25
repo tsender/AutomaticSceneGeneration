@@ -115,7 +115,7 @@ Every level must have one of these actors in the World Outliner to take advantag
 Almost all of the other settings are used right after you press Play, and then get reset from the ROS interface.
 
 Additional Requirements:
-* A directional light set to `Moveable` so that we can control the sun position.
+* A directional light set to `Moveable` must exist in the World Outline so that we can control the sun position.
 * Uncheck the `EnableWorldBoundsCheck` in the World Settings. This will allow the AutoSceneGenWorker to teleport the AutoSceneGenVehicle when the vehicle needs to be reset.
 
 ### AutoSceneGenLandscape Actor
@@ -125,15 +125,18 @@ This is a custom landscape actor that allows you to modify its height map at run
 The landscape is a square mesh subdivided into triangles. The overall mesh consists of a nominal landscape and an optional border. The nominal landscape is the region in which the user can apply the various sculpting brushes to shape its mesh. The border controls how much padding is placed around the nominal landscape and it is solely a convenience feature. If the user only wants to control a LxL sized landscape, but wants the landscape to appear as if it extends in all directions (or at least far enough that the vehicle wouldn't know the landscape has a finite size), then applying a border prevents the user from having to manually account for the border when modifying or interacting with the landscape.
 
 There are a few primary parameters that control the base (flat) landscape (accessible through the AutoSceneGenWorker and the ROS interface):
-- Nominal Size: The size of the nominal landscape
+- Nominal Size: The size of the nominal landscape.
 - Subdivisions: The number of times the triangles in the nominal landscape mesh should be subdivided. Must be a nonnegaive integer.
-- Border: The minimum allowed amount of padding for the border
+- Border: The minimum allowed amount of padding for the border.
 
-The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size and subdivisions parameters. In the figure, `L` is the nominal size of the landscape. The formulas for determining how many triangles and vertices that will be in the mesh are: `Triangles = 2^(2*Subdivisions + 1)` and `Vertices = (Subdivisions + 2)^2`. The vertex spacing is given by the formula `s = L / (Subdivisions + 2)`, and this spacing holds for *all* vertices in the entire mesh.
+The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size and subdivisions parameters. In the figure, `L` is the nominal size of the landscape. The formulas for determining how many triangles and vertices that will be in the mesh are:  
+`Triangles = 2^(2*Subdivisions + 1)` and  
+`Vertices = (Subdivisions + 2)^2`.  
+The vertex spacing is given by the formula `s = L / (2^Subdivisions)`, and this spacing holds for *all* vertices in the entire mesh.
 
 ![text](Documentation/AutoSceneGenLandscape_Subdivisions.PNG)
 
-The figure below illustrates the placement of the mesh as well as how the border affects the mesh. In the figure, `L` is the nominal landscape size, `b` is the desired border padding, and `s` is the vertex spacing. In this example, `Subdivisions = 1`, `s = L/2`, abd `b < s`. The green square indicate the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape plus the border with amount of padding requested. Since the `Subdivisions` parameter controls the vertex spacing `s`, we set the border padding to the next highest multiple of `s`, creating a slightly larger mesh as shown by the largest square in the figure.
+The figure below illustrates the placement of the mesh as well as how the border affects the mesh. In the figure, `L` is the nominal landscape size, `b` is the desired border padding, and `s` is the vertex spacing. In this example, `Subdivisions = 1`, `s = L/2`, and `b < s`. The green square indicate the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape plus the border with amount of padding requested. Since the `Subdivisions` parameter controls the vertex spacing `s`, we set the border padding to the next highest multiple of `s`, creating a slightly larger mesh as shown by the largest square in the figure.
 
 ![text](Documentation/AutoSceneGenLandscape_Example.PNG)
 
