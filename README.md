@@ -123,10 +123,16 @@ This is a custom landscape actor that allows you to modify its height map at run
 
 The landscape is a square mesh subdivided into triangles. The overall mesh consists of a nominal landscape and an optional border. The nominal landscape is the region in which the user can apply the various sculpting brushes to shape its mesh. The border controls how much padding is placed around the nominal landscape and it is solely a convenience feature. If the user only wants to control a LxL sized landscape, but wants the landscape to appear as if it extends in all directions (or at least far enough that the vehicle wouldn't know the landscape has a finite size), then applying a border prevents the user from having to manually account for the border when modifying or interacting with the landscape.
 
- There are a few primary parameters that control how the landscape will look (accessible through the AutoSceneGenWorker and the ROS interface):
-- Subdivisions: The landscape mesh is a square mesh broken into triangles. The base mesh is a square broken into two right triangles. The subdivisions parameter controls how many times these two base triangles in the nominal landscape should be subdivided. The landscape will have 2^NumSubdivisions triangles along each edge.
-- Nominal Size:
-- Border:
+There are a few primary parameters that control the base (flat) landscape (accessible through the AutoSceneGenWorker and the ROS interface):
+- Nominal Size: The size of the nominal landscape
+- Subdivisions: The number of times the triangles in the nominal landscape mesh should be subdivided. Must be a nonnegaive integer.
+- Border: The minimum allowed amount of padding for the border
+
+The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size and subdivisions parameters. In the figure, L is the nominal size of the landscape. The formulas for determining how many triangles and vertices that will be in the mesh are: Triangles = 2^(2*Subdivisions + 1) and Vertices = (Subdivisions + 2)^2.
+![text](Documentation/AutoSceneGenLandscape_Subdivisions.PNG)
+
+The figure below illustrates the placement of the mesh as well as how the border parameter changes the mesh.
+![text](Documentation/AutoSceneGenLandscape_Example.PNG)
 
 Additional Requirements:
 - Every level must have one of these actors in it, as the AutoSceneGenWorker will use it to create the desired scene.
