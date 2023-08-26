@@ -67,11 +67,11 @@ There are a few primary parameters that control the base (flat) landscape (acces
 
 The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size $L$ and subdivisions $S$. The formulas for determining how many triangles $T$ and vertices $V$ that will be in the mesh are $T = 2^{2S+1}$  and $V = (S+2)^2$. The vertex spacing $s$ is given by the formula $s = L/(2^S)$, and this spacing holds for *all* vertices in the entire mesh.
 
-![text](Documentation/AutoSceneGenLandscape_Subdivisions.PNG)
+![text](AutoSceneGenLandscape_Subdivisions.PNG)
 
 The figure below illustrates the placement of the mesh as well as how the border affects the mesh. Using the same notation as above, in this example we have $S=1$, $s = L/2$, and $b < s$. The green square indicates the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape with the border using the requested padding. Due to the vertex spacing $s$, we set the border padding to the next greatest multiple of $s$, creating a slightly larger mesh. The actual border will consist of $\text{ceil}(b/s)$ vertices in each direction as shown by the largest square with the solid border.
 
-![text](Documentation/AutoSceneGenLandscape_Example.PNG)
+![text](AutoSceneGenLandscape_Example.PNG)
 
 Additional Requirements:
 - Every level must have one of these actors in it, as the AutoSceneGenWorker will use it to create the desired scene.
