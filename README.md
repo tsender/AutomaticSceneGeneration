@@ -5,6 +5,8 @@ Table of Contents
 - [The AutoSceneGen Ecosystem and Dependencies](#the-autoscenegen-ecosystem-and-dependencies)
 - [Installation](#installation)
 - [Overview](#overview)
+- [Actors](#actors)
+- [Sensors](#sensors)
 
 ## Description
 The purpose of this plugin is to support the development, validation, and testing of off-road autonomous vehicles (AVs). One of the primary knowledge gaps pertaining to off-road AV evaluation and testing is in the ability to *quickly and automatically* test an AV system in *arbitrary and diverse* simulated environments. While there exist numerous simulator packages designed for the development and testing of AVs in urban environments, most notably the [CARLA](https://carla.org/) simulator, there are very few high-fidelity open-source tools designed for testing AVs in natural, unstructured off-road environments. Consequently, we are developing a plugin for Unreal Engine specifically for this purpose. Our plugin allows for an external ROS2 client to test a virtual vehicle in any scenario (suppported by our custom scenario description protocol) across as many UE4 editors as your computational resources can support. We also provide an external ROS2 interface to interact with this plugin.
@@ -92,8 +94,6 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 
 ## Overview
 
-### Typical Workflow
-
 ![text](Documentation/AutoSceneGen_Workflow.PNG)
 
 The diagram above shows the typical workflow for interacting with the platform. There are three main components: Unreal Engine (which includes this plugin), the autonomy stack under test, and an external client. The platform is configured to work following a server-client model, with the AutoSceneGenWorker as the server and the AutoSceneGenClient as the client. The general process is as follows:
@@ -102,6 +102,8 @@ The diagram above shows the typical workflow for interacting with the platform. 
 3. The autonomy stack, consisting of AutoSceneGenVehicleNodes, then process exchanges sensor data and control commands to control the vehicle to reach the goal location.
 4. Once the AutoSceneGenVehicle receives its first control command, the AutoSceneGenWorker continuously monitors the vehicle's performance. If the vehicle succeeds or fails (see below for how we define failure), then the worker will reset the vehicle and send a `AnalyzeScenario` request to the client containing information about the vehicle's trajectory and performance.
 5. The client will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeats until the client is done running tests.
+
+## Actors
 
 ### AutoSceneGenWorker Actor
 
@@ -119,7 +121,7 @@ Almost all of the other settings are used right after you press Play, and then g
 * Uncheck the `EnableWorldBoundsCheck` in the World Settings. This will allow the AutoSceneGenWorker to teleport the AutoSceneGenVehicle when the vehicle needs to be reset.
 
 **ROS Publishers:**
-* Worker Status Pub:
+- Worker Status Pub:
   - Topic: `/asg_workerX/status`
   - Type: `auto_scene_gen_msgs/StatusCode`
   - Description: Publishes the worker's status
@@ -129,22 +131,24 @@ Almost all of the other settings are used right after you press Play, and then g
   - Description: Publishes the goal location for the vehicle
 
 **ROS Subscribers:**
-* AutoSceneGenClient Status Sub:
-  - Topic: `/asg_client/status` ("asg_client" is replaced with the actual name of the AutoSceneGenClient node)
+Note: All instances of "asg_client" in the below topic names gets replaced with the actual name of the AutoSceneGenClient node
+- AutoSceneGenClient Status Sub:
+  - Topic: `/asg_client/status`
   - Type: `auto_scene_gen_msgs/StatusCode`
   - Description: Subscribes to the AutoSceneGenClient node's status
  
 **ROS Clients:**
-* Analyze Scenario Client:
+Note: All instances of "asg_client" in the below topic names gets replaced with the actual name of the AutoSceneGenClient node
+- Analyze Scenario Client:
   - Topic: `/asg_client/services/analyze_scenario`
   - Type: `auto_scene_gen_msgs/AnalyzeScenario`
-  - Description: Sends the trajectory info
+  - Description: Sends information about the vehicle's trajectory to the AutoSceneGenClient for processing
  
 **ROS Services:**
-* Worker Status Pub:
-  - Topic: `/asg_workerX/status`
-  - Type: `auto_scene_gen_msgs/StatusCode`
-  - Description: Publishes the worker's status
+- Run Scenario Service:
+  - Topic: `/asg_workerX/services/run_scenario`
+  - Type: `auto_scene_gen_msgs/RunScenario`
+  - Description: Service for running various navigation scenarios (includes creating the scene, monitoring the vehicle's progress, terminating the simulation, sending the vehicle's trajectory info to the AutoSceneGenCLient, and awaiting for the next scenario request)
 
 ### AutoSceneGenLandscape Actor
 
@@ -197,17 +201,17 @@ Structural scene acotrs (SSAs) are static structural elements that are part of t
 - `Always Traversable`: Indicates if the actor will always be traversable. If so, then the vehicle mesh will never collide with this mesh.
 - `Semantic Segmentation Color `: The color these objects will appear in semantic segmentation images.
 
-### Sensors
+## Sensors
 
 We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. All ROS topic names will follow the naming hierarchy `/asg_workerX` + `/vehicle_name` + `/sensors/sensor_name`. If an AutoSceneGen worker or vehicle is not present, then the according prefix will be omitted.
 
-#### Localization Sensor
+### Localization Sensor
 
 This sensor provides the position and orientation of the sensor component. it will publish data using a `geometry_msgs/PoseStamped` message. The configurable parameters are under the "Localization Sensor" tab in the details panel:
 - `Sensor Name`: The name of the sensor to be used in the ROS topic.
 - `Frame Rate`: The frame rate in Hz that the sensor will run at.
 
-#### CompleteCameraSensor
+### CompleteCameraSensor
 
 This sensor is a multifunctional camera sensor supporting the following types of cameras:
 - Color Camera (Color Cam): This is the standard RGB color camera that capture the scene's tru colors.
