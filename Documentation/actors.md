@@ -1,6 +1,6 @@
 # AutoSceneGen Actors
 
-This page describes all of the primary actors provided by this plugin.
+This page describes all of the primary actors provided by this plugin that you will be interacting with.
 
 Quick Links:
 - [Home Page](https://github.com/tsender/AutomaticSceneGeneration)
@@ -18,7 +18,7 @@ Every level must have one of these actors in the World Outliner to take advantag
 * `Auto Scene Gen Client Name`: The name of the ROS AutoSceneGenClient node.
 Almost all of the other settings are used right after you press Play, and then get reset from the ROS interface.
 
-**Additional Requirements:**
+### Additional Requirements
 * A directional light set to `Moveable` must exist in the World Outline so that we can control the sun position.
 * Uncheck the `EnableWorldBoundsCheck` in the World Settings. This will allow the AutoSceneGenWorker to teleport the AutoSceneGenVehicle when the vehicle needs to be reset.
 
@@ -52,12 +52,15 @@ Lists any publishers, subscribers, clients, and/or services monitored by this ac
 - Run Scenario Service:
   - Topic: `/asg_workerX/services/run_scenario`
   - Type: `auto_scene_gen_msgs/RunScenario`
-  - Description: Service for running various navigation scenarios (includes creating the scene, monitoring the vehicle's progress, terminating the simulation, sending the vehicle's trajectory info to the AutoSceneGenCLient, and awaiting for the next scenario request)
+  - Description: Service for running various navigation scenarios (includes creating the scene, monitoring the vehicle's progress, terminating the simulation, sending the vehicle's trajectory info to the AutoSceneGenCLient, and awaiting the next scenario request)
 
 ## AutoSceneGenLandscape
 
-This is a custom landscape actor that allows you to modify its height map at runtime (unlike the landscape actor provided by UE which only allows manual modifications through the interactive landscape menu). Having this capability is incredibly important for testing off-road vehicles in diverse environments. While we do provide a number of sculpting brushes available for modifying the landscape's elevation (similar to the brushes with UE's landscape actor), these features are still experimental and not yet accessible to the ROS interface. This actor currently is only fully tested for creating flat landscapes (in the future we will test/enable the remaining features). 
+This is a custom landscape actor that allows you to modify its height map at runtime (unlike the landscape actor provided by UE which only allows manual modifications through the interactive landscape menu). Having this capability is incredibly important for testing off-road vehicles in diverse environments. While we do provide a number of C++ sculpting brushes available for modifying the landscape's elevation (similar to the brushes with UE's landscape actor), these features are still experimental and not yet accessible via the ROS interface. The landscape below is a demo landscape showing off some of these features. This actor currently is only fully tested for creating flat landscapes (in the future we will test/enable the remaining features).
 
+![text](AutoSceneGenLandscape_Demo.PNG)
+
+### The Landscape Mesh
 The landscape is a square mesh subdivided into triangles. The overall mesh consists of a nominal landscape and an optional border. The nominal landscape is the region in which the user can apply the various sculpting brushes to shape its mesh. The border controls how much padding is placed around the nominal landscape and it is solely a convenience feature. If the user only wants to control a LxL sized landscape, but wants the landscape to appear as if it extends in all directions (or at least far enough that the vehicle wouldn't know the landscape has a finite size), then applying a border prevents the user from having to manually account for the border when modifying or interacting with the landscape.
 
 There are a few primary parameters that control the base (flat) landscape (accessible through the AutoSceneGenWorker and the ROS interface):
@@ -65,15 +68,15 @@ There are a few primary parameters that control the base (flat) landscape (acces
 - Subdivisions: The number of times the triangles in the nominal landscape mesh should be subdivided. Must be a nonnegaive integer.
 - Border: The minimum allowed amount of padding for the border.
 
-The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size $L$ and subdivisions $S$. The formulas for determining how many triangles $T$ and vertices $V$ that will be in the mesh are $T = 2^{2S+1}$  and $V = (S+2)^2$. The vertex spacing $s$ is given by the formula $s = L/(2^S)$, and this spacing holds for *all* vertices in the entire mesh.
+The figure below illustrates how the AutoSceneGenLandscape actor creates a landscape mesh (without any border) using the nominal size $L$ and subdivisions $S$. The formulas for determining how many triangles $T$ and vertices $V$ that will be in the mesh are $T = 2^{2S+1}$  and $V = (S+2)^2$. The vertex spacing $l$ is given by the formula $l = L/(2^S)$, and this spacing holds for *all* vertices in the entire mesh.
 
 ![text](AutoSceneGenLandscape_Subdivisions.PNG)
 
-The figure below illustrates the placement of the mesh as well as how the border affects the mesh. Using the same notation as above, in this example we have $S=1$, $s = L/2$, and $b < s$. The green square indicates the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape with the border using the requested padding. Due to the vertex spacing $s$, we set the border padding to the next greatest multiple of $s$, creating a slightly larger mesh. The actual border will consist of $\text{ceil}(b/s)$ vertices in each direction as shown by the largest square with the solid border.
+The figure below illustrates the placement of the mesh as well as how the border affects the mesh. Using the same notation as above, in this example we have $S=1$, $l = L/2$, and $b < l$. The green square indicates the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape with the border using the requested padding. Due to the vertex spacing $s$, we set the border padding to the next greatest multiple of $l$, creating a slightly larger mesh. The actual border will consist of $\text{ceil}(b/l)$ vertices in each direction as shown by the largest square with the solid border.
 
 ![text](AutoSceneGenLandscape_Example.PNG)
 
-Additional Requirements:
+### Additional Requirements
 - Every level must have one of these actors in it, as the AutoSceneGenWorker will use it to create the desired scene.
 - Go to World Settings --> World --> Navigation System Config --> Disable `NullNavSysConfig`.
 - Go to World Settings --> Lightmass --> Check `ForceNoPrecomputedLighting`.
@@ -109,6 +112,6 @@ Lists any publishers, subscribers, clients, and/or services monitored by this ac
 
 Structural scene acotrs (SSAs) are static structural elements that are part of the landscape (e.g., trees, bushes, rocks, etc.). The configurable parameters are under the "Structural Scene Actor" tab in the details panel:
 - `Static Mesh Component`: This is where you provide the static mesh component for the actor.
-- `Traversable Height Threshold`: If the actor is less than this height, then it will be considered traversable and the vehicle mesh will not collide with it (i.e,, they will "pass through" each other). This height is also used by the traversability segmenation camera.
+- `Traversable Height Threshold`: If the actor is less than this height, then it will be considered traversable and the vehicle mesh will not collide with it (i.e, they will "pass through" each other). This height is also used by the traversability segmenation camera.
 - `Always Traversable`: Indicates if the actor will always be traversable. If so, then the vehicle mesh will never collide with this mesh.
 - `Semantic Segmentation Color `: The color these objects will appear in semantic segmentation images.
