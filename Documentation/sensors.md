@@ -7,7 +7,7 @@ Quick Links:
 - Actors
 - Components
 
-We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. All ROS topic names will follow the naming hierarchy `/asg_workerX` + `/vehicle_name` + `/sensors/sensor_name`. If an AutoSceneGen worker or vehicle is not present, then the according prefix will be omitted.
+We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. All ROS topic names will follow the naming hierarchy `/asg_workerX/vehicle_name/sensors/sensor_name`. If an AutoSceneGen worker or vehicle is not present, then the associated sub-name in the topic will be omitted.
 
 ## Localization Sensor
 
@@ -21,7 +21,7 @@ This sensor is a multifunctional camera sensor supporting the following types of
 - Color Camera (Color Cam): This is the standard RGB color camera that capture the scene's true colors.
 - Depth Camera (Depth Cam): This camera provides the depth data. The raw data in the `sensor_msgs/Image` message will use the `32FC1` encoding.
 - Traversability Segmentation Camera (Trav Cam): This camera provides a semantic segmentation image of traversable objects (white), non-traversable objects (black), and the sky (blue).
-- Semantic Segmentation Camera (Seg Cam): This camera provides a semantic segmentation image corresponding to a user-specified color scheme. All objects can be configured to have a semantic segmentation color, and this color will used to create this omage.
+- Semantic Segmentation Camera (Seg Cam): This camera provides a semantic segmentation image corresponding to a user-specified color scheme. All objects can be configured to have a semantic segmentation color, and this color will used to create this image.
 
 All cameras publish data with the `sensor_msgs/Image` message. All of the above cameras (except the depth camera) will encode the raw data using the `rgb8` encoding. The main color camera ROS topic name will be of the form `/asg_workerX/vehicle_name/sensors/camera_name/color_image`.
 
