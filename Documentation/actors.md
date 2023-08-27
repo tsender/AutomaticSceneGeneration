@@ -24,7 +24,7 @@ Almost all of the other settings are used right after you press Play, and then g
 
 ### ROS Objects
 
-Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of "asg_client" in the below topic names get replaced with the actual name of the AutoSceneGenClient node
+Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of "asg_client" in the below topic names get replaced with the actual name of the AutoSceneGenClient node.
 
 **Publishers:**
 - Worker Status Pub:
@@ -94,7 +94,7 @@ This is the base vehicle actor class. This class comes with a custom `PIDDriveBy
    - Adjust the `Linear Motion Threshold` value as desired. This value is used to determine if the vehicle is stuck or idling.
    - Set the vehicle name as desired. All ROS topics pertaining to the vehicle will have the prefix `/asg_workerX/vehicle_name/`. If no worker is present, then the prefix will just be `/vehicle/`.
 6. Click on the `DriveByWireComponent`
-   - Under "PID Drive By Wire", make sure `Manual Drive` is unchecked, and set the Kp and Kd values for the throttle PID controller.
+   - Under "PID Drive By Wire", make sure `Manual Drive` is unchecked, and set the desired Kp and Kd values for the throttle PID controller.
 7. Attach sensors to the vehicle (see below for types of provided sensors)
 
 ### ROS Objects
