@@ -32,7 +32,7 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 - Unreal Engine 4.23-4.27
   - This repo was written and tested using UE4.26 on Windows 10, but it should work on the listed versions.
 - ROS2 Foxy+
-  - This repo was written and tested with ROS2 Foxy on Ubuntu 20.04, but it should work on Foxy and up.
+  - The ROS2 interface was written and tested with ROS2 Foxy on Ubuntu 20.04, but it should work on Foxy and up.
 
 **Required Software Libraries:**
 1. AutomaticSceneGeneration Plugin for UE4 (this repo)
