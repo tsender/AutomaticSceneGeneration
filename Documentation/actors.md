@@ -110,7 +110,7 @@ Lists any publishers, subscribers, clients, and/or services monitored by this ac
 
 ## StructuralSceneActor
 
-Structural scene acotrs (SSAs) are static structural elements that are part of the landscape (e.g., trees, bushes, rocks, etc.). The configurable parameters are under the "Structural Scene Actor" tab in the details panel:
+Structural scene acotrs (SSAs) are static structural elements that are part of the landscape (e.g., trees, bushes, rocks, etc.). This is a C++ class that you will create Blueprint child classes from. The configurable parameters are under the "Structural Scene Actor" tab in the details panel:
 - `Static Mesh Component`: This is where you provide the static mesh component for the actor.
 - `Traversable Height Threshold`: If the actor is less than this height, then it will be considered traversable and the vehicle mesh will not collide with it (i.e, they will "pass through" each other). This height is also used by the traversability segmenation camera.
 - `Always Traversable`: Indicates if the actor will always be traversable. If so, then the vehicle mesh will never collide with this mesh.
