@@ -37,9 +37,9 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 **Required Software Libraries:**
 1. AutomaticSceneGeneration Plugin for UE4 (this repo)
 2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use the `feature/specify_ros_version` branch of @tsender's fork.
-3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. Use the `main` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
+3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. You will need to use the `main` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
 4. auto_scene_gen: A ROS2 interface that provides the necessary tools to interact with this plugin.
-   - Since this repo is the minimalistic ROS2 interface, it is often more convenient to add the ament packages in the `auto_scene_gen_ros2` repo to the repo you are developing.
+   - Since this repo is the minimalistic ROS2 interface, it is often more convenient to add the two ament packages to the repo you are developing.
 
 ## Installation
 
@@ -82,7 +82,7 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 2. In the Content Browser area, go to View Options and check "Show Plugin Content".
 3. Go to Project Settings -> Maps and Modes, then set the GameInstance object to `ROSIntgrationGameInstance`. Save your settings.
 4. Make sure the Output Log is visible in your display by clicking Window -> Developer Tools -> Output Log (the UE4 plugins make heavy use of logging).
-5. Add a `ROSBridgeParamOverride` actor to the level. Click on this actor in the World Outline. Under the Details display, Sst the ROSVersion to 2, and adjust the `ROSBridgeServerHost` and `ROSBridgeServerPort` according to your setup. Save the level.
+5. Add a `ROSBridgeParamOverride` actor to the level. Click on this actor in the World Outline. Under the Details display, Set the `ROSVersion` to 2, and adjust the `ROSBridgeServerHost` and `ROSBridgeServerPort` according to your setup. Save the level.
 8. Open a terminal in your Ubuntu computer and launch the rosbridge TCP node
    ```
    ros2 launch rosbridge_server rosbridge_tcp_launch.xml bson_only_mode:=True
@@ -96,12 +96,14 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 
 The diagram above shows the typical workflow for interacting with the platform. There are three main components: Unreal Engine (which includes this plugin), the autonomy stack under test, and an external client. The platform is configured to work following a server-client model, with the AutoSceneGenWorker as the server and the AutoSceneGenClient as the client. The general process is as follows:
 1. The AutoSceneGenClient sends a `RunScenario` request to the AutoSceneGenWorker describing all of the scenario's parameters (scene description and mavigation task).
-2. The AutoSceneGenWorker processes the `RunScenario` request, creates the desired scene, places the vehicle at the desired starting location and orientation, and relays the goal location to the AutoSceneGenVehicleNodes.
-3. The autonomy stack, consisting of AutoSceneGenVehicleNodes, then process exchanges sensor data and control commands to control the vehicle to reach the goal location.
-4. Once the AutoSceneGenVehicle receives its first control command, the AutoSceneGenWorker continuously monitors the vehicle's performance. If the vehicle succeeds or fails (see below for how we define failure), then the worker will reset the vehicle and send a `AnalyzeScenario` request to the client containing information about the vehicle's trajectory and performance.
-5. The client will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeats until the client is done running tests.
+2. The AutoSceneGenWorker processes the `RunScenario` request, creates the desired scene, places the vehicle at the desired starting pose, and relays the goal location to the AutoSceneGenVehicleNodes.
+3. The autonomy stack, consisting of AutoSceneGenVehicleNodes, processes sensor data and sends control commands to the AutoSceneGenVehicle to reach the goal location.
+4. Once the AutoSceneGenVehicle receives its first control command, the AutoSceneGenWorker continuously monitors the vehicle's performance. Once a termination condition is triggered, the worker will reset the vehicle and send a `AnalyzeScenario` request to the client containing information about the vehicle's trajectory and performance.
+5. The AutoSceneGenClient will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeats until the client is done running tests.
 
 This plugin provides a variety of actors, components, and sensors that you will be interacting with and will need to configure. Below are links for documentation on each of these items:
-- AutoSceneGen Actors
-- AutoSceneGen Components
-- AutoSceneGen Sensors
+- [AutoSceneGen Actors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/actors.md)
+- [AutoSceneGen Components](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/components.md)
+- [AutoSceneGen Sensors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/sensors.md)
+
+Please consult the [auto_scene_gen](https://github.com/tsender/auto_scene_gen) repository for documentation on how to use the ROS2 interface.
