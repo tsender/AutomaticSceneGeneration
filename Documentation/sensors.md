@@ -7,7 +7,9 @@ Quick Links:
 - [Actors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/actors.md)
 - [Components](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/components.md)
 
-We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. All ROS topic names will follow the naming hierarchy `/asg_worker<wid>/<vehicle_name>/sensors/<sensor_name>`. If a worker or vehicle is not present, then the associated sub-name in the topic will be omitted. Anything in the brackets "<...>" is a placeholder for the appropriate object. For convenience, let us refer to this hierarchy as a topic prefix: `<topic_prefix>` = `/asg_worker<wid>/<vehicle_name>/sensors/<sensor_name>`.
+We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. 
+
+All ROS topic names will follow the naming hierarchy `/asg_worker<wid>/<vehicle_name>/sensors/<sensor_name>`. Anything in the brackets "<...>" is a placeholder for the appropriate object. If a worker is not present, then the string `/asg_worker<wid>` will be omitted. If the sensor is not attached to a vehicle, then the string `/<vehicle_name>` will be ommitted. For convenience, let us refer to this hierarchy as a topic prefix: `<topic_prefix>` = `/asg_worker<wid>/<vehicle_name>/sensors/<sensor_name>`.
 
 ## Localization Sensor
 
