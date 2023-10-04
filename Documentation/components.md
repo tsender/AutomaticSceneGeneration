@@ -33,8 +33,8 @@ Lists any publishers, subscribers, clients, and/or services monitored by this ac
 - Bypass Control Sub:
   - Topic: `/asg_worker<wid>/<vehicle_name>/control/bypass`
   - Type: `geometry_msgs/Pose`
-  - Description: Subscribes to messages describing the desired pose for the vehicle
+  - Description: Subscribes to messages describing the desired pose for the vehicle.
 - PhysX Control Sub
   - Topic: `/asg_worker<wid>/<vehicle_name>/control/physx`
   - Type: `auto_scene_gen_msgs/PhysXControl`
-  - Description: Subscribes to messages indicating the most recent set of control commands to apply to the vehicle
+  - Description: Subscribes to messages indicating the most recent set of control commands to apply to the vehicle.
