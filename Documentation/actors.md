@@ -6,13 +6,14 @@ Quick Links:
 - [Home Page](https://github.com/tsender/AutomaticSceneGeneration)
 - [Components](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/components.md)
 - [Sensors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/sensors.md)
+- [Message and service definitions](https://github.com/tsender/auto_scene_gen/blob/main/documentation/msg_and_srv_reference.md)
 
 ## AutoSceneGenWorker
 
 This is the main actor controlling everything within the simulation and is the server that the AutoSceneGenClient node communicates with. This actor is responsible for processing the RunScenario requests, creating the specified scene, and monitoring the navigation task.
 
 Every level must have one of these actors in the World Outliner to take advantage of the features provided by this plugin. While most of the settings in the details panel under the category "AutoSceneGenVehicle" are overwritten from the RunScenario request, there are a few that should be modified prior to pressing Play:
-* `Worker ID`: The ID associated with this worker. Used in communication with the AutoSceneGenClient. All ROS topics related to this plugin will have the prefix `/asg_workerX/` where "X" is the worker ID.
+* `Worker ID`: The ID associated with this worker. Used in communication with the AutoSceneGenClient. All ROS topics related to this plugin will have the prefix `/asg_worker<wid>/` where `<wid>` is a placeholder for the worker ID.
 * `Landscape Material`: The material/texture that will be applied to the AutoSceneGenLandscape actor.
 * `Vehicle Start Location`: The starting location for the vehicle. Make sure this location is within the landscape bounds and is just above the landscape (a Z value of 50 cm should be fine). This ensures the vehicle starts on the default landscape.
 * `Auto Scene Gen Client Name`: The name of the ROS AutoSceneGenClient node.
@@ -24,35 +25,35 @@ Almost all of the other settings are used right after you press Play, and then g
 
 ### ROS Objects
 
-Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of "asg_client" in the below topic names get replaced with the actual name of the AutoSceneGenClient node.
+Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of `<asg_client_name>` in the below topic names get replaced with the actual name of the AutoSceneGenClient node. All instances of `<wid>` are placeholders for the appropriate worker ID. All instances of `<vehicle_name>` are placeholders for the actual vehicle name as set in its Blueprint.
 
 **Publishers:**
 - Worker Status Pub:
-  - Topic: `/asg_workerX/status`
+  - Topic: `/asg_worker<wid>/status`
   - Type: `auto_scene_gen_msgs/StatusCode`
-  - Description: Publishes the worker's status
+  - Description: Publishes the worker's status.
 - Vehicle Destination Pub
-  - Topic: `/asg_workerX/nav/destination`
+  - Topic: `/asg_worker<wid>/nav/destination`
   - Type: `geometry_msgs/Pose`
-  - Description: Publishes the goal location for the vehicle
+  - Description: Publishes the goal location for the vehicle.
 
 **Subscribers:**
 - AutoSceneGenClient Status Sub:
-  - Topic: `/asg_client/status`
+  - Topic: `/<asg_client_name>/status`
   - Type: `auto_scene_gen_msgs/StatusCode`
-  - Description: Subscribes to the AutoSceneGenClient node's status
+  - Description: Subscribes to the AutoSceneGenClient node's status.
  
 **Clients:**
 - Analyze Scenario Client:
-  - Topic: `/asg_client/services/analyze_scenario`
+  - Topic: `/<asg_client_name>/services/analyze_scenario`
   - Type: `auto_scene_gen_msgs/AnalyzeScenario`
-  - Description: Sends information about the vehicle's trajectory to the AutoSceneGenClient for processing
+  - Description: Sends information about the vehicle's trajectory to the AutoSceneGenClient for processing.
  
 **Services:**
 - Run Scenario Service:
-  - Topic: `/asg_workerX/services/run_scenario`
+  - Topic: `/asg_worker<wid>/services/run_scenario`
   - Type: `auto_scene_gen_msgs/RunScenario`
-  - Description: Service for running various navigation scenarios (includes creating the scene, monitoring the vehicle's progress, terminating the simulation, sending the vehicle's trajectory info to the AutoSceneGenCLient, and awaiting the next scenario request)
+  - Description: Service for running various navigation scenarios (includes creating the scene, monitoring the vehicle's progress, terminating the simulation, sending the vehicle's trajectory info to the AutoSceneGenCLient, and awaiting the next scenario request).
 
 ## AutoSceneGenLandscape
 
@@ -105,7 +106,7 @@ Lists any publishers, subscribers, clients, and/or services monitored by this ac
 - Vehicle Status Pub:
   - Topic: `/asg_worker<wid>/<vehicle_name>/status`
   - Type: `auto_scene_gen_msgs/StatusCode`
-  - Description: Publishes the vehicle's status
+  - Description: Publishes the vehicle's status.
 
 
 ## StructuralSceneActor
