@@ -4,8 +4,8 @@ This page describes all of the primary actors provided by this plugin that you w
 
 Quick Links:
 - [Home Page](https://github.com/tsender/AutomaticSceneGeneration)
-- Components
-- Sensors
+- [Components](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/components.md)
+- [Sensors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/sensors.md)
 
 ## AutoSceneGenWorker
 
@@ -72,7 +72,7 @@ The figure below illustrates how the AutoSceneGenLandscape actor creates a lands
 
 ![text](AutoSceneGenLandscape_Subdivisions.PNG)
 
-The figure below illustrates the placement of the mesh as well as how the border affects the mesh. Using the same notation as above, in this example we have $S=1$, $l = L/2$, and $b < l$. The green square indicates the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape with the border using the requested padding. Due to the vertex spacing $s$, we set the border padding to the next greatest multiple of $l$, creating a slightly larger mesh. The actual border will consist of $\text{ceil}(b/l)$ vertices in each direction as shown by the largest square with the solid border.
+The figure below illustrates the placement of the mesh as well as how the border affects the mesh. The origin depicted is the origin of the landscpae mesh. The mesh's x-axis will always be aligned with the global x-axis. Using the same notation as above, in this example we have $S=1$, $l = L/2$, and $b < l$. The green square indicates the nominal landscape part of the mesh; the lower left corner of the nominal landscape always lies ot the origin (0,0) in UE. The dashed square indicates the size of the nominal landscape with the border using the requested padding. Due to the vertex spacing $s$, we set the border padding to the next greatest multiple of $l$, creating a slightly larger mesh. The actual border will consist of $\text{ceil}(b/l)$ vertices in each direction as shown by the largest square with the solid border.
 
 ![text](AutoSceneGenLandscape_Example.PNG)
 
@@ -99,11 +99,11 @@ This is the base vehicle actor class. This class comes with a custom `PIDDriveBy
 
 ### ROS Objects
 
-Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of "vehicle_name" in the below topic names get replaced with the actual vehicle name as set in the Blueprint.
+Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of `<wid>` are placeholders for the appropriate worker ID. All instances of `<vehicle_name>` are placeholders for the actual vehicle name as set in the Blueprint.
 
 **Publishers:**
 - Vehicle Status Pub:
-  - Topic: `/asg_workerX/vehicle_name/status`
+  - Topic: `/asg_worker<wid>/<vehicle_name>/status`
   - Type: `auto_scene_gen_msgs/StatusCode`
   - Description: Publishes the vehicle's status
 
