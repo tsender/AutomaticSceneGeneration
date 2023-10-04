@@ -4,8 +4,9 @@ This page describes all of the primary actor components provided by this plugin.
 
 Quick Links:
 - [Home Page](https://github.com/tsender/AutomaticSceneGeneration)
-- Actors
-- Sensors
+- [Actors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/actors.md)
+- [Sensors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/sensors.md)
+- [Message and service definitions](https://github.com/tsender/auto_scene_gen/blob/main/documentation/msg_and_srv_reference.md)
 
 
 ## AnnotationComponent
@@ -26,14 +27,14 @@ The component will autodetect between the bypass and PhysX control modes based o
 
 ### ROS Objects
 
-Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of "vehicle_name" in the below topic names get replaced with the actual vehicle name as set in the Blueprint.
+Lists any publishers, subscribers, clients, and/or services monitored by this actor. All instances of `<wid>` are placeholders for the appropriate worker ID. All instances of `<vehicle_name>` are placeholders for the actual vehicle name as set in the Blueprint.
 
 **Subscribers:**
 - Bypass Control Sub:
-  - Topic: `/asg_workerX/vehicle_name/control/bypass`
+  - Topic: `/asg_worker<wid>/<vehicle_name>/control/bypass`
   - Type: `geometry_msgs/Pose`
   - Description: Subscribes to messages describing the desired pose for the vehicle
 - PhysX Control Sub
-  - Topic: `/asg_workerX/vehicle_name/control/physx`
+  - Topic: `/asg_worker<wid>/<vehicle_name>/control/physx`
   - Type: `auto_scene_gen_msgs/PhysXControl`
   - Description: Subscribes to messages indicating the most recent set of control commands to apply to the vehicle
