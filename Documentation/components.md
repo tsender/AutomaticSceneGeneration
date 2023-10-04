@@ -20,7 +20,7 @@ This component is used in every AutoSceneGenVehicle and is what the user interac
 
 - **Manual**: This mode allows the user to control the vehicle directly via the WASD keys. To activate manual mode, check the `ManualDrive` flag in the "PID Drive By Wire" details tab. If manual mode is activated, then the other modes below will not function.
 - **Bypass**: This mode allows the user to send pose commands for the vehicle to be placed at, bypassing the vehicle's control system. To use this mode, uncheck the `ManualDrive` flag, and begin publishing messages that the Bypass Control Sub listens to (see below).
-- **PhysX**: This mode allows the user to utilize the vehicle's control system and to send throttle, steering, and handbrake commands. To use this mode, uncheck the `ManualDrive` flag, set the `KpThrottle` and `KdThrottle` values as desired, and begin publishing messages on that the PhysX Control Sub listens to (see below).
+- **PhysX**: This mode allows the user to utilize the vehicle's control system and to send throttle, steering, and handbrake commands. To use this mode, uncheck the `ManualDrive` flag, set the `KpThrottle` and `KdThrottle` values as desired, and begin publishing messages on the topic that the PhysX Control Sub listens to (see below).
 
 The component will autodetect between the bypass and PhysX control modes based on the last message that was published on the appropriate topic. While it is technically possible to use these modes interchangeably, this is not recommended.
 
