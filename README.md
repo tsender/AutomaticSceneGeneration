@@ -2,8 +2,7 @@
 
 Table of Contents
 - [Description](#description)
-- [The AutoSceneGen Ecosystem and Dependencies](#the-autoscenegen-ecosystem-and-dependencies)
-- [Installation](#installation)
+- [The AutoSceneGen Ecosystem](#the-autoscenegen-ecosystem)
 - [Initial Setup](#initial-setup)
 - [Overview](#overview)
 
@@ -25,7 +24,7 @@ If you use our work in an academic context, we would greatly appreciate it if yo
 
 TODO
 
-## The AutoSceneGen Ecosystem and Dependencies
+## The AutoSceneGen Ecosystem
 
 The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS packages.
 
@@ -35,21 +34,24 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 - ROS2 Foxy+
   - The ROS2 interface was written and tested with ROS2 Foxy on Ubuntu 20.04, but it should work on Foxy and up.
 
-### Required Software Libraries
+### Software Libraries
+
+#### Simulation Plugins
 1. AutomaticSceneGeneration Plugin for UE4 (this repo)
 2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use the `feature/specify_ros_version` branch of @tsender's fork since we added ROS2 compatibility.
-3. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. You will need to use the `ros2` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
-4. [auto_scene_gen](https://github.com/tsender/auto_scene_gen): A ROS2 interface that provides the necessary tools to interact with this plugin.
-   - Since this repo is the minimalistic ROS2 interface, it is often more convenient to add the two ament packages to the repo you are developing.
 
-## Installation
+#### ROS Interface
+1. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. You will need to use the `ros2` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
+2. [auto_scene_gen](https://github.com/tsender/auto_scene_gen): The ROS2 interface that provides the necessary tools to interact with the AutomaticSceneGeneration plugin.
+
+### Installation
 
 1. Install a supported version of Unreal Engine 4 and create a code project (let's refer to this project as "MyProject").
 2. Download the `ROSIntegration` and `AutomaticSceneGeneration` plugins using the links above (making sure you download the specified branches). Copy these plugins into your `MyProject/Plugins/` folder.
 3. Open up your UE4 project and let the editor build the plugins (they will build automatically the first time you open the project).
 4. Once everything builds and the project opens, verify the plugins are active by going to Edit -> Plugins. If they are for some reason inactive, then activate them and restart the editor.
 
-Please consult the [auto_scene_gen](https://github.com/tsender/auto_scene_gen) repository for insructions on how to install the Ubuntu portion of the ecosystem.
+Please consult the [auto_scene_gen](https://github.com/tsender/auto_scene_gen) repository for instructions on how to install the ROS interface.
 
 ## Initial Setup
 1. Open your UE4 project.
