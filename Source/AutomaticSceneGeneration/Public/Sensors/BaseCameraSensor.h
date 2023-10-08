@@ -57,7 +57,7 @@ public: /****************************** UBaseCameraSensor **********************
 	virtual void InitTextureTarget(int32 NewWidth, int32 NewHeight, float NewFOV);
 
 	/**
-	 * Resize the texture target width and height
+	 * Resize the texture target width and height. Must wait one tick after calling this function for changes to take effect.
 	 * @param NewWidth The new frame width in pixels
 	 * @param NewHeight The new frame height in pixels
 	 */

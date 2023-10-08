@@ -58,6 +58,8 @@ private: /****************************** AAutoSceneGenWorker *******************
     UPROPERTY(EditAnywhere)
 	int32 CameraImageSize = 1024;
 
+	bool bUpdatedCameraSize = false;
+
 	// Perspective camera field of view in [deg]
 	float CameraFOV = 60.f;
 

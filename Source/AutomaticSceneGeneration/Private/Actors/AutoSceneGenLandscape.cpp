@@ -121,7 +121,6 @@ bool AAutoSceneGenLandscape::CreateBaseMesh(FVector NomLocation, float NomSize, 
 
     LandscapeMesh->CreateMeshSection_LinearColor(0, Vertices, Triangles, Normals, UV0, TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
     UE_LOG(LogASG, Display, TEXT("Created base landscape mesh of nominal size %f x %f [cm] with border size %f [cm]. Total vertices is %i x %i"), NominalSize, NominalSize, ActualBorderWidth, NumSideVertices, NumSideVertices);
-    // UE_LOG(LogASG, Warning, TEXT("Landscape bounds %s"), *BoundingBox.ToString());
     bCreatedBaseMesh = true;
     return true;
 }

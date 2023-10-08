@@ -269,6 +269,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 	if (!bProcessedScenarioRequest)
 	{
 		ClearSceneCaptures();
+		bUpdatedCameraSize = false;
 		ProcessRunScenarioRequest();
 	}
 	
@@ -285,21 +286,19 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 	{
 		if (bTakeSceneCapture)
 		{
-			OrthoCamera->ResizeTextureTarget(CameraImageSize, CameraImageSize);
-			PerspectiveCamera->ResizeTextureTarget(CameraImageSize, CameraImageSize);
+			// Update camera size, then wait a tick for changes to take effect. Otherwise UE will crash.
+			if (!bUpdatedCameraSize)
+			{
+				OrthoCamera->ResizeTextureTarget(CameraImageSize, CameraImageSize);
+				PerspectiveCamera->ResizeTextureTarget(CameraImageSize, CameraImageSize);
+				bUpdatedCameraSize = true;
+				return;
+			}
 
 			CaptureSceneImages(false);
 			if (SceneCaptureSettings.draw_annotations)
 				CaptureSceneImages(true);
 		}
-
-		// TArray<int32> Arr = {1,2,3};
-		// TMap<int32, TArray<int32>> MyMap;
-		// MyMap.Emplace(0, Arr);
-		// Arr[0] = -1;
-		// MyMap.Emplace(1, Arr);
-		// UE_LOG(LogASG, Display, TEXT("Arr0: %i, %i, %i"), MyMap[0][0], MyMap[0][1], MyMap[0][2]);
-		// UE_LOG(LogASG, Display, TEXT("Arr1: %i, %i, %i"), MyMap[1][0], MyMap[1][1], MyMap[1][2]);
 
 		bTookSceneCaptureInternal = true;
 
