@@ -78,8 +78,8 @@ The diagram above shows the typical workflow for interacting with the platform. 
 5. The AutoSceneGenClient will process the `AnalyzeScenario` request and when ready, it will create and submit a new `RunScenario` request describing the next navigation task to test. This process repeats until the client is done running tests.
 
 This plugin provides a variety of actors, components, and sensors that you will be interacting with and will need to configure. Below are links for documentation on each of these items:
-- [AutoSceneGen Actors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/actors.md)
-- [AutoSceneGen Components](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/components.md)
-- [AutoSceneGen Sensors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/sensors.md)
+- [AutoSceneGen Actors](Documentation/actors.md)
+- [AutoSceneGen Components](Documentation/components.md)
+- [AutoSceneGen Sensors](Documentation/sensors.md)
 
 Please consult the [auto_scene_gen](https://github.com/tsender/auto_scene_gen) repository for documentation on how to use the ROS2 interface.
