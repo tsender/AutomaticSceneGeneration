@@ -4,8 +4,8 @@ This page describes all of the senors provided by this plugin.
 
 Quick Links:
 - [Home Page](https://github.com/tsender/AutomaticSceneGeneration)
-- [Actors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/actors.md)
-- [Components](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/components.md)
+- [Actors](actors.md)
+- [Components](components.md)
 
 We currently provide a few sensors. They can be attached to any actor (not just vehicles). All sensors are derived from the `UBaseSensor` class, which inherits from `USceneComponent`. 
 
