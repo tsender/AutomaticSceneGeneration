@@ -4,9 +4,9 @@ This page describes all of the primary actor components provided by this plugin.
 
 Quick Links:
 - [Home Page](https://github.com/tsender/AutomaticSceneGeneration)
-- [Actors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/actors.md)
-- [Sensors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/sensors.md)
-- [Message and service definitions](https://github.com/tsender/auto_scene_gen/blob/main/documentation/msg_and_srv_reference.md)
+- [Actors](Documentation/actors.md)
+- [Sensors](Documentation/sensors.md)
+- [Message and Service Definitions](https://github.com/tsender/auto_scene_gen/blob/main/documentation/msg_and_srv_reference.md)
 
 
 ## AnnotationComponent
