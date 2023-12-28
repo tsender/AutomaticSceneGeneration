@@ -4,9 +4,9 @@ This page describes all of the primary actors provided by this plugin that you w
 
 Quick Links:
 - [Home Page](https://github.com/tsender/AutomaticSceneGeneration)
-- [Components](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/components.md)
-- [Sensors](https://github.com/tsender/AutomaticSceneGeneration/blob/main/Documentation/sensors.md)
-- [Message and service definitions](https://github.com/tsender/auto_scene_gen/blob/main/documentation/msg_and_srv_reference.md)
+- [Components](components.md)
+- [Sensors](sensors.md)
+- [Message and Service Definitions](https://github.com/tsender/auto_scene_gen/blob/main/documentation/msg_and_srv_reference.md)
 
 ## AutoSceneGenWorker
 
