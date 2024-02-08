@@ -119,10 +119,6 @@ void UCompleteCameraSensor::BeginPlay()
 		}
 		
 		ColorCamPub = NewObject<UTopic>(UTopic::StaticClass());
-		DepthCamPub = NewObject<UTopic>(UTopic::StaticClass());
-		TravCamPub = NewObject<UTopic>(UTopic::StaticClass());
-		SegCamPub = NewObject<UTopic>(UTopic::StaticClass());
-
 		FString ColorTopic = TopicPrefix + FString("/color_image");
 		ColorCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), ColorTopic, TEXT("sensor_msgs/Image"));
 		ColorCamPub->Advertise();
@@ -130,6 +126,7 @@ void UCompleteCameraSensor::BeginPlay()
 
 		if (bEnableDepthCam)
 		{
+			DepthCamPub = NewObject<UTopic>(UTopic::StaticClass());
 			FString DepthTopic = TopicPrefix + FString("/depth_image");
 			DepthCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), DepthTopic, TEXT("sensor_msgs/Image"));
 			DepthCamPub->Advertise();
@@ -138,6 +135,7 @@ void UCompleteCameraSensor::BeginPlay()
 		
 		if (bEnableTravCam)
 		{
+			TravCamPub = NewObject<UTopic>(UTopic::StaticClass());
 			FString TravTopic = TopicPrefix + FString("/trav_image");
 			TravCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), TravTopic, TEXT("sensor_msgs/Image"));
 			TravCamPub->Advertise();
@@ -146,6 +144,7 @@ void UCompleteCameraSensor::BeginPlay()
 
 		if (bEnableSegCam)
 		{
+			SegCamPub = NewObject<UTopic>(UTopic::StaticClass());
 			FString SegTopic = TopicPrefix + FString("/seg_image");
 			SegCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), SegTopic, TEXT("sensor_msgs/Image"));
 			SegCamPub->Advertise();
