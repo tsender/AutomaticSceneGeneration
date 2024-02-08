@@ -26,7 +26,7 @@ void ULocalizationSensor::BeginPlay()
 	HeaderSequence = 1;
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetOwner()->GetGameInstance());
-	if (ROSInst)
+	if (ROSInst && ROSInst->bConnectToROS)
 	{
 		// Create topic prefix
 		FString TopicPrefix = FString("/sensors/") + SensorName;
@@ -53,9 +53,8 @@ void ULocalizationSensor::BeginPlay()
 		}
 
 		SensorPub = NewObject<UTopic>(UTopic::StaticClass());
-
 		FString LocTopic = TopicPrefix;
-		SensorPub->Init(ROSInst->ROSIntegrationCore, LocTopic, TEXT("geometry_msgs/PoseStamped"));
+		SensorPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), LocTopic, TEXT("geometry_msgs/PoseStamped"));
 		SensorPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized localization sensor ROS publisher: %s"), *LocTopic);
 	}

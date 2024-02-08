@@ -33,6 +33,11 @@ public:	/****************************** UBaseSensor ****************************
 		return bEnabled;
 	}
 
+public:	/****************************** UBaseSensor ******************************/
+	UPROPERTY(EditAnywhere)
+	// rosbridge server ID to connect to
+	uint8 ROSBridgeServerID = 0;
+
 protected: /****************************** UBaseSensor ******************************/
 	bool bEnabled = true;
 };

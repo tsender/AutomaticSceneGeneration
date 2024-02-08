@@ -47,6 +47,10 @@ private: /****************************** AAutoSceneGenWorker *******************
 	// ASG Worker ID number
 	uint8 WorkerID = 0;
 
+	UPROPERTY(EditAnywhere)
+	// rosbridge server ID to connect to
+	uint8 ROSBridgeServerID = 0;
+
 	UPROPERTY()
 	// Perspective camera for capturing image views of the scene
 	class UColorCameraSensor* PerspectiveCamera;
@@ -261,7 +265,8 @@ private: /****************************** AAutoSceneGenWorker *******************
 
 	bool CheckGoalLocation();
 
-	void OnROSConnectionStatus(bool bIsConnected);
+	// void OnROSConnectionStatus(bool bIsConnected);
+	void OnROSConnectionStatus(int32 NumConnectedServers, int32 NumDisconnectedServers);
 
 	/**
 	 * ROS callback for receiving the ASG client's status

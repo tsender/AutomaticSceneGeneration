@@ -136,47 +136,47 @@ void AAutoSceneGenWorker::BeginPlay()
 	}
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
-	if (ROSInst)
+	if (ROSInst && ROSInst->bConnectToROS)
 	{
 		ROSInst->OnROSConnectionStatus.AddUObject(this, &AAutoSceneGenWorker::OnROSConnectionStatus);
 		
 		// ASG client status sub
 		ASGClientStatusSub = NewObject<UTopic>(UTopic::StaticClass());
 		FString ASGClientStatusTopic = FString::Printf(TEXT("/%s/status"), *AutoSceneGenClientName);
-		ASGClientStatusSub->Init(ROSInst->ROSIntegrationCore, ASGClientStatusTopic, TEXT("auto_scene_gen_msgs/StatusCode"));
+		ASGClientStatusSub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), ASGClientStatusTopic, TEXT("auto_scene_gen_msgs/StatusCode"));
 		ASGClientStatusSub->Subscribe(std::bind(&AAutoSceneGenWorker::ASGClientStatusCB, this, std::placeholders::_1));
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS subscriber: %s"), *ASGClientStatusTopic);
 
 		// ASG worker status pub
 		WorkerStatusPub = NewObject<UTopic>(UTopic::StaticClass());
 		FString WorkerStatusTopic = FString::Printf(TEXT("/asg_worker%i/status"), WorkerID);
-		WorkerStatusPub->Init(ROSInst->ROSIntegrationCore, WorkerStatusTopic, TEXT("auto_scene_gen_msgs/StatusCode"));
+		WorkerStatusPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), WorkerStatusTopic, TEXT("auto_scene_gen_msgs/StatusCode"));
 		WorkerStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS publisher: %s"), *WorkerStatusTopic);
 
 		// Vehicle destination pub
 		VehicleDestinationPub = NewObject<UTopic>(UTopic::StaticClass());
 		FString VehicleDestinationTopic = FString::Printf(TEXT("/asg_worker%i/nav/destination"), WorkerID);
-		VehicleDestinationPub->Init(ROSInst->ROSIntegrationCore, VehicleDestinationTopic, TEXT("geometry_msgs/Pose"));
+		VehicleDestinationPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), VehicleDestinationTopic, TEXT("geometry_msgs/Pose"));
 		VehicleDestinationPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS publisher: %s"), *VehicleDestinationTopic);
 		
 		// AnalyzeScenario client
 		AnalyzeScenarioClient = NewObject<UService>(UService::StaticClass());
 		FString AnalyzeScenarioServiceName = FString::Printf(TEXT("/%s/services/analyze_scenario"), *AutoSceneGenClientName);
-		AnalyzeScenarioClient->Init(ROSInst->ROSIntegrationCore, AnalyzeScenarioServiceName, TEXT("auto_scene_gen_msgs/AnalyzeScenario"));
+		AnalyzeScenarioClient->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), AnalyzeScenarioServiceName, TEXT("auto_scene_gen_msgs/AnalyzeScenario"));
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS client: %s"), *AnalyzeScenarioServiceName);
 
 		// WorkerIssueNotification client
 		WorkerIssueNotificationClient = NewObject<UService>(UService::StaticClass());
 		FString WorkerIssueNotificationServiceName = FString::Printf(TEXT("/%s/services/worker_issue_notification"), *AutoSceneGenClientName);
-		WorkerIssueNotificationClient->Init(ROSInst->ROSIntegrationCore, WorkerIssueNotificationServiceName, TEXT("auto_scene_gen_msgs/WorkerIssueNotification"));
+		WorkerIssueNotificationClient->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), WorkerIssueNotificationServiceName, TEXT("auto_scene_gen_msgs/WorkerIssueNotification"));
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS client: %s"), *WorkerIssueNotificationServiceName);
 
 		// RunScenario service
 		RunScenarioService = NewObject<UService>(UService::StaticClass());
 		FString RunScenarioServiceName = FString::Printf(TEXT("/asg_worker%i/services/run_scenario"), WorkerID);
-		RunScenarioService->Init(ROSInst->ROSIntegrationCore, RunScenarioServiceName, TEXT("auto_scene_gen_msgs/RunScenario"));
+		RunScenarioService->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), RunScenarioServiceName, TEXT("auto_scene_gen_msgs/RunScenario"));
 		RunScenarioService->Advertise(std::bind(&AAutoSceneGenWorker::RunScenarioServiceCB, this, std::placeholders::_1, std::placeholders::_2), false);
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG worker ROS service: %s"), *RunScenarioServiceName);
 	}
@@ -709,8 +709,9 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	return false;
 }
 
-void AAutoSceneGenWorker::OnROSConnectionStatus(bool bIsConnected)
+void AAutoSceneGenWorker::OnROSConnectionStatus(int32 NumConnectedServers, int32 NumDisconnectedServers)
 {
+	bool bIsConnected = NumDisconnectedServers == 0;
 	if (!bROSBridgeHealthy && bIsConnected)
 	{
 		WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;

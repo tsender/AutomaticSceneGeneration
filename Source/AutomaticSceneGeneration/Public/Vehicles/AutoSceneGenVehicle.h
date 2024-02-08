@@ -36,6 +36,8 @@ public: /****************************** AAutoSceneGenVehicle *******************
 	
 	FString GetVehicleName() const;
 
+	uint8 GetROSBridgeServerID() const;
+
 	void SetWorldIsReadyFlag(bool bReady);
 
 	void SetASGWorkerIsReadyFlag(bool bReady);
@@ -88,6 +90,10 @@ public: /****************************** AAutoSceneGenVehicle *******************
 	int32 GetNumStructuralSceneActorsHit() const;
 
 private: /****************************** AEvaluationVehicle ******************************/
+	UPROPERTY(EditAnywhere)
+	// rosbridge server ID to connect to
+	uint8 ROSBridgeServerID = 0;
+	
 	UPROPERTY(EditAnywhere)
 	class UPIDDriveByWireComponent* DriveByWireComponent;
 

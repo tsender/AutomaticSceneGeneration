@@ -64,7 +64,7 @@ void UPIDDriveByWireComponent::BeginPlay()
 	}
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetOwner()->GetGameInstance());
-	if (ROSInst)
+	if (ROSInst && ROSInst->bConnectToROS)
 	{
 		// Create topic prefix
 		FString TopicPrefix = FString::Printf(TEXT("/%s/control/"), *Vehicle->GetVehicleName());
@@ -82,15 +82,14 @@ void UPIDDriveByWireComponent::BeginPlay()
 		}
 		
 		BypassSub =  NewObject<UTopic>(UTopic::StaticClass());
-		PhysxControllerSub =  NewObject<UTopic>(UTopic::StaticClass());
-
 		FString BypassTopic = TopicPrefix + FString("bypass");
-		BypassSub->Init(ROSInst->ROSIntegrationCore, BypassTopic, TEXT("geometry_msgs/Pose"));
+		BypassSub->Init(ROSInst->GetROSConnectionFromID(Vehicle->GetROSBridgeServerID()), BypassTopic, TEXT("geometry_msgs/Pose"));
 		BypassSub->Subscribe(std::bind(&UPIDDriveByWireComponent::BypassControllerCB, this, std::placeholders::_1));
 		UE_LOG(LogASG, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *BypassTopic);
 
+		PhysxControllerSub =  NewObject<UTopic>(UTopic::StaticClass());
 		FString PhysxTopic = TopicPrefix + FString("physx");
-		PhysxControllerSub->Init(ROSInst->ROSIntegrationCore, PhysxTopic, TEXT("auto_scene_gen_msgs/PhysXControl"));
+		PhysxControllerSub->Init(ROSInst->GetROSConnectionFromID(Vehicle->GetROSBridgeServerID()), PhysxTopic, TEXT("auto_scene_gen_msgs/PhysXControl"));
 		PhysxControllerSub->Subscribe(std::bind(&UPIDDriveByWireComponent::PhysxControllerCB, this, std::placeholders::_1));
 		UE_LOG(LogASG, Display, TEXT("Initialized PID drive-by-wire ROS subscriber: %s"), *PhysxTopic);
 	}

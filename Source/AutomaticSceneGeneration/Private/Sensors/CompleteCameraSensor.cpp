@@ -92,7 +92,7 @@ void UCompleteCameraSensor::BeginPlay()
 	}
 
 	ROSInst = Cast<UROSIntegrationGameInstance>(GetOwner()->GetGameInstance());
-	if (ROSInst)
+	if (ROSInst && ROSInst->bConnectToROS)
 	{
 		// Create topic prefix
 		FString TopicPrefix = FString("/sensors/") + SensorName;
@@ -124,14 +124,14 @@ void UCompleteCameraSensor::BeginPlay()
 		SegCamPub = NewObject<UTopic>(UTopic::StaticClass());
 
 		FString ColorTopic = TopicPrefix + FString("/color_image");
-		ColorCamPub->Init(ROSInst->ROSIntegrationCore, ColorTopic, TEXT("sensor_msgs/Image"));
+		ColorCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), ColorTopic, TEXT("sensor_msgs/Image"));
 		ColorCamPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *ColorTopic);
 
 		if (bEnableDepthCam)
 		{
 			FString DepthTopic = TopicPrefix + FString("/depth_image");
-			DepthCamPub->Init(ROSInst->ROSIntegrationCore, DepthTopic, TEXT("sensor_msgs/Image"));
+			DepthCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), DepthTopic, TEXT("sensor_msgs/Image"));
 			DepthCamPub->Advertise();
 			UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *DepthTopic);
 		}
@@ -139,7 +139,7 @@ void UCompleteCameraSensor::BeginPlay()
 		if (bEnableTravCam)
 		{
 			FString TravTopic = TopicPrefix + FString("/trav_image");
-			TravCamPub->Init(ROSInst->ROSIntegrationCore, TravTopic, TEXT("sensor_msgs/Image"));
+			TravCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), TravTopic, TEXT("sensor_msgs/Image"));
 			TravCamPub->Advertise();
 			UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *TravTopic);
 		}
@@ -147,7 +147,7 @@ void UCompleteCameraSensor::BeginPlay()
 		if (bEnableSegCam)
 		{
 			FString SegTopic = TopicPrefix + FString("/seg_image");
-			SegCamPub->Init(ROSInst->ROSIntegrationCore, SegTopic, TEXT("sensor_msgs/Image"));
+			SegCamPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), SegTopic, TEXT("sensor_msgs/Image"));
 			SegCamPub->Advertise();
 			UE_LOG(LogASG, Display, TEXT("Initialized camera sensor ROS publisher: %s"), *SegTopic);
 		}

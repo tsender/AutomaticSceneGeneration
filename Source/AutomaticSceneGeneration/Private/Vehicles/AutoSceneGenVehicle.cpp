@@ -65,7 +65,7 @@ void AAutoSceneGenVehicle::BeginPlay()
     }
 
     ROSInst = Cast<UROSIntegrationGameInstance>(GetGameInstance());
-	if (ROSInst)
+	if (ROSInst && ROSInst->bConnectToROS)
 	{
 		// Create topic prefix
         FString TopicPrefix = FString::Printf(TEXT("/%s/"), *VehicleName);
@@ -83,9 +83,8 @@ void AAutoSceneGenVehicle::BeginPlay()
 		}
 
         VehicleStatusPub = NewObject<UTopic>(UTopic::StaticClass());
-
         FString StatusTopic = TopicPrefix + FString("status");
-		VehicleStatusPub->Init(ROSInst->ROSIntegrationCore, StatusTopic, TEXT("auto_scene_gen_msgs/VehicleStatus"));
+		VehicleStatusPub->Init(ROSInst->GetROSConnectionFromID(ROSBridgeServerID), StatusTopic, TEXT("auto_scene_gen_msgs/VehicleStatus"));
         VehicleStatusPub->Advertise();
 		UE_LOG(LogASG, Display, TEXT("Initialized ASG vehicle ROS publisher: %s"), *StatusTopic);
 	}
@@ -189,6 +188,11 @@ void AAutoSceneGenVehicle::SetupPlayerInputComponent(class UInputComponent* Play
 FString AAutoSceneGenVehicle::GetVehicleName() const
 {
     return VehicleName;
+}  
+
+uint8 AAutoSceneGenVehicle::GetROSBridgeServerID() const
+{
+    return ROSBridgeServerID;
 }  
 
 void AAutoSceneGenVehicle::SetWorldIsReadyFlag(bool bReady)
