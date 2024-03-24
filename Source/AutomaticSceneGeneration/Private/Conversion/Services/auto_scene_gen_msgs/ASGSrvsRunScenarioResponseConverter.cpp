@@ -10,8 +10,8 @@ UASGSrvsRunScenarioResponseConverter::UASGSrvsRunScenarioResponseConverter()
 
 bool UASGSrvsRunScenarioResponseConverter::ConvertIncomingResponse(const ROSBridgeServiceResponseMsg &res, TSharedRef<TSharedPtr<FROSBaseServiceResponse>> Response) 
 {
-	*Response = MakeShareable(new ROSMessages::auto_scene_gen_msgs::FRunScenarioResponse);
-	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FRunScenarioResponse>(*Response);
+	*Response = MakeShareable(new ROSMessages::auto_scene_gen_msgs::RunScenarioResponse);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::RunScenarioResponse>(*Response);
 
 	CastResponse->_Result = res.result_;
     return _bson_extract_child_response(res.full_msg_bson_, "values", CastResponse.Get());
@@ -19,7 +19,7 @@ bool UASGSrvsRunScenarioResponseConverter::ConvertIncomingResponse(const ROSBrid
 
 bool UASGSrvsRunScenarioResponseConverter::ConvertOutgoingResponse(TSharedPtr<FROSBaseServiceResponse> Response, ROSBridgeServiceResponseMsg &res) 
 {
-    auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FRunScenarioResponse>(Response);
+    auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::RunScenarioResponse>(Response);
 	res.result_ = CastResponse->_Result;
     _bson_append_response(res.values_bson_, CastResponse.Get());
 	return true;
@@ -27,5 +27,5 @@ bool UASGSrvsRunScenarioResponseConverter::ConvertOutgoingResponse(TSharedPtr<FR
 
 TSharedPtr<FROSBaseServiceResponse> UASGSrvsRunScenarioResponseConverter::AllocateConcreteResponse() 
 {
-    return MakeShareable(new ROSMessages::auto_scene_gen_msgs::FRunScenarioResponse);
+    return MakeShareable(new ROSMessages::auto_scene_gen_msgs::RunScenarioResponse);
 }

@@ -4,6 +4,7 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
+		// Indicates the current status of some entity
 		class StatusCode: public FROSBaseMsg {
 		public:
 			StatusCode() : StatusCode(0) {}

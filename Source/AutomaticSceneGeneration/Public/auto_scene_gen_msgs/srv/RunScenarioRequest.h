@@ -8,12 +8,12 @@
 
 namespace ROSMessages {
 	namespace auto_scene_gen_msgs {
-		// RunScenario requests are to be submitted by the ASG client. They describe the scenario that the ASG worker should run
-		class FRunScenarioRequest : public FROSBaseServiceRequest {
+		// RunScenario requests are to be submitted by the AutoSceneGenClient. They describe the scenario that the AutoSceneGenWorker should run
+		class RunScenarioRequest : public FROSBaseServiceRequest {
 
 		public:
-			FRunScenarioRequest() = default;
-			~FRunScenarioRequest() = default;
+			RunScenarioRequest() = default;
+			~RunScenarioRequest() = default;
 
 			// Mainly just used to check on progress
 			int32 scenario_number;

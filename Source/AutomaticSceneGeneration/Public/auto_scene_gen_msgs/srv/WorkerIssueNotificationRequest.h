@@ -5,12 +5,12 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
-		// This services is to be invoked by the AutoSceneGen Worker to inform the AutoSceneGen Client of an issue
-		class AUTOMATICSCENEGENERATION_API FWorkerIssueNotificationRequest : public FROSBaseServiceRequest {
+		// This services is to be invoked by the AutoSceneGenWorker to inform the AutoSceneGenClient of an issue
+		class WorkerIssueNotificationRequest : public FROSBaseServiceRequest {
 
 		public:
-			FWorkerIssueNotificationRequest() = default;
-			~FWorkerIssueNotificationRequest() = default;
+			WorkerIssueNotificationRequest() = default;
+			~WorkerIssueNotificationRequest() = default;
 
 			// Worker ID sending the notification
 			uint8 worker_id;
@@ -21,7 +21,7 @@ namespace ROSMessages{
 			// ID for the issue at hand
 			uint8 issue_id;
 
-			// Message string, if any message needs to be relaid to the AutoSceneGen client. Can be empty.
+			// Message string, if any message needs to be relaid to the AutoSceneGenClient. Can be empty.
 			FString message;
 		};
 	}

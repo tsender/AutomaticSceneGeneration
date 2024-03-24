@@ -12,11 +12,12 @@
 
 // NOTE: Make sure to uncheck EnableWorldBoundsCheck in world settings
 
+// Use this to forward declare a class within the namespace
 namespace ROSMessages
 {
 	namespace auto_scene_gen_msgs
 	{
-		class FAnalyzeScenarioRequest;
+		class AnalyzeScenarioRequest;
 	}
 }
 
@@ -313,5 +314,5 @@ private: /****************************** AAutoSceneGenWorker *******************
 	 * Add the scene capture data to the AnalyzeScenario request
 	 * @param Request The AnalyzeScenario request to add scene capture data to
 	*/
-	void AddSceneCapturesToRequest(TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Request);
+	void AddSceneCapturesToRequest(TSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest> Request);
 };

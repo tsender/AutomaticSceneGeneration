@@ -5,14 +5,14 @@
 
 namespace ROSMessages {
 	namespace auto_scene_gen_msgs {
-		// Once the ASG worker receives the RunScenario request, it will submit a brief response acknowledging receipt of the request
-		class FRunScenarioResponse : public FROSBaseServiceResponse {
+		// Once the AutoSceneGenWorker receives the RunScenario request, it will submit a brief response acknowledging receipt of the request
+		class RunScenarioResponse : public FROSBaseServiceResponse {
 
 		public:
-			FRunScenarioResponse() = default;
-			~FRunScenarioResponse() = default;
+			RunScenarioResponse() = default;
+			~RunScenarioResponse() = default;
 
-			// Indicates the ASG worker received the RunScenario request
+			// Indicates the AutoSceneGenWorker received the RunScenario request
 			bool received;
 		};
 	}

@@ -5,14 +5,14 @@
 
 namespace ROSMessages {
 	namespace auto_scene_gen_msgs {
-		// Once the ASG client receives the WorkerIssueNotification, it will submit a brief response acknowledging receipt
-		class FWorkerIssueNotificationResponse : public FROSBaseServiceResponse {
+		// Once the AutoSceneGenClient receives the WorkerIssueNotification, it will submit a brief response acknowledging receipt
+		class WorkerIssueNotificationResponse : public FROSBaseServiceResponse {
 
 		public:
-			FWorkerIssueNotificationResponse() = default;
-			~FWorkerIssueNotificationResponse() = default;
+			WorkerIssueNotificationResponse() = default;
+			~WorkerIssueNotificationResponse() = default;
 
-			// Indicates the ASG client received the notification
+			// Indicates the AutoSceneGenClient received the notification
 			bool received;
 		};
 	}

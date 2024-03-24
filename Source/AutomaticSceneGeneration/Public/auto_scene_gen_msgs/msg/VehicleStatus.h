@@ -4,6 +4,7 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
+		// This message contains the enable status of an AutoSceneGen vehicle
 		class VehicleStatus: public FROSBaseMsg {
 		public:
 			VehicleStatus() : VehicleStatus(false, false) {}

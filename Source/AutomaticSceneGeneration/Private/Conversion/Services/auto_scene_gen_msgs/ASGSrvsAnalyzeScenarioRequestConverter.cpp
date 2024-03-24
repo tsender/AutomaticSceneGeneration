@@ -11,13 +11,13 @@ UASGSrvsAnalyzeScenarioRequestConverter::UASGSrvsAnalyzeScenarioRequestConverter
 
 bool UASGSrvsAnalyzeScenarioRequestConverter::ConvertIncomingRequest(ROSBridgeCallServiceMsg &req, TSharedPtr<FROSBaseServiceRequest> Request) 
 {
-    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest>(Request);
+    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest>(Request);
 	return _bson_extract_child_request(req.full_msg_bson_, "args", CastRequest.Get());
 }
 
 bool UASGSrvsAnalyzeScenarioRequestConverter::ConvertOutgoingRequest(TSharedPtr<FROSBaseServiceRequest> Request, bson_t** BSONRequest) 
 {
-    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest>(Request);
+    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest>(Request);
     *BSONRequest = bson_new();
 	_bson_append_request(*BSONRequest, CastRequest.Get());
     return true;
@@ -25,5 +25,5 @@ bool UASGSrvsAnalyzeScenarioRequestConverter::ConvertOutgoingRequest(TSharedPtr<
 
 TSharedPtr<FROSBaseServiceRequest> UASGSrvsAnalyzeScenarioRequestConverter::AllocateConcreteRequest() 
 {
-    return MakeShareable(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest);
+    return MakeShareable(new ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest);
 }

@@ -21,7 +21,7 @@ public:
 
 	virtual TSharedPtr<FROSBaseServiceRequest> AllocateConcreteRequest() override;
 
-	static bool _bson_extract_child_request(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest *request, bool LogOnErrors = true)
+	static bool _bson_extract_child_request(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest *request, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
 
@@ -32,7 +32,7 @@ public:
 		return true;
 	}
 
-	static void _bson_append_request(bson_t *b, const ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest *request)
+	static void _bson_append_request(bson_t *b, const ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest *request)
 	{
 		BSON_APPEND_INT32(b, "worker_id", request->worker_id);
 		BSON_APPEND_INT32(b, "issue_id", request->issue_id);

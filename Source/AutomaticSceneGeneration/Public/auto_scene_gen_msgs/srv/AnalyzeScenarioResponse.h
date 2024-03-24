@@ -5,14 +5,14 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
-		// Once the ASG client receives the AnalyzeScenario request, it will submit a brief response acknowledging receipt of the request
-		class AUTOMATICSCENEGENERATION_API FAnalyzeScenarioResponse : public FROSBaseServiceResponse {
+		// Once the AutoSceneGenClient receives the AnalyzeScenario request, it will submit a brief response acknowledging receipt of the request
+		class AnalyzeScenarioResponse : public FROSBaseServiceResponse {
 
 		public:
-			FAnalyzeScenarioResponse() = default;
-			~FAnalyzeScenarioResponse() = default;
+			AnalyzeScenarioResponse() = default;
+			~AnalyzeScenarioResponse() = default;
 
-			// Indicates the ASG client received the AnalyzeScenario request
+			// Indicates the AutoSceneGenClient received the AnalyzeScenario request
 			bool received;
 		};
 	}

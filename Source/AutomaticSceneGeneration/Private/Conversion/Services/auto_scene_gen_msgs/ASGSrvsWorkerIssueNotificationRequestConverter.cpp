@@ -11,13 +11,13 @@ UASGSrvsWorkerIssueNotificationRequestConverter::UASGSrvsWorkerIssueNotification
 
 bool UASGSrvsWorkerIssueNotificationRequestConverter::ConvertIncomingRequest(ROSBridgeCallServiceMsg &req, TSharedPtr<FROSBaseServiceRequest> Request) 
 {
-    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest>(Request);
+    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest>(Request);
 	return _bson_extract_child_request(req.full_msg_bson_, "args", CastRequest.Get());
 }
 
 bool UASGSrvsWorkerIssueNotificationRequestConverter::ConvertOutgoingRequest(TSharedPtr<FROSBaseServiceRequest> Request, bson_t** BSONRequest) 
 {
-    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest>(Request);
+    auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest>(Request);
     *BSONRequest = bson_new();
 	_bson_append_request(*BSONRequest, CastRequest.Get());
     return true;
@@ -25,5 +25,5 @@ bool UASGSrvsWorkerIssueNotificationRequestConverter::ConvertOutgoingRequest(TSh
 
 TSharedPtr<FROSBaseServiceRequest> UASGSrvsWorkerIssueNotificationRequestConverter::AllocateConcreteRequest() 
 {
-    return MakeShareable(new ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest);
+    return MakeShareable(new ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest);
 }

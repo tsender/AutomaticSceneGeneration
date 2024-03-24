@@ -305,13 +305,13 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 		// Send bare AnalyzeScenario request with just the scene captures
 		if (bSceneCaptureOnly)
 		{
-			TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
+			TSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest());
 			
 			bWaitingForScenarioRequest = true;
 			WorkerStatus = ROSMessages::auto_scene_gen_msgs::StatusCode::ONLINE_AND_READY;
 			Req->worker_id = WorkerID;
 			Req->scenario_number = ScenarioNumber;
-			Req->termination_reason = ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_SUCCESS;
+			Req->termination_reason = ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest::REASON_SUCCESS;
 			Req->num_vehicle_control_messages = 0;
 			Req->vehicle_sim_time = 0.;
 			AddSceneCapturesToRequest(Req);
@@ -335,7 +335,7 @@ void AAutoSceneGenWorker::Tick(float DeltaTime)
 	{
 		if (bROSBridgeConnectionInterrupted && bASGClientOnline)
 		{
-			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_ROSBRIDGE_INTERRUPTED, FString(""));
+			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest::ISSUE_ROSBRIDGE_INTERRUPTED, FString(""));
 			bROSBridgeConnectionInterrupted = false;
 		}
 		
@@ -460,7 +460,7 @@ void AAutoSceneGenWorker::SendWorkerIssueNotification(uint8 IssueID, FString Err
 {
 	if (ROSInst && bASGClientOnline)
 	{
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest> Req(new ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest());
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest> Req(new ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest());
 		Req->worker_id = WorkerID;
 		Req->issue_id = IssueID;
 		Req->message = ErrorMessage;
@@ -503,7 +503,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 			{
 				FString ErrorMessage = FString::Printf(TEXT("Failed to process RunScenarioRequest: UObject with path_name %s is not a child of AStructuralSceneActor"), *Layout.path_name);
 				UE_LOG(LogASG, Error, TEXT("%s"), *ErrorMessage);
-				SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_PROBLEM_CREATING_SCENE, ErrorMessage);
+				SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest::ISSUE_PROBLEM_CREATING_SCENE, ErrorMessage);
 				return;
 			}
 		}
@@ -511,7 +511,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 		{
 			FString ErrorMessage = FString::Printf(TEXT("Failed to process RunScenarioRequest: Could not cast UObject with path_name %s to UBlueprintGeneratedClass"), *Layout.path_name);
 			UE_LOG(LogASG, Error, TEXT("%s"), *ErrorMessage);
-			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationRequest::ISSUE_PROBLEM_CREATING_SCENE, ErrorMessage);
+			SendWorkerIssueNotification(ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationRequest::ISSUE_PROBLEM_CREATING_SCENE, ErrorMessage);
 			return;
 		}
 	}
@@ -592,7 +592,7 @@ void AAutoSceneGenWorker::ProcessRunScenarioRequest()
 
 void AAutoSceneGenWorker::ResetVehicleAndSendAnalyzeScenarioRequest(uint8 TerminationReason)
 {
-	TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
+	TSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest());
 	ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_trajectory);
 	
 	bWaitingForScenarioRequest = true;
@@ -620,7 +620,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	if (ROSInst && !bAllowCollisions && ASGVehicle->GetNumStructuralSceneActorsHit() > 0)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_COLLISION."));
-		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_COLLISION);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest::REASON_VEHICLE_COLLISION);
 		return true;
 	}
 
@@ -628,7 +628,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	if (ROSInst && FMath::Abs(ASGVehicle->GetActorRotation().Euler().X) > MaxVehicleRoll)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_FLIPPED. Vehicle roll %f degrees exceeds %f degree maximum."), ASGVehicle->GetActorRotation().Euler().X, MaxVehicleRoll);
-		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
 		return true;
 	}
 
@@ -636,7 +636,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	if (ROSInst && FMath::Abs(ASGVehicle->GetActorRotation().Euler().Y) > MaxVehiclePitch)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_FLIPPED. Vehicle pitch %f degrees exceeds %f degree maximum."), ASGVehicle->GetActorRotation().Euler().Y, MaxVehiclePitch);
-		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest::REASON_VEHICLE_FLIPPED);
 		return true;
 	}
 
@@ -644,7 +644,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	if (ROSInst && SimTimeoutPeriod > 0. && ASGVehicle->GetTimeSinceFirstControlInput() >= SimTimeoutPeriod)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_SIM_TIMEOUT. Simulation timeout is %f seconds."), SimTimeoutPeriod);
-		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_SIM_TIMEOUT);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest::REASON_SIM_TIMEOUT);
 		return true;
 	}
 
@@ -652,7 +652,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	if (ROSInst && VehicleIdlingTimeoutPeriod > 0. && ASGVehicle->GetIdleTime() >= VehicleIdlingTimeoutPeriod)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_IDLING_TIMEOUT. Vehicle idling timeout is %f seconds."), VehicleIdlingTimeoutPeriod);
-		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_IDLING_TIMEOUT);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest::REASON_VEHICLE_IDLING_TIMEOUT);
 		return true;
 	}
 
@@ -660,7 +660,7 @@ bool AAutoSceneGenWorker::CheckForVehicleReset()
 	if (ROSInst && VehicleStuckTimeoutPeriod > 0. && ASGVehicle->GetStuckTime() >= VehicleStuckTimeoutPeriod)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_VEHICLE_STUCK_TIMEOUT. Vehicle stuck timeout is %f seconds."), VehicleIdlingTimeoutPeriod);
-		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest::REASON_VEHICLE_STUCK_TIMEOUT);
+		ResetVehicleAndSendAnalyzeScenarioRequest(ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest::REASON_VEHICLE_STUCK_TIMEOUT);
 		return true;
 	}
 
@@ -676,7 +676,7 @@ bool AAutoSceneGenWorker::CheckGoalLocation()
 	if (DistanceToGoal.Size() <= GoalRadius)
 	{
 		UE_LOG(LogASG, Display, TEXT("Scenario has terminated: REASON_SUCCESS."));
-		TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest());
+		TSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest> Req(new ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest());
 		ASGVehicle->ResetVehicle(VehicleStartLocation, VehicleStartRotation, Req->vehicle_trajectory);
 
 		if (ROSInst && !bWaitingForScenarioRequest /*&& bASGClientOnline*/)
@@ -756,7 +756,7 @@ void AAutoSceneGenWorker::ASGClientStatusCB(TSharedPtr<FROSBaseMsg> Msg)
 
 void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioResponse>(Response);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioResponse>(Response);
 	if (!CastResponse)
 	{
 		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/AnalyzeScenarioResponse"));
@@ -767,7 +767,7 @@ void AAutoSceneGenWorker::AnalyzeScenarioResponseCB(TSharedPtr<FROSBaseServiceRe
 
 void AAutoSceneGenWorker::WorkerIssueNotificationResponseCB(TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FWorkerIssueNotificationResponse>(Response);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::WorkerIssueNotificationResponse>(Response);
 	if (!CastResponse)
 	{
 		UE_LOG(LogASG, Error, TEXT("Failed to cast msg to auto_scene_gen_msgs/WorkerIssueNotificationResponse"));
@@ -778,8 +778,8 @@ void AAutoSceneGenWorker::WorkerIssueNotificationResponseCB(TSharedPtr<FROSBaseS
 
 void AAutoSceneGenWorker::RunScenarioServiceCB(TSharedPtr<FROSBaseServiceRequest> Request, TSharedPtr<FROSBaseServiceResponse> Response) 
 {
-	auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FRunScenarioRequest>(Request);
-	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::FRunScenarioResponse>(Response);
+	auto CastRequest = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::RunScenarioRequest>(Request);
+	auto CastResponse = StaticCastSharedPtr<ROSMessages::auto_scene_gen_msgs::RunScenarioResponse>(Response);
 	if (!CastRequest)
 	{
 		UE_LOG(LogASG, Error, TEXT("Failed to cast Request to auto_scene_gen_msgs/RunScenarioRequest"));
@@ -1084,7 +1084,7 @@ void AAutoSceneGenWorker::CaptureSceneImages(bool bDrawAnnotations)
 		UE_LOG(LogASG, Display, TEXT("Captured scene images"));
 }
 
-void AAutoSceneGenWorker::AddSceneCapturesToRequest(TSharedPtr<ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioRequest> Request)
+void AAutoSceneGenWorker::AddSceneCapturesToRequest(TSharedPtr<ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioRequest> Request)
 {
 	Request->scene_capture_only = bSceneCaptureOnly;
 	if (!bTakeSceneCapture && !bSceneCaptureOnly) return;

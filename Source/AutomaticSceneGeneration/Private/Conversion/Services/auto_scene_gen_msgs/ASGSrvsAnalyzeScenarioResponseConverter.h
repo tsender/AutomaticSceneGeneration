@@ -21,14 +21,14 @@ public:
 
 	virtual TSharedPtr<FROSBaseServiceResponse> AllocateConcreteResponse() override;
 
-	static bool _bson_extract_child_response(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioResponse *response, bool LogOnErrors = true)
+	static bool _bson_extract_child_response(bson_t *b, FString key, ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioResponse *response, bool LogOnErrors = true)
 	{
 		bool KeyFound = false;
 		response->received = UBaseMessageConverter::GetBoolFromBSON(key + ".received", b, KeyFound, LogOnErrors); if (!KeyFound) return false;
 		return true;
 	}
 
-	static void _bson_append_response(bson_t *b, const ROSMessages::auto_scene_gen_msgs::FAnalyzeScenarioResponse *response)
+	static void _bson_append_response(bson_t *b, const ROSMessages::auto_scene_gen_msgs::AnalyzeScenarioResponse *response)
 	{
 		BSON_APPEND_BOOL(b, "received", response->received);
 	}

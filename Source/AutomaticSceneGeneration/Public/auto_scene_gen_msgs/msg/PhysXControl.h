@@ -5,6 +5,7 @@
 
 namespace ROSMessages{
 	namespace auto_scene_gen_msgs {
+		// Message for sending basic PhysX control commands to a PhysX vehicle
 		class PhysXControl: public FROSBaseMsg {
 		public:
 			PhysXControl() : PhysXControl(0, 0, true) {}
