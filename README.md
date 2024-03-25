@@ -22,7 +22,7 @@ I am aware that some features you may wish to have (e.g. a larger sensor suite, 
 
 If you use our work in an academic context, we would greatly appreciate it if you used the following citation:
 
-TODO
+Coming Soon
 
 ## The AutoSceneGen Ecosystem
 
@@ -41,7 +41,7 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 2. [ROSIntegration](https://github.com/tsender/ROSIntegration/tree/feature/specify_ros_version): A plugin for UE4 that enables ROS communication. You will need to use the `feature/specify_ros_version` branch of @tsender's fork since we added ROS2 compatibility.
 
 #### ROS Interface
-1. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/main): Required by the ROSIntegration plugin. You will need to use the `ros2` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
+1. [rosbridge_suite](https://github.com/tsender/rosbridge_suite/tree/ros2): Required by the ROSIntegration plugin. You will need to use the `ros2` branch on @tsender's fork because the authors of `rosbridge_suite` have not yet accepted the PR https://github.com/RobotWebTools/rosbridge_suite/pull/824 (please feel free to contribute to the PR in any way).
 2. [auto_scene_gen](https://github.com/tsender/auto_scene_gen): The ROS2 interface that provides the necessary tools to interact with the AutomaticSceneGeneration plugin.
 
 ### Installation
@@ -50,8 +50,6 @@ The entire ecosystem consists of a few plugins for Unreal Engine and a few ROS p
 2. Download the `ROSIntegration` and `AutomaticSceneGeneration` plugins using the links above (making sure you download the specified branches). Copy these plugins into your `MyProject/Plugins/` folder.
 3. Open up your UE4 project and let the editor build the plugins (they will build automatically the first time you open the project).
 4. Once everything builds and the project opens, verify the plugins are active by going to Edit -> Plugins. If they are for some reason inactive, then activate them and restart the editor.
-
-Please consult the [auto_scene_gen](https://github.com/tsender/auto_scene_gen) repository for instructions on how to install the ROS interface.
 
 ## Initial Setup
 1. Open your UE4 project.
