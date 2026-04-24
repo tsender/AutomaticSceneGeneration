@@ -13,10 +13,8 @@ The purpose of this plugin is to support the development, validation, and testin
 
 Moving forward, we will often refer to the UE plugin by the abbreviated name "AutoSceneGen". This plugin currently only supports UE4.
 
-### A Note from the Author 
-My name is Ted Sender, I am a PhD candidate at the University of Michigan, and I am developing this platform as part of my PhD research project. This platform is still in its infancy and will be under active development as I continue my research.
-
-I am aware that some features you may wish to have (e.g. a larger sensor suite, a weather system, controlling the 3D terrain elevation, etc.) have not yet been added to this platform. Some improvements are a work in progress and/or will be added in the near future as I continue my research, some might get added in my free time, and others may just be a stretch goal. My goal is that together, we can improve the capabilities of this platform and the state-of-the-art in testing off-road AVs.
+### A Note from the Author
+My name is Ted Sender and I developed this platform as part of my PhD research project at the University of Michigan. I am aware that some features you may wish to have (e.g., a larger sensor suite, a weather system, controlling the 3D terrain elevation, etc.) have not yet been added to this platform. As I have graduated, I do not anticipate being able to make these changes myself to the code. However, you are welcome to reach out if you have any questions about how to go about this endeavor. My goal is that, together, we can improve the capabilities of this platform and the state-of-the-art in testing off-road AVs.
 
 ### Citation
 
